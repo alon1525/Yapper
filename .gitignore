@@ -1,0 +1,32 @@
+# Dependencies and build output
+node_modules/
+.next/
+dist/
+out/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# Secrets.
+# Deny every .env variant and re-allow only the committed template, rather than
+# listing the variants we happen to use today — the failure mode of the listing
+# approach is that `.env.production` gets added later and quietly ships.
+.env
+.env.*
+!.env.example
+
+# Real chat exports are private data — never commit them.
+# The first pattern is WhatsApp's own export filename, which is what people
+# actually drop into the repo while debugging a parser bug.
+packages/core/test/fixtures/real/
+WhatsApp Chat with*
+*.private.txt
+
+# Local tooling
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+.vercel
+.idea/
+.vscode/
