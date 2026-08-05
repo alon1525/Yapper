@@ -3,7 +3,14 @@ export * from './stats/types';
 
 export { parseChat } from './parse/parse';
 export { stripInvisible } from './parse/patterns';
-export { applyAliases, isUnsavedSender, unsavedParticipants } from './parse/identity';
+export {
+  applyAliases,
+  isUnsavedSender,
+  roster,
+  suggestMerges,
+  unsavedParticipants,
+} from './parse/identity';
+export type { MergeSuggestion, RosterEntry } from './parse/identity';
 
 export {
   detectLanguage,

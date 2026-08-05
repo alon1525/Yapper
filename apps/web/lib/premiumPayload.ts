@@ -6,6 +6,7 @@ import {
   type AnonymizedMessage,
   type Pseudonymizer,
 } from '@wrapped/core';
+import { briefDigest, type Brief, type BriefDigest } from './brief';
 import type { Analysis } from './useAnalyzer';
 
 /**
@@ -44,6 +45,8 @@ export interface PersonDigest {
 export interface PremiumPayload {
   language: string;
   participantCount: number;
+  /** The onboarding's answers, notes already scrubbed. Never any photo. */
+  brief?: BriefDigest;
   /** Must match the fingerprint the entitlement was minted for. */
   fingerprint: {
     totalMessages: number;
@@ -87,7 +90,10 @@ const MESSAGES_PER_MOMENT = 30;
 const DISTINCTIVE_PER_PERSON = 6;
 const LONGEST_MESSAGE_CHARS = 400;
 
-export function buildPremiumPayload(analysis: Analysis): {
+export function buildPremiumPayload(
+  analysis: Analysis,
+  brief?: Brief,
+): {
   payload: PremiumPayload;
   pseudonymizer: Pseudonymizer;
 } {
@@ -140,9 +146,12 @@ export function buildPremiumPayload(analysis: Analysis): {
     participantCount: parsed.participants.length,
   };
 
+  const digestedBrief = briefDigest(brief, (text) => p.scrub(text));
+
   const payload: PremiumPayload = {
     language: stats.language,
     participantCount: parsed.participants.length,
+    ...(digestedBrief ? { brief: digestedBrief } : {}),
     fingerprint,
     digest: {
       totalMessages: stats.totalMessages,

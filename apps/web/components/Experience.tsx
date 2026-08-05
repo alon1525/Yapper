@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
+import { emptyBrief, releasePhotos, type Brief } from '@/lib/brief';
 import { useAnalyzer } from '@/lib/useAnalyzer';
 import { slidesFor } from './cards/slides';
 import { Deck } from './Deck';
@@ -12,13 +13,14 @@ import { Landing } from './Landing';
  * conversation into storage somewhere, and "your chat never leaves your device"
  * is easier to keep true when there is nowhere for it to be left behind.
  *
- * Uploading, parsing and naming all happen inside the landing page's modal
- * rather than on screens of their own — the reader stays on one page until
- * they choose to start the story, which is also the only point at which the
- * deck takes over the viewport.
+ * The brief lives here for the same reason and one more: it is written in the
+ * onboarding and read by the deck, and those two never exist at the same time.
+ * A photo picked on the last question has to survive the screen it was picked
+ * on being unmounted.
  */
 export function Experience() {
   const { state, analyze, finalize, reset } = useAnalyzer();
+  const [brief, setBrief] = useState<Brief>(emptyBrief);
   const [playing, setPlaying] = useState(false);
 
   const stats = state.phase === 'done' ? state.analysis.stats : null;
@@ -33,8 +35,18 @@ export function Experience() {
     [analyze],
   );
 
+  const patchBrief = useCallback((patch: Partial<Brief>) => {
+    setBrief((prev) => ({ ...prev, ...patch }));
+  }, []);
+
   const restart = useCallback(() => {
     setPlaying(false);
+    // Object URLs outlive the component that made them. Starting over without
+    // handing them back leaks every photo for the lifetime of the document.
+    setBrief((prev) => {
+      releasePhotos(prev);
+      return emptyBrief();
+    });
     reset();
   }, [reset]);
 
@@ -42,18 +54,21 @@ export function Experience() {
     // The button that got us here says "with sound", and that click is the user
     // gesture every browser wants before it will let an AudioContext run — so
     // the deck opens unmuted rather than making the reader ask twice.
-    return <Deck analysis={state.analysis} onRestart={restart} startWithSound />;
+    return (
+      <Deck analysis={state.analysis} brief={brief} onRestart={restart} startWithSound />
+    );
   }
 
   return (
     <Landing
       state={state}
+      brief={brief}
+      onBrief={patchBrief}
       onAnalyze={onAnalyze}
       onNames={finalize}
       onPlay={() => setPlaying(true)}
       onCancel={restart}
       stats={stats}
-      slideCount={freeSlides + 3}
       freeCount={freeSlides + 1}
     />
   );

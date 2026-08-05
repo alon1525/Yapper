@@ -2,10 +2,11 @@
 
 import { motion } from 'framer-motion';
 import type { PremiumState } from '@/lib/usePremium';
+import { GROUP_SLOT_BACKDROP } from './photos';
 import { DeckButton, Eyebrow, RegProse, Slide, type Backdrop } from './Shell';
 
 /** The design's own closing frame: forest green, Reg, an amber button. */
-export const PAYWALL_BACKDROP: Backdrop = 'forest';
+export const PAYWALL_BACKDROP: Backdrop = GROUP_SLOT_BACKDROP.paywall;
 
 /**
  * The wall.
@@ -49,7 +50,7 @@ export function PaywallSlide({
   const INCLUDED = included(previewSeen);
 
   return (
-    <Slide backdrop={PAYWALL_BACKDROP}>
+    <Slide backdrop={PAYWALL_BACKDROP} photo="paywall">
       {/* The warm bloom the design puts behind Reg on this exact frame. */}
       <div
         aria-hidden="true"

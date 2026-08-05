@@ -27,6 +27,17 @@ const SENDER_TOKEN = /^Person [A-Z]+$/;
 const RequestSchema = z.object({
   language: z.enum(['en', 'he', 'other']),
   participantCount: z.number().int().min(1).max(500),
+  /* The reader's own brief. Optional, because a request built before the
+     onboarding existed is still a valid request. The notes are capped at the
+     length of the box that produced them — an unbounded free-text field
+     forwarded to a paid model is a bill somebody else gets to write. */
+  brief: z
+    .object({
+      language: z.enum(['en', 'he']),
+      kind: z.string().max(40),
+      notes: z.string().max(600),
+    })
+    .optional(),
   digest: z.object({
     totalMessages: z.number(),
     spanLabel: z.string().max(120),

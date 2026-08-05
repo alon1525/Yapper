@@ -2,10 +2,12 @@
 
 import { AnimatePresence } from 'framer-motion';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { Brief } from '@/lib/brief';
 import type { Analysis } from '@/lib/useAnalyzer';
 import { useAiPreview } from '@/lib/useAiPreview';
 import { usePremium } from '@/lib/usePremium';
 import { useStorySound } from '@/lib/useStorySound';
+import { PhotoProvider } from './cards/photos';
 import { slidesFor } from './cards/slides';
 import { BACKDROPS, Slide, type Backdrop } from './cards/Shell';
 import { AiSlide, AI_BACKDROP } from './cards/AiSlide';
@@ -15,18 +17,21 @@ import { FinalSlide, FINAL_BACKDROP } from './cards/FinalSlide';
 
 export function Deck({
   analysis,
+  brief,
   onRestart,
   startWithSound = false,
 }: {
   analysis: Analysis;
+  /** What the reader told Reg on the way in: language, kind, notes, photos. */
+  brief: Brief;
   onRestart: () => void;
   /** The reader arrived via a button that promised sound, which is the gesture. */
   startWithSound?: boolean;
 }) {
   const { stats } = analysis;
   const free = useMemo(() => slidesFor(stats), [stats]);
-  const preview = useAiPreview(analysis);
-  const premium = usePremium(analysis);
+  const preview = useAiPreview(analysis, brief);
+  const premium = usePremium(analysis, brief);
   const sound = useStorySound(startWithSound);
 
   /**
@@ -90,6 +95,7 @@ export function Deck({
     'grid h-8 w-8 place-items-center rounded-full text-[13px] transition hover:opacity-100';
 
   return (
+    <PhotoProvider brief={brief}>
     <main
       className="relative h-dvh w-full overflow-hidden"
       style={{ background: BACKDROPS[backdrop].bg, color: BACKDROPS[backdrop].fg }}
@@ -112,7 +118,7 @@ export function Deck({
       */}
       <AnimatePresence initial={false}>
         {current ? (
-          <Slide key={current.id} backdrop={current.backdrop}>
+          <Slide key={current.id} backdrop={current.backdrop} photo={current.photo}>
             {current.render(stats)}
           </Slide>
         ) : index === aiIndex ? (
@@ -236,5 +242,6 @@ export function Deck({
         </span>
       </div>
     </main>
+    </PhotoProvider>
   );
 }

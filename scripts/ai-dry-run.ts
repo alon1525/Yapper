@@ -20,6 +20,7 @@ import { join } from 'node:path';
 import { computeStats, findCandidateMoments, parseChat } from '@wrapped/core';
 import { buildPreviewPayload } from '../apps/web/lib/aiPayload';
 import { SYSTEM, userPrompt } from '../apps/web/lib/aiPrompt';
+import type { Brief } from '../apps/web/lib/brief';
 import { buildPremiumPayload } from '../apps/web/lib/premiumPayload';
 import { PREMIUM_SYSTEM, premiumPrompt } from '../apps/web/lib/premiumPrompt';
 
@@ -30,12 +31,33 @@ const text = readFileSync(exportPath, 'utf8');
 const parsed = parseChat(text);
 const stats = computeStats(parsed, { fileName: exportPath });
 const moments = findCandidateMoments(parsed);
-const { payload, pseudonymizer } = buildPreviewPayload({
-  parsed,
-  stats,
-  moments,
-  fileName: exportPath,
-});
+
+/**
+ * A deliberately hostile brief: the notes name every participant this export
+ * has, in the plainest possible way.
+ *
+ * The onboarding's notes box is the only field in the product where the reader
+ * types real names *at* the model rather than at each other, which makes it the
+ * one new way a name could reach a prompt without passing through
+ * `anonymizeMessages`. Running the worst case through the real builders is how
+ * that stays true rather than remembered — if the scrub is ever dropped from
+ * `briefDigest`, gate 2 below fails on this line and not in production.
+ */
+const brief: Brief = {
+  language: 'en',
+  kind: 'Friends group',
+  notes: parsed.participants
+    .slice(0, 6)
+    .map((name) => `${name} never replies.`)
+    .join(' '),
+  photos: {},
+  groupPhotos: {},
+};
+
+const { payload, pseudonymizer } = buildPreviewPayload(
+  { parsed, stats, moments, fileName: exportPath },
+  brief,
+);
 
 const prompt = userPrompt(payload);
 
@@ -44,7 +66,10 @@ const prompt = userPrompt(payload);
 // Distinctive words are the likeliest leak in the product — a nickname used by
 // exactly one person is precisely what "words this person uses more than
 // anyone else" is built to find — so it is gated by the same check.
-const premium = buildPremiumPayload({ parsed, stats, moments, fileName: exportPath });
+const premium = buildPremiumPayload(
+  { parsed, stats, moments, fileName: exportPath },
+  brief,
+);
 const premiumText = premiumPrompt(premium.payload);
 
 // --- Gate 1: the route's own zod enum. Bypassing the schema offline would let
@@ -109,6 +134,7 @@ console.log(`participants        ${parsed.participants.length}`);
 console.log(`messages            ${stats.totalMessages}`);
 console.log(`language            ${payload.language}`);
 console.log(`span                ${stats.span.label}`);
+console.log(`brief notes         ${payload.brief?.notes ?? '(none)'}`);
 console.log(`moments in payload  ${payload.moments.length}`);
 console.log(`excerpt messages    ${payload.moments.reduce((n, m) => n + m.messages.length, 0)}`);
 console.log(`prompt characters   ${promptChars} (free) · ${premiumChars} (premium)`);

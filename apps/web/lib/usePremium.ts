@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from 'react';
 import { restoreDeep } from '@wrapped/core';
+import type { Brief } from './brief';
 import { buildPremiumPayload } from './premiumPayload';
 import type { PremiumReport } from './premiumPrompt';
 import type { Analysis } from './useAnalyzer';
@@ -37,7 +38,7 @@ async function post(url: string, body: unknown): Promise<{ data: unknown; demo: 
   return { data: await response.json(), demo: response.headers.get('X-Wrapped-Demo') === '1' };
 }
 
-export function usePremium(analysis: Analysis) {
+export function usePremium(analysis: Analysis, brief?: Brief) {
   const [state, setState] = useState<PremiumState>({ phase: 'locked' });
   const inFlight = useRef(false);
 
@@ -46,7 +47,7 @@ export function usePremium(analysis: Analysis) {
     inFlight.current = true;
 
     try {
-      const { payload, pseudonymizer } = buildPremiumPayload(analysis);
+      const { payload, pseudonymizer } = buildPremiumPayload(analysis, brief);
 
       setState({ phase: 'unlocking' });
       const { data: checkout } = await post('/api/checkout', payload.fingerprint);
@@ -66,7 +67,7 @@ export function usePremium(analysis: Analysis) {
     } finally {
       inFlight.current = false;
     }
-  }, [analysis]);
+  }, [analysis, brief]);
 
   return { state, unlock };
 }

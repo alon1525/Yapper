@@ -2,11 +2,12 @@
 
 import { useCallback, useState, type CSSProperties } from 'react';
 import type { ChatStats } from '@wrapped/core';
+import type { Brief } from '@/lib/brief';
 import { readExportFile } from '@/lib/readExport';
 import type { AnalyzerState } from '@/lib/useAnalyzer';
 import { StoryPreview } from './yapped/StoryPreview';
 import { Steps } from './yapped/Steps';
-import { UploadModal, type Panel } from './yapped/UploadModal';
+import { Onboarding } from './yapped/Onboarding';
 
 /**
  * Yapped's front page.
@@ -85,36 +86,35 @@ function RevealPoint({ n, children }: { n: string; children: React.ReactNode }) 
 
 export function Landing({
   state,
+  brief,
+  onBrief,
   onAnalyze,
   onNames,
   onPlay,
   onCancel,
   stats,
-  slideCount,
   freeCount,
 }: {
   state: AnalyzerState;
+  brief: Brief;
+  onBrief: (patch: Partial<Brief>) => void;
   onAnalyze: (text: string, fileName: string, mediaCount: number) => void;
   onNames: (aliases: Record<string, string>) => void;
   onPlay: () => void;
   onCancel: () => void;
   stats: ChatStats | null;
-  slideCount: number;
   freeCount: number;
 }) {
   const [open, setOpen] = useState(false);
-  const [picked, setPicked] = useState<{ name: string; size: number } | null>(null);
   const [readError, setReadError] = useState<string | null>(null);
 
   const pick = useCallback(
     async (file: File) => {
       setReadError(null);
-      setPicked({ name: file.name, size: file.size });
       try {
         const { text, fileName, mediaCount } = await readExportFile(file);
         onAnalyze(text, fileName, mediaCount);
       } catch (e) {
-        setPicked(null);
         setReadError(
           e instanceof Error
             ? e.message
@@ -127,22 +127,9 @@ export function Landing({
 
   const close = useCallback(() => {
     setOpen(false);
-    setPicked(null);
     setReadError(null);
     onCancel();
   }, [onCancel]);
-
-  /* The modal never keeps its own copy of where we are — it reads it off the
-     analyzer, so there is one answer to "what is happening" rather than two
-     that can drift apart. */
-  const panel: Panel =
-    state.phase === 'working'
-      ? 'scan'
-      : state.phase === 'naming'
-        ? 'naming'
-        : state.phase === 'done'
-          ? 'ready'
-          : 'guide';
 
   return (
     <div
@@ -342,7 +329,7 @@ export function Landing({
                     boxShadow: '0 8px 0 #0F231A',
                   }}
                 >
-                  Choose your chat export
+                  Brief Reg, then drop the export
                 </button>
               </div>
             </div>
@@ -592,19 +579,16 @@ export function Landing({
       </div>
 
       {open && (
-        <UploadModal
-          panel={panel}
+        <Onboarding
+          state={state}
+          brief={brief}
+          onBrief={onBrief}
           onClose={close}
           onPick={(file) => void pick(file)}
           onNames={onNames}
           onPlay={onPlay}
-          picked={picked}
           error={state.phase === 'error' ? state.message : readError}
-          stage={state.phase === 'working' ? state.stage : ''}
-          fraction={state.phase === 'working' ? state.fraction : 0}
-          unsaved={state.phase === 'naming' ? state.unsaved : []}
           stats={stats}
-          slideCount={slideCount}
           freeCount={freeCount}
         />
       )}

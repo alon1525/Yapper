@@ -216,7 +216,7 @@ export function parseChat(raw: string, options: ParseOptions = {}): ParseResult 
     headerLineIndex.push(i);
     headers.push({ ...hit.header, line: i + 1 });
 
-    if ((i & 0x3ff) === 0) onProgress?.((i / totalLines) * 0.5);
+    if ((i & 0x3ff) === 0) onProgress?.((i / totalLines) * 0.5, headers.length);
   }
 
   if (headers.length === 0) {
@@ -330,7 +330,7 @@ export function parseChat(raw: string, options: ParseOptions = {}): ParseResult 
       lineCount: 1 + continuation.length,
     });
 
-    if ((h & 0x3ff) === 0) onProgress?.(0.5 + (h / headers.length) * 0.5);
+    if ((h & 0x3ff) === 0) onProgress?.(0.5 + (h / headers.length) * 0.5, messages.length);
   }
 
   const orphanLines = headerLineIndex[0]!;
@@ -358,7 +358,7 @@ export function parseChat(raw: string, options: ParseOptions = {}): ParseResult 
     .sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0]))
     .map(([name]) => name);
 
-  onProgress?.(1);
+  onProgress?.(1, messages.length);
 
   return {
     messages,

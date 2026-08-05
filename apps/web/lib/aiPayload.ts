@@ -5,6 +5,7 @@ import {
   type AnonymizedMessage,
   type Pseudonymizer,
 } from '@wrapped/core';
+import { briefDigest, type Brief, type BriefDigest } from './brief';
 import type { Analysis } from './useAnalyzer';
 
 /**
@@ -22,6 +23,17 @@ import type { Analysis } from './useAnalyzer';
 export interface AiPreviewPayload {
   language: string;
   participantCount: number;
+  /**
+   * What the reader asked for on the way in. Absent when they arrived without
+   * answering — the prompt reads the same either way, minus these lines.
+   *
+   * The notes are the one field in the whole product where the reader types
+   * names themselves, so they go through the same `scrub()` as every message
+   * body before they can end up here. Photos are not in this type at all: no
+   * image ever leaves the browser, and leaving the field out is a stronger
+   * guarantee than remembering not to fill it in.
+   */
+  brief?: BriefDigest;
   digest: {
     totalMessages: number;
     spanLabel: string;
@@ -42,7 +54,10 @@ export interface AiPreviewPayload {
 const MOMENTS_IN_PREVIEW = 5;
 const MESSAGES_PER_MOMENT = 40;
 
-export function buildPreviewPayload(analysis: Analysis): {
+export function buildPreviewPayload(
+  analysis: Analysis,
+  brief?: Brief,
+): {
   payload: AiPreviewPayload;
   pseudonymizer: Pseudonymizer;
 } {
@@ -55,9 +70,12 @@ export function buildPreviewPayload(analysis: Analysis): {
   const owl = find(stats.awards.nightOwl);
   const ghost = find(stats.awards.ghost);
 
+  const digestedBrief = briefDigest(brief, (text) => p.scrub(text));
+
   const payload: AiPreviewPayload = {
     language: stats.language,
     participantCount: parsed.participants.length,
+    ...(digestedBrief ? { brief: digestedBrief } : {}),
     digest: {
       totalMessages: stats.totalMessages,
       spanLabel: stats.span.label,

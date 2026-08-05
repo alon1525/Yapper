@@ -3,10 +3,14 @@
 import { useState } from 'react';
 import { formatNumber, shortName } from '@/lib/format';
 import type { Analysis } from '@/lib/useAnalyzer';
+import { GROUP_SLOT_BACKDROP } from './photos';
 import { DeckButton, Eyebrow, Headline, Punchline, Slide, type Backdrop } from './Shell';
 
-/** Closes on the same lime the deck opened on. */
-export const FINAL_BACKDROP: Backdrop = 'lime';
+/**
+ * Closes on the same lime the deck opened on. Read from the photo table so the
+ * onboarding's preview tile of this slide cannot be drawn on a different one.
+ */
+export const FINAL_BACKDROP: Backdrop = GROUP_SLOT_BACKDROP.verdict;
 
 export function FinalSlide({
   analysis,
@@ -56,7 +60,7 @@ export function FinalSlide({
   };
 
   return (
-    <Slide backdrop={FINAL_BACKDROP}>
+    <Slide backdrop={FINAL_BACKDROP} photo="verdict">
       <Eyebrow>Group verdict</Eyebrow>
       <Headline>Send it to the group</Headline>
       <Punchline>

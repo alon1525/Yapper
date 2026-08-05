@@ -2,6 +2,8 @@
 
 import { motion } from 'framer-motion';
 import type { ChatStats } from '@wrapped/core';
+import type { GroupSlot } from '@/lib/brief';
+import { GROUP_SLOT_BACKDROP, Portrait } from './photos';
 import {
   formatDay,
   formatDays,
@@ -27,9 +29,38 @@ import {
 export interface SlideDef {
   id: string;
   backdrop: Backdrop;
+  /**
+   * Takes a group photo behind the type when the reader supplied one for this
+   * slot. Only the four slides the onboarding previews carry one — a photo on
+   * every slide would be a slideshow, and the deck is not a slideshow.
+   */
+  photo?: GroupSlot;
   /** A slide that cannot be filled honestly is dropped rather than faked. */
   available: (s: ChatStats) => boolean;
   render: (s: ChatStats) => React.ReactNode;
+}
+
+/**
+ * A name at poster size with the reader's photo of that person beside it.
+ * Collapses to the headline alone when there is no photo, which is why the
+ * portrait sits in a flex row rather than being positioned against it.
+ *
+ * The headline box is `min-w-0` but deliberately not `flex-1`: stretching it to
+ * the full column pushes a Hebrew name — which aligns to the end of its own box
+ * — clear across the slide, leaving the portrait stranded on the far left. At
+ * content width the face and the name stay together whichever way the script
+ * runs, and a long name still wraps, because `min-w-0` lets the item shrink
+ * below its content.
+ */
+function Named({ name }: { name: string }) {
+  return (
+    <div className="flex items-center gap-4">
+      <Portrait name={name} size={72} />
+      <div className="min-w-0">
+        <Headline>{name}</Headline>
+      </div>
+    </div>
+  );
 }
 
 const person = (s: ChatStats, name: string | null) =>
@@ -44,7 +75,8 @@ const person = (s: ChatStats, name: string | null) =>
 export const SLIDES: SlideDef[] = [
   {
     id: 'welcome',
-    backdrop: 'lime',
+    backdrop: GROUP_SLOT_BACKDROP.opener,
+    photo: 'opener',
     available: () => true,
     render: (s) => (
       <>
@@ -124,7 +156,7 @@ export const SLIDES: SlideDef[] = [
       return (
         <>
           <Eyebrow>When they yap</Eyebrow>
-          <Headline>{owl.name}</Headline>
+          <Named name={owl.name} />
           <Poster size="sm">
             <span className="mt-3 block">
               Peak hour:{' '}
@@ -180,7 +212,7 @@ export const SLIDES: SlideDef[] = [
       return (
         <>
           <Eyebrow>Fastest trigger finger</Eyebrow>
-          <Headline>{fast.name}</Headline>
+          <Named name={fast.name} />
           <Poster size="md">
             <span className="mt-2 block">{formatDuration(fast.medianResponseMs)}</span>
           </Poster>
@@ -215,7 +247,7 @@ export const SLIDES: SlideDef[] = [
         <>
           <Eyebrow>Certified ghost</Eyebrow>
           <div style={{ color: 'var(--slide-accent)' }}>
-            <Headline>{ghost.name}</Headline>
+            <Named name={ghost.name} />
           </div>
           <div style={{ color: 'var(--slide-accent)' }}>
             <Poster size="md">
@@ -304,7 +336,8 @@ export const SLIDES: SlideDef[] = [
 
   {
     id: 'chaos',
-    backdrop: 'red',
+    backdrop: GROUP_SLOT_BACKDROP.chaos,
+    photo: 'chaos',
     available: (s) => s.busiestDay !== null && s.busiestDay.count > 20,
     render: (s) => {
       const day = s.busiestDay!;

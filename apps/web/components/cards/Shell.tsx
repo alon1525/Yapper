@@ -3,7 +3,9 @@
 import { animate, motion, useMotionValue, useTransform } from 'framer-motion';
 import { useEffect, type CSSProperties, type ReactNode } from 'react';
 import type { ChatLanguage } from '@wrapped/core';
+import type { GroupSlot } from '@/lib/brief';
 import { formatNumber } from '@/lib/format';
+import { Portrait, SlidePhoto } from './photos';
 
 /**
  * Per-slide palettes.
@@ -127,7 +129,16 @@ export function slideVars(backdrop: Backdrop): CSSProperties {
   };
 }
 
-export function Slide({ backdrop, children }: { backdrop: Backdrop; children: ReactNode }) {
+export function Slide({
+  backdrop,
+  photo,
+  children,
+}: {
+  backdrop: Backdrop;
+  /** Renders the reader's own photo behind the type, graded into this ground. */
+  photo?: GroupSlot;
+  children: ReactNode;
+}) {
   return (
     <motion.section
       initial={{ opacity: 0 }}
@@ -137,13 +148,17 @@ export function Slide({ backdrop, children }: { backdrop: Backdrop; children: Re
       className="absolute inset-0 flex flex-col justify-center overflow-y-auto px-7 pt-24 pb-24 sm:px-14"
       style={slideVars(backdrop)}
     >
+      {/* The ground is handed down rather than looked up, so the photo layer
+          never has to know which slide it is on — it tints itself with whatever
+          colour this slide already is. */}
+      {photo && <SlidePhoto slot={photo} ground={BACKDROPS[backdrop].bg} />}
       {/*
         The design frames every slide inside a 368px phone. On a 1440px desktop
         the same type at the same measure would be a wall, so the column stays
         narrow and centred — the deck reads like a story on any screen instead
         of only on the one it was drawn for.
       */}
-      <div className="mx-auto w-full max-w-lg">{children}</div>
+      <div className="relative mx-auto w-full max-w-lg">{children}</div>
     </motion.section>
   );
 }
@@ -342,6 +357,11 @@ export function AnimatedNumber({
  * The leaderboard. Rank in Anton, name in its own script, count in mono pinned
  * to the trailing edge — the design's own shape, and the reason it reads at a
  * glance is that the eye only has to scan one column.
+ *
+ * A face is added when the reader supplied one, and the row shrinks back to
+ * rank-and-name when they did not. The portraits are deliberately small: the
+ * ranking is the content, and eight circular photographs down the left edge
+ * would turn a leaderboard into a contact list.
  */
 export function Ranking({
   rows,
@@ -358,11 +378,11 @@ export function Ranking({
           initial={{ opacity: 0, x: -10 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.25 + i * 0.07, duration: 0.4 }}
-          className="flex items-baseline gap-3"
+          className="flex items-center gap-3"
           style={{ opacity: i > 2 ? 0.62 : 1 }}
         >
           <span
-            className="w-7 shrink-0"
+            className="w-7 shrink-0 text-center"
             style={{
               fontFamily: 'var(--yap-poster)',
               fontSize: `${Math.max(18, 34 - i * 4)}px`,
@@ -371,6 +391,7 @@ export function Ranking({
           >
             {i + 1}
           </span>
+          <Portrait name={row.label} size={i === 0 ? 40 : 30} />
           <span
             dir="auto"
             className="min-w-0 flex-1 truncate"

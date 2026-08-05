@@ -36,19 +36,44 @@ you; the short version:
 
 ## The shape of it
 
-**Landing → modal → deck.** The whole flow is one page. Uploading, parsing and
-naming all happen inside a modal rather than on screens of their own, and the
-deck only takes over the viewport when the reader presses play. Routing between
-pages would mean serialising the conversation into storage somewhere, and *your
-chat never leaves your device* is easier to keep true when there is nowhere for
-it to be left behind.
+**Landing → onboarding → deck.** The whole flow is one page and one component
+tree. Routing between pages would mean serialising the conversation into storage
+somewhere, and *your chat never leaves your device* is easier to keep true when
+there is nowhere for it to be left behind.
 
-The modal's three steps are **derived from the analyzer**, never stored
-separately — there is one answer to "what is happening" rather than two that
-can drift apart. A fourth state exists that the design could not know about:
-an export names anyone missing from the exporter's address book by phone number
-only, so sometimes it has to stop and ask who that is. It shares step two's
-progress bar, because from the reader's side it is still "working on it".
+The onboarding is seven steps and it takes the page rather than floating above
+it — a modal is a detour from whatever you were reading, and this is the thing
+you came to do:
+
+```
+lang    Which language should Reg write in?   (not the chat's language — the report's)
+kind    What kind of chat is this?            (sets the register of the roast)
+notes   Anything Reg should know?             (optional, scrubbed before it is sent)
+upload  Export the chat, then drop it here
+scan    Reading, on the device                (real message count, real progress)
+people  Who is who?                           (rename, identify numbers, merge duplicates)
+photos  Give it faces                         (optional, never leaves the browser)
+```
+
+The three steps the analyzer owns — scan, people, and the transition out of
+upload — are **derived from the analyzer**, never stored separately, so there is
+one answer to "what is happening" rather than two that can drift apart. The
+reader's answers are one `Brief` value (`lib/brief.ts`), held in `Experience`
+because it is written by a screen that unmounts before the deck that reads it.
+
+**The parse always stops to ask who is who.** Two things are invisible in the
+statistics and unfixable after them: an export names anyone missing from the
+exporter's address book by phone number only, and a contact renamed partway
+through a nine-year group sits on the leaderboard twice with half their messages
+each. `suggestMerges` proposes the pairs — same name modulo punctuation, and it
+says *renamed 2019* rather than *overlapping activity* when the two people's
+active windows do not overlap — but only the reader can confirm them. The step
+appears for every chat, including the ones with nothing to fix: a step that
+shows up for some chats and not others is a step nobody trusts.
+
+A merge is expressed as two names aliased to one. There is no separate merge
+path, because "these two rows are the same person" and "this row is called
+something else" are the same edit as far as the messages are concerned.
 
 ### Design system
 
@@ -69,6 +94,33 @@ Every pair in that palette clears WCAG AA (4.5:1 body, 3:1 accent). Two of the
 source design's colours did not and were adjusted: `#FF2E2E` behind body copy
 is 3.4:1, and the ember `#C2571F` under white button text is 4.2:1. Both are
 fine at poster size in the original and unreadable at 15px here.
+
+### Photos
+
+Optional, local, and never sent. Four slides can take a full-bleed photo and
+every member can have a face; both are object URLs pointing at bytes the browser
+already holds, revoked when the reader starts over. No payload builder reads
+them and neither AI route accepts an image — leaving the field out of the
+payload type is a stronger guarantee than remembering not to fill it in.
+
+The grading is the whole trick. A photograph is the loudest thing that can be
+put on a page, and the deck is flat grounds with one idea per screen — so the
+photo is desaturated, dropped to roughly a third, and buried under two layers of
+the slide's *own* ground. The first version graded each photo into its slide's
+hue and left the luminance alone, which looked right on a 120px preview tile and
+made the opener's headline unreadable at full size. Detail behind type is the
+problem, not colour.
+
+The onboarding's preview tiles and the deck read the same `photoLayers()` and
+the same slot→ground table, because a photo that looks one way while you are
+choosing it and another way in the story is a bug the reader has no way to
+report. That table lives in `cards/photos.tsx` and the slides import their
+backdrop *from* it; pointing that arrow the other way produced a real circular
+import and a 500 on the whole page.
+
+A missing photo renders nothing at all — no initials disc, no placeholder ring.
+Most decks will not have photos, and a fallback avatar means adding a circle to
+every slide of every chat to serve the ones that filled the step in.
 
 ### Sound
 
@@ -157,6 +209,13 @@ Both directories are named in `outputFileTracingIncludes`. They sit outside
 `public/` and outside the module graph, so without that the route works in
 `next dev` and 500s in production.
 
+**The report's language is not the chat's language.** Detection answers "what
+language is this group speaking", which drives stopwords and layout. The
+onboarding asks a different question — what language should the report be in —
+and a Hebrew group asking for English is asking for something they can send to
+someone who does not read Hebrew. The brief's answer wins in both prompts;
+detection is only the fallback when there is no brief.
+
 ## Tiers and the paywall
 
 | Tier | What the reader gets |
@@ -212,8 +271,19 @@ than a promise:
 | Tier | What leaves the device |
 |---|---|
 | Free | Nothing. Parse, stats and moment detection all run in a Web Worker. |
-| AI preview | Opt-in only. An anonymised digest plus the top few conversation windows. |
+| AI preview | Opt-in only. An anonymised digest, the top few conversation windows, and the brief. |
 | Premium | Opt-in, entitlement-gated. The same anonymised copy, plus a per-person digest. |
+
+**The notes box is the one field the reader types names *at* the model.**
+Everywhere else names arrive through `anonymizeMessages`; here somebody writes
+"תמיר never replies because he works nights" directly into a prompt. So the
+brief goes through `briefDigest()`, which runs the same `scrub()` as any message
+body — the tokens in the notes then match the tokens in the excerpts, which is
+both the private answer and the useful one, since Reg's reply restores cleanly.
+`scripts/ai-dry-run.ts` builds a deliberately hostile brief naming every
+participant in the export and fails the same gate as everything else. Notes are
+also fenced in the prompt and framed as untrusted: it is a box marked "anything
+Reg should know", and people type instructions into those.
 
 Anonymisation replaces senders with `Person A`, then sweeps message bodies for
 those same display names, phone numbers and emails — because people address each
@@ -241,7 +311,8 @@ message bodies — including Hebrew's glued prefixes. Verified end to end:
 **What redaction cannot reach:** only WhatsApp *display names* are derivable from
 an export. Groups address each other by invented nicknames that appear nowhere in
 the participant list, and no regex recovers those. The landing copy must not
-claim otherwise.
+claim otherwise — and the notes box is where the reader can hand them over
+deliberately, which is most of what it is for.
 
 This is the normal case, not an edge case. In the real export used to build this,
 the participant list reads `בבלי`, `פקולה`, `גבוה`, `Turtle` — while inside the
@@ -266,7 +337,9 @@ guard in a ref instead, which closes synchronously.
 ## Not built yet
 
 Stripe itself (the seam is built — `/api/checkout` mints without charging) ·
-video / TikTok export · media upload and AI photo memories · voice notes ·
-share links · HD download · premium share cards · translated Hebrew UI copy
-(layout is RTL-safe, the strings are still English) · a display name that is a
-phone number is shown verbatim on its character card.
+video / TikTok export · AI photo memories (photos are collected and rendered
+locally; no model ever sees one) · photos on the premium character cards and the
+share card · voice notes · share links · HD download · premium share cards ·
+translated Hebrew UI copy (layout is RTL-safe, the strings are still English) ·
+a display name that is a phone number is shown verbatim on its character card ·
+photos are not carried across a restart, by design — nothing is stored.

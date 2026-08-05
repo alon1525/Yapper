@@ -183,6 +183,23 @@ body {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 
+/* The export step: demo phone beside the instructions, stacked once the phone
+   would have to shrink to keep them side by side. The phone is the instruction,
+   so it is the one thing that must not get smaller. */
+.yap-export {
+  display: grid;
+  gap: 26px;
+  align-items: start;
+  grid-template-columns: minmax(0, 280px) minmax(0, 1fr);
+}
+
+@media (max-width: 720px) {
+  .yap-export {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+  }
+}
+
 @media (max-width: 1160px) {
   .yap-phone {
     --ps: 0.88;
@@ -242,6 +259,96 @@ body {
   }
   to {
     transform: translateX(-50%);
+  }
+}
+
+/* ── Onboarding ──────────────────────────────────────────────────────────
+   One question per screen, so each panel announces itself with the same
+   short rise rather than each step inventing its own entrance. */
+@keyframes obPop {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes obSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* The export demo: one 6s loop showing the menu opening, "Export chat" being
+   chosen, and the file appearing. Every step is a percentage of that one loop,
+   so the phone never gets out of step with itself. */
+@keyframes obPhoneA {
+  0%,
+  6% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  12%,
+  26% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  34%,
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+
+@keyframes obSheet {
+  0%,
+  18% {
+    transform: translateY(102%);
+  }
+  30%,
+  72% {
+    transform: translateY(0);
+  }
+  84%,
+  100% {
+    transform: translateY(102%);
+  }
+}
+
+@keyframes obHi {
+  0%,
+  46% {
+    background: rgba(255, 255, 255, 0.06);
+    color: #efefe6;
+  }
+  54%,
+  72% {
+    background: #c9f24d;
+    color: #10130e;
+  }
+  80%,
+  100% {
+    background: rgba(255, 255, 255, 0.06);
+    color: #efefe6;
+  }
+}
+
+@keyframes obFile {
+  0%,
+  74% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  84%,
+  96% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
   }
 }
 

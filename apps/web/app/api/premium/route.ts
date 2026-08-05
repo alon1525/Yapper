@@ -27,6 +27,15 @@ const RequestSchema = z.object({
   token: z.string().max(500),
   language: z.enum(['en', 'he', 'other']),
   participantCount: z.number().int().min(1).max(500),
+  /* Optional, and bounded: the notes field is free text the reader typed, and
+     an unbounded one forwarded to a paid model is somebody else's bill. */
+  brief: z
+    .object({
+      language: z.enum(['en', 'he']),
+      kind: z.string().max(40),
+      notes: z.string().max(600),
+    })
+    .optional(),
   fingerprint: z.object({
     totalMessages: z.number().int().min(1),
     spanLabel: z.string().max(120),

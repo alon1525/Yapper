@@ -116,6 +116,13 @@ export interface ParseOptions {
   dateOrder?: DateOrder;
   /** Fallback when detection finds no evidence at all. Defaults to 'DMY'. */
   defaultDateOrder?: DateOrder;
-  /** Invoked with 0..1 progress so the worker can drive a real progress bar. */
-  onProgress?: (fraction: number) => void;
+  /**
+   * Invoked with 0..1 progress so the worker can drive a real progress bar.
+   *
+   * `messages` is how many have been seen so far — a real running count, not an
+   * estimate scaled off the fraction. The onboarding's scan step shows it at
+   * poster size, and a number that climbs to a figure the next screen then
+   * contradicts is worse than no number at all.
+   */
+  onProgress?: (fraction: number, messages: number) => void;
 }

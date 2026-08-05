@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { restoreDeep } from '@wrapped/core';
 import { buildPreviewPayload } from './aiPayload';
+import type { Brief } from './brief';
 import type { Analysis } from './useAnalyzer';
 
 /**
@@ -28,7 +29,7 @@ export type PreviewState =
   | { phase: 'done'; preview: Preview }
   | { phase: 'error'; message: string };
 
-export function useAiPreview(analysis: Analysis) {
+export function useAiPreview(analysis: Analysis, brief?: Brief) {
   const [state, setState] = useState<PreviewState>({ phase: 'gate' });
   const inFlight = useRef(false);
 
@@ -37,7 +38,7 @@ export function useAiPreview(analysis: Analysis) {
     inFlight.current = true;
     setState({ phase: 'sending' });
 
-    const { payload, pseudonymizer } = buildPreviewPayload(analysis);
+    const { payload, pseudonymizer } = buildPreviewPayload(analysis, brief);
 
     try {
       const response = await fetch('/api/ai-preview', {
@@ -65,7 +66,7 @@ export function useAiPreview(analysis: Analysis) {
     } finally {
       inFlight.current = false;
     }
-  }, [analysis]);
+  }, [analysis, brief]);
 
   return { state, run };
 }
