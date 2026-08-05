@@ -94,9 +94,31 @@ export function Deck({
   const chromeButton =
     'grid h-8 w-8 place-items-center rounded-full text-[13px] transition hover:opacity-100';
 
+  /**
+   * Tap left third to go back, the rest to go forward — except on anything the
+   * reader could have meant to press.
+   *
+   * Deciding this at the container, from where the click landed, is what lets a
+   * slide contain a real button. The alternative every story player reaches for
+   * first — two invisible hit targets stretched over the slide — cannot work
+   * here, because the slides have buttons on them and an overlay is either
+   * above those buttons or it is not an overlay.
+   */
+  const onTap = useCallback(
+    (event: React.MouseEvent<HTMLElement>) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('button, a, input, textarea, select, [role="button"]')) return;
+
+      const box = event.currentTarget.getBoundingClientRect();
+      go(event.clientX - box.left < box.width / 3 ? -1 : 1);
+    },
+    [go],
+  );
+
   return (
     <PhotoProvider brief={brief}>
     <main
+      onClick={onTap}
       className="relative h-dvh w-full overflow-hidden"
       style={{ background: BACKDROPS[backdrop].bg, color: BACKDROPS[backdrop].fg }}
       // Direction is resolved per text node via dir="auto", not forced here.
@@ -208,25 +230,31 @@ export function Deck({
       </div>
 
       {/*
-        Tap targets. Buttons rather than a div so the deck is keyboard- and
-        screen-reader navigable, not just tappable. The narrow-left/wide-right
-        split is the one every story player on a phone uses — going forward is
-        the common case and deserves the bigger target. They stop short of the
-        chrome so the sound and restart buttons stay clickable.
+        Advancing by tap is handled on the container above, not by these — they
+        are `pointer-events-none` and exist only so the deck is reachable by
+        keyboard and announced to a screen reader as two controls rather than as
+        a region that mysteriously changes.
+
+        They used to be real full-height hit targets at `z-10`, which is above
+        every slide, which meant every button *inside* a slide — write my story,
+        unlock, download the card — was covered by "next slide". Clicking one
+        advanced the deck instead. The same class of bug the sample story had,
+        for the same reason: an animated slide makes its own stacking context,
+        so a slide cannot raise its own children above a sibling overlay.
       */}
       <button
         type="button"
         aria-label="Previous slide"
         onClick={() => go(-1)}
         disabled={index === 0}
-        className="absolute top-20 bottom-16 left-0 z-10 w-1/3 cursor-default disabled:cursor-not-allowed"
+        className="pointer-events-none absolute top-20 bottom-16 left-0 z-10 w-1/3"
       />
       <button
         type="button"
         aria-label="Next slide"
         onClick={() => go(1)}
         disabled={index === total - 1}
-        className="absolute top-20 right-0 bottom-16 z-10 w-2/3 cursor-default disabled:cursor-not-allowed"
+        className="pointer-events-none absolute top-20 right-0 bottom-16 z-10 w-2/3"
       />
 
       <div

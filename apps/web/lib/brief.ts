@@ -34,13 +34,20 @@ export interface Brief {
 
 export const NOTES_LIMIT = 600;
 
-export const CHAT_KINDS: { name: string; mark: string; note: string }[] = [
-  { name: 'Partner', mark: '◐', note: 'Romance, fights, who says goodnight first' },
-  { name: 'Best friend', mark: '◆', note: 'One-on-one, zero filter' },
-  { name: 'Friends group', mark: '▲', note: 'The classic. Chaos rankings.' },
-  { name: 'Family', mark: '❖', note: 'Gentler roast. Mostly.' },
-  { name: 'Work', mark: '▮', note: 'Kept clean enough to share' },
-  { name: 'Other', mark: '○', note: 'Reg will figure it out' },
+/**
+ * The icon each card carries, as a key rather than a component — this module is
+ * plain data with no React in it, so that a payload builder, a test and the
+ * onboarding can all read it without pulling in the icon set.
+ */
+export type KindIcon = 'partner' | 'bestFriend' | 'friends' | 'family' | 'work' | 'other';
+
+export const CHAT_KINDS: { name: string; icon: KindIcon; note: string }[] = [
+  { name: 'Partner', icon: 'partner', note: 'Romance, fights, who says goodnight first' },
+  { name: 'Best friend', icon: 'bestFriend', note: 'One-on-one, zero filter' },
+  { name: 'Friends group', icon: 'friends', note: 'The classic. Chaos rankings.' },
+  { name: 'Family', icon: 'family', note: 'Gentler roast. Mostly.' },
+  { name: 'Work', icon: 'work', note: 'Kept clean enough to share' },
+  { name: 'Other', icon: 'other', note: 'Reg will figure it out' },
 ];
 
 export const LANGUAGES: { code: ReportLanguage; name: string; note: string }[] = [

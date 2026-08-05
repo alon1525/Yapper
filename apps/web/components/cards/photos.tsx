@@ -72,78 +72,151 @@ export const GROUP_SLOT_BACKDROP: Record<GroupSlot, Backdrop> = {
 };
 
 interface Grade {
+  /** Crushes the photo to greyscale first; the tint supplies the colour. */
   filter: string;
-  /** How much of the photograph survives at all. */
+  /** 1 for a full duotone, lower to let the ground show through the image. */
   opacity: number;
-  /** Flat veil of the slide's own ground, across the whole frame. */
-  veil: number;
-  /** The same ground again, bottom-weighted, where the copy sits. */
-  scrimTop: number;
-  scrimBottom: number;
+  /** `color` re-hues the photo; `multiply` burns it into the ground. */
+  blend: 'color' | 'multiply';
+  tint: number;
+  /** Three-stop vertical wash, in a shade of the ground. */
+  washTop: number;
+  washMid: number;
+  washBottom: number;
+  /** A dark bloom under the centre. The one violent slide gets it. */
+  vignette: boolean;
+  /** 0 disables. */
+  grain: number;
 }
 
 /**
  * How a photo is pushed under the type.
  *
- * A snapshot dropped behind a headline wins the slide outright. The deck is
- * flat grounds and one loud idea per screen, and a photograph is the loudest
- * thing that can be put on a page — the first version of this graded each
- * photo into its slide's hue and left the luminance alone, which looked correct
- * on a 120px preview tile and made the opener's headline unreadable at full
- * size. Detail behind type is the problem, not colour.
+ * Straight from the design's own treatment test, which set five options beside
+ * each other and picked one: *photo crushed into the slide's own colour, hard
+ * gradient, film grain — this is the one I'd ship.*
  *
- * So the photo is desaturated, dropped to roughly a third, and buried under two
- * layers of the slide's *own* ground: a flat veil everywhere and a second pass
- * weighted towards the bottom, where the copy is. What survives is texture —
- * you can tell it is your photo, and you can still read the slide.
+ * The order matters and none of it is decorative:
  *
- * Every colour comes from the ground that is passed in, so this module names no
- * colours either, and the same function draws the onboarding's preview tiles.
- * A photo that looks one way while you are choosing it and another way in the
- * story is a bug the reader has no way to report.
+ * 1. **Greyscale first.** The photo supplies luminance and nothing else. This
+ *    is what stops a red jumper in someone's holiday snap from fighting the
+ *    slide.
+ * 2. **The ground, blended.** `color` re-hues every pixel to the slide's own
+ *    hue — a true duotone, so the lime slide stays lime and the photo becomes
+ *    the lime slide's photo. The chaos slide uses `multiply` instead, which
+ *    burns rather than tints; it should read as an event, not a portrait.
+ * 3. **A three-stop wash** in a shade of the ground, heaviest where the copy
+ *    sits. The design puts its type at the bottom and uses a bottom gradient;
+ *    this deck centres its column, so the middle stop is the strong one here.
+ *    That is the one deliberate departure.
+ * 4. **Grain.** Half a pixel of white on a 3px grid in overlay, jittering in
+ *    two steps. It is the cheapest layer and the one that does the most: it is
+ *    the difference between a photograph with a filter on it and something that
+ *    looks printed.
+ *
+ * An earlier version of this dropped the photo to a third under a flat veil.
+ * It was legible and it was dead — no duotone, no grain, a snapshot behind
+ * fog. Legibility was never the hard part; keeping the photo *and* the type is.
+ *
+ * Every colour is derived from the ground passed in, so this module names none,
+ * and the onboarding's preview tiles run the same function. A photo that looks
+ * one way while you are choosing it and another way in the story is a bug the
+ * reader has no way to report.
  */
 export const GROUP_GRADES: Record<GroupSlot, Grade> = {
+  /* B · Duotone opener — the design's recommended treatment. */
   opener: {
-    filter: 'grayscale(1) contrast(1.05)',
-    opacity: 0.36,
-    veil: 0.5,
-    scrimTop: 0.2,
-    scrimBottom: 0.82,
+    filter: 'grayscale(1) contrast(1.25) brightness(.92)',
+    opacity: 1,
+    blend: 'color',
+    tint: 0.92,
+    washTop: 0.12,
+    washMid: 0.68,
+    washBottom: 0.95,
+    vignette: false,
+    grain: 0.16,
   },
+  /* C · Chaos day — red multiply, blown contrast, black bloom. */
   chaos: {
-    filter: 'grayscale(1) contrast(1.5) brightness(.8)',
-    opacity: 0.45,
-    veil: 0.45,
-    scrimTop: 0.25,
-    scrimBottom: 0.85,
+    filter: 'grayscale(1) contrast(1.6) brightness(.6)',
+    opacity: 1,
+    blend: 'multiply',
+    tint: 1,
+    washTop: 0.1,
+    washMid: 0.45,
+    washBottom: 0.8,
+    vignette: true,
+    grain: 0.2,
   },
+  /* D · Ghost background — the treatment that survives a 2016 potato camera. */
   verdict: {
-    filter: 'grayscale(1) contrast(1.2) brightness(1.1)',
-    opacity: 0.4,
-    veil: 0.5,
-    scrimTop: 0.3,
-    scrimBottom: 0.9,
+    filter: 'grayscale(1) contrast(1.3) brightness(1.05)',
+    opacity: 0.5,
+    blend: 'color',
+    tint: 0.6,
+    washTop: 0.2,
+    washMid: 0.72,
+    washBottom: 0.96,
+    vignette: false,
+    grain: 0.12,
   },
   paywall: {
-    filter: 'grayscale(1) contrast(1.15)',
-    opacity: 0.32,
-    veil: 0.58,
-    scrimTop: 0.35,
-    scrimBottom: 0.9,
+    filter: 'grayscale(1) contrast(1.2) brightness(.85)',
+    opacity: 1,
+    blend: 'color',
+    tint: 0.92,
+    washTop: 0.25,
+    washMid: 0.74,
+    washBottom: 0.96,
+    vignette: false,
+    grain: 0.16,
   },
 };
 
-const mix = (ground: string, percent: number) =>
-  `color-mix(in srgb, ${ground} ${Math.round(percent * 100)}%, transparent)`;
+const alpha = (colour: string, a: number) =>
+  `color-mix(in srgb, ${colour} ${Math.round(a * 100)}%, transparent)`;
 
-/** The three stacked layers, as inline styles. Shared by the deck and the
-    onboarding preview so the two cannot drift. */
-export function photoLayers(
-  slot: GroupSlot,
-  ground: string,
-  url: string,
-): { image: CSSProperties; veil: CSSProperties; scrim: CSSProperties } {
+/**
+ * The wash is a *shade* of the ground, not the ground itself.
+ *
+ * On a dark slide the design darkens further — its purple opener washes down to
+ * near-black-violet — which is what gives the gradient somewhere to go. On a
+ * light slide there is nowhere darker to go without turning the type's own
+ * ground against it: lime carries near-black copy, and a dark wash under dark
+ * text is the same mistake in the opposite direction. So light grounds wash
+ * towards themselves, exactly as the design's half-frame treatment fades its
+ * photo into flat lime.
+ */
+function washColour(ground: string): string {
+  return isDark(ground) ? `color-mix(in srgb, ${ground} 62%, #000)` : ground;
+}
+
+/** Rec. 601 luma off a `#rrggbb` literal — every ground in the palette is one. */
+function isDark(hex: string): boolean {
+  const value = hex.replace('#', '');
+  if (value.length !== 6) return true;
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(value.slice(i, i + 2), 16));
+  return (0.299 * (r ?? 0) + 0.587 * (g ?? 0) + 0.114 * (b ?? 0)) / 255 < 0.6;
+}
+
+export interface PhotoLayers {
+  image: CSSProperties;
+  tint: CSSProperties;
+  wash: CSSProperties;
+  grain: CSSProperties | null;
+}
+
+/** The stacked layers, as inline styles. Shared by the deck and the onboarding
+    preview so the two cannot drift apart. */
+export function photoLayers(slot: GroupSlot, ground: string, url: string): PhotoLayers {
   const grade = GROUP_GRADES[slot];
+  const shade = washColour(ground);
+
+  const wash = `linear-gradient(180deg,${alpha(shade, grade.washTop)} 0%,${alpha(shade, grade.washMid)} 50%,${alpha(shade, grade.washBottom)} 100%)`;
+  const bloom = grade.vignette
+    ? ',radial-gradient(70% 55% at 50% 60%,rgba(0,0,0,.66),transparent 75%)'
+    : '';
+
   return {
     image: {
       backgroundImage: `url(${url})`,
@@ -152,10 +225,11 @@ export function photoLayers(
       filter: grade.filter,
       opacity: grade.opacity,
     },
-    veil: { background: ground, opacity: grade.veil },
-    scrim: {
-      background: `linear-gradient(180deg,${mix(ground, grade.scrimTop)},${mix(ground, grade.scrimBottom)})`,
-    },
+    tint: { background: ground, mixBlendMode: grade.blend, opacity: grade.tint },
+    // The bloom is listed first so it paints *under* the wash, the way the
+    // design stacks its radial beneath the flat gradient.
+    wash: { background: `${bloom ? `${bloom.slice(1)},` : ''}${wash}` },
+    grain: grade.grain > 0 ? { opacity: grade.grain } : null,
   };
 }
 
@@ -170,10 +244,16 @@ export function SlidePhoto({ slot, ground }: { slot: GroupSlot; ground: string }
   const layers = photoLayers(slot, ground, url);
 
   return (
-    <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+    // `isolate` keeps the duotone and the grain blending against the photo
+    // rather than against whatever the slide is sitting on.
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 isolate overflow-hidden"
+    >
       <div className="absolute inset-0" style={layers.image} />
-      <div className="absolute inset-0" style={layers.veil} />
-      <div className="absolute inset-0" style={layers.scrim} />
+      <div className="absolute inset-0" style={layers.tint} />
+      <div className="absolute inset-0" style={layers.wash} />
+      {layers.grain && <div className="yap-grain absolute inset-0" style={layers.grain} />}
     </div>
   );
 }

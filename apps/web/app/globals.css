@@ -262,6 +262,89 @@ body {
   }
 }
 
+/* The editable name on the "who is who" step.
+
+   This was an input with no border and no background, which is how the design
+   draws it — and it read as a label. People looked at the step, saw their
+   names, and went looking for an edit button that was never going to exist.
+   A dashed box at rest is the whole fix: it says "this is a field" before
+   anyone has to hover, fills on hover, and goes solid while being typed in.
+
+   Padding and border are on the resting state too, so nothing shifts when the
+   box changes appearance. */
+.yap-namefield {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: -5px -9px;
+  padding: 5px 9px;
+  border: 1.5px dashed #ddcdb0;
+  border-radius: 11px;
+  background: transparent;
+  cursor: text;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.yap-namefield:hover {
+  border-color: #c2571f;
+  background: #fbf6ec;
+}
+
+.yap-namefield:focus-within {
+  border-style: solid;
+  border-color: #1d3a2a;
+  background: #fffdf8;
+}
+
+.yap-namefield svg {
+  flex-shrink: 0;
+  color: #b4a68f;
+  transition:
+    color 0.16s ease,
+    opacity 0.16s ease;
+}
+
+.yap-namefield:hover svg,
+.yap-namefield:focus-within svg {
+  color: #c2571f;
+}
+
+/* Film grain over a treated photo.
+
+   Two-step jitter rather than a smooth drift: grain that eases is a gradient,
+   grain that snaps is grain. Half a pixel of white on a 3px grid, laid in
+   overlay so it lifts the highlights and leaves the shadows alone.
+
+   This is the layer that makes a duotone photo look printed rather than
+   filtered, and it is the first thing that goes missing if you rebuild the
+   treatment from memory. */
+@keyframes psGrain {
+  0% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-2%, 1%);
+  }
+  50% {
+    transform: translate(1%, -2%);
+  }
+  75% {
+    transform: translate(-1%, -1%);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+.yap-grain {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.9) 0.5px, transparent 0.6px);
+  background-size: 3px 3px;
+  mix-blend-mode: overlay;
+  animation: psGrain 1.2s steps(2) infinite;
+}
+
 /* ── Onboarding ──────────────────────────────────────────────────────────
    One question per screen, so each panel announces itself with the same
    short rise rather than each step inventing its own entrance. */

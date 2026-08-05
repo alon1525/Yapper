@@ -8,6 +8,16 @@ import {
   useState,
   type CSSProperties,
 } from 'react';
+import {
+  Briefcase,
+  CircleQuestionMark,
+  Heart,
+  HeartHandshake,
+  House,
+  PencilLine,
+  UsersRound,
+  type LucideIcon,
+} from 'lucide-react';
 import type { ChatStats, MergeSuggestion, RosterEntry } from '@wrapped/core';
 import {
   CHAT_KINDS,
@@ -16,6 +26,7 @@ import {
   NOTES_LIMIT,
   type Brief,
   type GroupSlot,
+  type KindIcon,
   type ReportLanguage,
 } from '@/lib/brief';
 import { formatNumber } from '@/lib/format';
@@ -49,6 +60,22 @@ type Step = (typeof STEPS)[number];
 const COUNTED_STEPS = 7;
 
 const HINTS = ['Nicknames', "Who's dating who", 'Keep it clean'];
+
+/**
+ * The design draws these cards with abstract marks — a half-circle, a diamond,
+ * a triangle. At poster size in a static frame they read as a set; at 26px on a
+ * card the reader has to work out which shape means "family", which is a puzzle
+ * nobody came here to solve. Line icons say the same thing at a glance and
+ * still sit in the editorial register — flat, stroked, no fill.
+ */
+const KIND_ICONS: Record<KindIcon, LucideIcon> = {
+  partner: Heart,
+  bestFriend: HeartHandshake,
+  friends: UsersRound,
+  family: House,
+  work: Briefcase,
+  other: CircleQuestionMark,
+};
 
 const EXPORT_STEPS = [
   {
@@ -795,6 +822,7 @@ export function Onboarding({
               >
                 {CHAT_KINDS.map((kind) => {
                   const on = brief.kind === kind.name;
+                  const Icon = KIND_ICONS[kind.icon];
                   return (
                     <button
                       key={kind.name}
@@ -812,9 +840,14 @@ export function Onboarding({
                         transition: 'all .18s ease',
                       }}
                     >
-                      <div style={{ fontSize: 26, lineHeight: 1 }} aria-hidden="true">
-                        {kind.mark}
-                      </div>
+                      <Icon
+                        size={26}
+                        strokeWidth={1.6}
+                        aria-hidden="true"
+                        // The ember is the landing page's own accent, and it is
+                        // the one thing on an unselected card that is not text.
+                        color={on ? '#C9F24D' : '#C2571F'}
+                      />
                       <div style={{ fontWeight: 500, fontSize: 16, marginTop: 10 }}>{kind.name}</div>
                       <div
                         style={{
@@ -1134,8 +1167,9 @@ export function Onboarding({
               <div style={eyebrow}>{people.length} people found</div>
               <h1 style={{ ...question, fontSize: 'clamp(32px, 5.6vw, 48px)' }}>Who is who?</h1>
               <p style={{ ...lede, maxWidth: '52ch' }}>
-                These are the names WhatsApp gave Reg. Fix the ones that are wrong, name the phone
-                numbers, and merge anyone who shows up twice.
+                These are the names WhatsApp gave Reg. <strong>Tap any name to edit it</strong> —
+                fix the ones that are wrong, name the phone numbers, and merge anyone who shows up
+                twice.
               </p>
 
               {openMerges.length > 0 && (
@@ -1307,27 +1341,34 @@ export function Onboarding({
                         {row.unsaved && !typed.trim() ? '?' : initialsOf(typed || row.name)}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <input
-                          dir="auto"
-                          value={typed}
-                          onChange={(e) =>
-                            setRenames((prev) => ({ ...prev, [row.name]: e.target.value }))
-                          }
-                          placeholder={row.unsaved ? `${row.name} — who is this?` : 'Name'}
-                          aria-label={`Name for ${row.name}`}
-                          style={{
-                            width: '100%',
-                            border: 0,
-                            outline: 'none',
-                            background: 'transparent',
-                            fontFamily: 'var(--yap-heb)',
-                            fontWeight: 700,
-                            fontSize: 16.5,
-                            color: row.unsaved && !typed.trim() ? '#C2571F' : '#15251C',
-                            padding: 0,
-                          }}
-                        />
-                        <div style={mono({ fontSize: 10.5, marginTop: 3 })}>
+                        {/* The dashed box is the affordance. Without it this is
+                            an input drawn as a label, and the step reads as a
+                            list of names with no way to change them. */}
+                        <label className="yap-namefield">
+                          <input
+                            dir="auto"
+                            value={typed}
+                            onChange={(e) =>
+                              setRenames((prev) => ({ ...prev, [row.name]: e.target.value }))
+                            }
+                            placeholder={row.unsaved ? `${row.name} — who is this?` : 'Name'}
+                            aria-label={`Name for ${row.name}`}
+                            style={{
+                              width: '100%',
+                              minWidth: 0,
+                              border: 0,
+                              outline: 'none',
+                              background: 'transparent',
+                              fontFamily: 'var(--yap-heb)',
+                              fontWeight: 700,
+                              fontSize: 16.5,
+                              color: row.unsaved && !typed.trim() ? '#C2571F' : '#15251C',
+                              padding: 0,
+                            }}
+                          />
+                          <PencilLine size={15} strokeWidth={1.8} aria-hidden="true" />
+                        </label>
+                        <div style={mono({ fontSize: 10.5, marginTop: 8 })}>
                           {formatNumber(row.messages, 'en')} messages · since{' '}
                           {monthLabel(row.firstDay)}
                         </div>
@@ -1436,11 +1477,17 @@ export function Onboarding({
                             }}
                           />
                           {layers && (
-                            <>
+                            <div style={{ position: 'absolute', inset: 0, isolation: 'isolate' }}>
                               <div style={{ position: 'absolute', inset: 0, ...layers.image }} />
-                              <div style={{ position: 'absolute', inset: 0, ...layers.veil }} />
-                              <div style={{ position: 'absolute', inset: 0, ...layers.scrim }} />
-                            </>
+                              <div style={{ position: 'absolute', inset: 0, ...layers.tint }} />
+                              <div style={{ position: 'absolute', inset: 0, ...layers.wash }} />
+                              {layers.grain && (
+                                <div
+                                  className="yap-grain"
+                                  style={{ position: 'absolute', inset: 0, ...layers.grain }}
+                                />
+                              )}
+                            </div>
                           )}
                           {!url && (
                             <div
