@@ -97,6 +97,10 @@ async function post(url: string, body: unknown): Promise<unknown> {
 
 /** Quotes offered to the writer for one slide, drawn from its own evidence. */
 const QUOTES_PER_SLIDE = 4;
+/** Lines of their own the writer gets per person, to hear how they talk. */
+const SAMPLE_PER_PERSON = 14;
+/** Below this a message is a reaction, not a sample of how somebody writes. */
+const MIN_SAMPLE_CHARS = 12;
 
 export function useReport(analysis: Analysis, brief?: Brief) {
   const [state, setState] = useState<ReportState>({ phase: 'idle' });
@@ -169,6 +173,43 @@ export function useReport(analysis: Analysis, brief?: Brief) {
         }
       }
 
+      /*
+        And how each of those people actually writes.
+
+        The briefs above are summaries: an angle, some measured axes, and a
+        handful of quotes chosen because they prove a specific claim. That is
+        enough to be accurate about somebody and not nearly enough to be funny
+        about them, because the funny thing is usually the shape of how they
+        type rather than the content of any one line — the four-word replies,
+        the essay that arrives at two in the morning.
+
+        Spread evenly across everything they ever sent rather than picked for
+        being good, so the sample shows their ordinary register instead of their
+        highlights. Real ids throughout: anything the writer lifts from here is
+        checked in the browser like any other quote.
+      */
+      const subjects = new Set(
+        plan.briefs.filter((b) => b.people.length === 1).map((b) => b.people[0]!),
+      );
+      const voiceSamples: Record<string, AnonymizedMessage[]> = {};
+      if (subjects.size > 0) {
+        const bySpeaker = new Map<string, typeof parsed.messages>();
+        for (const m of parsed.messages) {
+          if (m.kind !== 'text' || m.body.trim().length < MIN_SAMPLE_CHARS) continue;
+          const token = pseudonymizer.tokenFor(m.sender);
+          if (!subjects.has(token)) continue;
+          const bucket = bySpeaker.get(token) ?? [];
+          bucket.push(m);
+          bySpeaker.set(token, bucket);
+        }
+
+        for (const [token, messages] of bySpeaker) {
+          const step = Math.max(1, Math.floor(messages.length / SAMPLE_PER_PERSON));
+          const spread = messages.filter((_, i) => i % step === 0).slice(0, SAMPLE_PER_PERSON);
+          voiceSamples[token] = anonymizeMessages(spread, pseudonymizer);
+        }
+      }
+
       /* --- stage 7: write --------------------------------------------- */
       setState({ phase: 'writing' });
       const written = WrittenDeckSchema.parse(
@@ -182,6 +223,7 @@ export function useReport(analysis: Analysis, brief?: Brief) {
           voice: discovery.voice,
           groupSummary: discovery.groupIdentity.summary,
           briefs: plan.briefs satisfies SlideBrief[],
+          voiceSamples,
           evidence,
         }),
       ) as WrittenDeck;

@@ -27,6 +27,16 @@ export interface WriterPayload {
   briefs: SlideBrief[];
   /** Verified quotes available per slide, keyed by slide id. */
   evidence: Record<string, AnonymizedMessage[]>;
+  /**
+   * A spread of each person's own messages, keyed by token.
+   *
+   * Without this the comedy pass is told what someone is like and asked to be
+   * funny about it, having never seen them type. The joke that lands is almost
+   * always the one that notices *how* they write — the nineteen-character
+   * replies, the paragraph that arrives four hours late — and that is not
+   * something a summary can carry.
+   */
+  voiceSamples?: Record<string, AnonymizedMessage[]>;
 }
 
 export const WRITER_SYSTEM = `You write the slides for a group chat's end-of-year report.
@@ -151,6 +161,40 @@ column:
 
 The label is the whole joke: name what the measurement is really describing
 about them, in their register, not the polite version of it.
+
+VERDICTS
+
+Everything above governs the measured bars. Separately from those, you may
+invent ratings outright — the \`verdicts\` array. A verdict is a joke in the
+shape of a rating, not a finding. Nobody reads "Restraint: 0/100" as something
+we measured, which is why it is funny and why it is checked against nothing.
+
+The value is written as text, so it is not confined to a real scale, and the
+best ones are impossible:
+
+  Chaos: 99/100
+  Restraint: 0/100
+  Ability to escalate: ∞/100
+  Volume: 117/100
+  Ability to communicate efficiently: -14/100
+  Collective braincell: 1.7
+  Free time: 3/100
+  Academic suffering: 100/100
+  Public transport trauma: 100/100
+  "I'm editing something": 100/100
+
+The label carries the joke, and it must be about THIS person or THIS group:
+what they are actually like, named the way only this chat would name it.
+"Comedy: 84" is a category. "Threatening to destroy someone verbally: 100/100"
+is a person.
+
+Four to eight on a dossier, and a group slide may have them too. Mix the
+impossible highs with a flat zero — the zero is usually the funniest line on the
+card. Do not restate a measured axis as a verdict: if a bar already says it, the
+verdict says something the bar cannot.
+
+Every rule about people still applies here. Rate what they chose to do, never
+their body, family or circumstances.
 
 QUOTES
 
@@ -321,6 +365,19 @@ export function writerPrompt(payload: WriterPayload): string {
     if (quotes.length > 0) {
       lines.push('verified quotes (copy exactly, or leave out):');
       for (const q of quotes) lines.push(`  ${transcriptLine(q)}`);
+    }
+
+    // The person themselves, in their own words, on a slide that is about one
+    // person. Everything above this line is somebody's summary of them.
+    const subject = slide.people.length === 1 ? slide.people[0] : undefined;
+    const sample = subject ? (payload.voiceSamples?.[subject] ?? []) : [];
+    if (sample.length > 0) {
+      lines.push(
+        `how ${subject} actually writes — a spread across the whole chat, not chosen to prove`,
+        'anything. Read it for register, length, habits, what they open with. These are real',
+        'messages and may be quoted like any other:',
+      );
+      for (const m of sample) lines.push(`  ${transcriptLine(m)}`);
     }
 
     lines.push(`aim for roughly ${slide.targetLength} characters of body copy.`);

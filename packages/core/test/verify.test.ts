@@ -268,6 +268,45 @@ describe('verifyFinding — acceptance and repair', () => {
   });
 });
 
+describe('invented ratings', () => {
+  it('lets a joke score be impossible without calling it a fabricated figure', () => {
+    // The whole point of the field. `∞/100` and `-14/100` are not claims about
+    // the chat, and running the statistics rule over them rejected the deck for
+    // doing the one thing it was asked to do.
+    const { ctx } = context();
+    const verdict = verifySlideCopy(
+      slide({
+        format: 'profile',
+        body: 'The only man here who can lose an argument he started with himself.',
+        jokeScores: [
+          { label: 'Ability to escalate', value: '∞/100' },
+          { label: 'Restraint', value: '0/100' },
+          { label: 'Collective braincell', value: '1.7' },
+          { label: 'Communicating efficiently', value: '-14/100' },
+        ],
+      }),
+      ctx,
+    );
+
+    expect(verdict.action).not.toBe('reject');
+    expect(verdict.issues.map((i) => i.code)).not.toContain('invented-number');
+    expect(verdict.value.jokeScores).toHaveLength(4);
+  });
+
+  it('still polices what a label says about somebody', () => {
+    // A rating is prose on a card. Formatting a protected trait as a score is
+    // not a loophole, and this is the assertion that keeps it from becoming one.
+    const { ctx } = context();
+    const verdict = verifySlideCopy(
+      slide({ format: 'profile', jokeScores: [{ label: 'Person A is depressed', value: '100' }] }),
+      ctx,
+    );
+
+    expect(verdict.action).toBe('reject');
+    expect(verdict.issues.map((i) => i.code)).toContain('off-limits');
+  });
+});
+
 const slide = (over: Partial<Slide> = {}): Slide => ({
   id: 's1',
   type: 'custom_discovery',
@@ -279,6 +318,7 @@ const slide = (over: Partial<Slide> = {}): Slide => ({
   people: ['Person A'],
   stats: [{ label: 'Workouts', value: 7 }],
   scores: [],
+  jokeScores: [],
   evidenceMessageIds: [0, 4],
   confidence: 0.9,
   sensitivity: 'low',

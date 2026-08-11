@@ -106,6 +106,31 @@ const RequestSchema = z.object({
       )
       .max(8),
   ),
+  /**
+   * How each person actually writes, keyed by token.
+   *
+   * The comedy pass used to see four approved quotes per slide and nothing
+   * else — it was asked to be funny about a person it had never heard speak.
+   * These are real messages with real ids, so anything the writer lifts from
+   * them still verifies in the browser like any other quote.
+   */
+  voiceSamples: z
+    .record(
+      z.string().max(40),
+      z
+        .array(
+          z.object({
+            id: z.number().int().min(0),
+            sender: z.string().max(40),
+            time: z.string().max(10),
+            date: z.string().max(12),
+            text: z.string().max(1000),
+            edited: z.boolean().optional(),
+          }),
+        )
+        .max(16),
+    )
+    .default({}),
 });
 
 export async function POST(request: Request) {
@@ -175,11 +200,15 @@ export async function POST(request: Request) {
       // validates shape and size for safety, and core's types carry the meaning.
       briefs: payload.briefs as never,
       evidence: payload.evidence,
+      voiceSamples: payload.voiceSamples,
     }),
     schema: WrittenDeckSchema,
     maxTokens: 20000,
     stage: 'write',
-    normalize: normalizeWrittenDeck,
+    // The planner's costume for each slide, so a writer that invents a format
+    // falls back to what this slide was meant to be rather than to `plain`.
+    normalize: (deck) =>
+      normalizeWrittenDeck(deck, new Map(payload.briefs.map((b) => [b.id, b.format]))),
   });
 
   if (!result.ok) {

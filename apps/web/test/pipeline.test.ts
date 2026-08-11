@@ -344,6 +344,7 @@ describe('the writer is boxed in', () => {
       people: ['Person A'],
       stats: [],
       scores: [],
+      jokeScores: [],
       evidenceMessageIds: [0, 4],
       confidence: 0.9,
       sensitivity: 'low' as const,

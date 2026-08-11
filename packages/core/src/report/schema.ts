@@ -86,6 +86,35 @@ export const ScoreSchema = z.object({
 });
 export type Score = z.infer<typeof ScoreSchema>;
 
+/**
+ * A made-up rating. Not a measurement, and never presented as one.
+ *
+ * `ScoreSchema` above is the honest bar: the planner measured an axis, the
+ * writer renames it, and the number cannot move. That rule exists because a
+ * model inventing "8,493 messages" is a model lying about the chat.
+ *
+ * `Restraint: 0/100` is not that. Nobody reads it as a finding — it is a joke
+ * whose whole form is a rating, and the funniest ones are funny *because* the
+ * number is impossible: `Ability to escalate: ∞/100`, `Volume: 117/100`,
+ * `Ability to communicate efficiently: -14/100`, `Collective braincell: 1.7`.
+ * Treating those as fabricated statistics was a category error — it applied a
+ * rule written to protect the reader from false claims to a line that makes no
+ * claim at all, and the cost was the single densest source of comedy the deck
+ * had.
+ *
+ * So the value is a string, because every good one is unrepresentable as an
+ * integer from nought to a hundred. It is never checked against anything, and
+ * it must never be rendered anywhere a reader could mistake it for a statistic
+ * the product measured.
+ */
+export const JokeScoreSchema = z.object({
+  /** What is being rated. This is where the joke lives. */
+  label: z.string().min(1).max(44),
+  /** Written exactly as it should read: `0/100`, `∞/100`, `-14/100`, `1.7`. */
+  value: z.string().min(1).max(12),
+});
+export type JokeScore = z.infer<typeof JokeScoreSchema>;
+
 /* ------------------------------------------------------------------ *
  * Stage 4 — the detective's structured findings
  * ------------------------------------------------------------------ */
@@ -249,6 +278,11 @@ export const SlideSchema = z.object({
   stats: z.array(StatSchema).max(6).default([]),
   /** Renamed score axes. Only a `profile` slide has any. */
   scores: z.array(ScoreSchema).max(8).default([]),
+  /**
+   * Made-up ratings. Free in both label and value, checked against nothing,
+   * and the densest comedy on a dossier. See `JokeScoreSchema`.
+   */
+  jokeScores: z.array(JokeScoreSchema).max(10).default([]),
   evidenceMessageIds: z.array(z.number().int().min(0)).max(40).default([]),
   confidence: z.number().min(0).max(1).default(1),
   sensitivity: Sensitivity.default('low'),

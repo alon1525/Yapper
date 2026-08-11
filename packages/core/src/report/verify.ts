@@ -490,13 +490,21 @@ const RHETORICAL_CEILING = 10;
 const BODY_BUDGET: Record<string, number> = {
   plain: 320,
   /*
-    A dossier's body is the official title alone — one line under a fact strip
-    and five bars, at the bottom of an already full card. The budget is the
-    tightest in the deck on purpose: everything else on this slide was measured,
-    and the one sentence the writer gets should read like a verdict, not like a
+    A dossier used to get 150 characters — one line under a fact strip and five
+    measured bars, on the grounds that everything else on the card was already
+    true and the writer's sentence should read like a verdict rather than a
     paragraph that ran out of room.
+
+    That was the tightest budget in the deck, and it was spent on the one slide
+    people actually care about: the one with their name on it. A person is not
+    a fact strip. The thing worth reading about them is the second observation —
+    that the man writing a five-paragraph itinerary and the man writing the
+    five-paragraph insult are the same man — and that does not fit in a line.
+
+    Still bounded, because the card is tapped rather than scrolled. This is the
+    room for three or four short beats, not an essay.
   */
-  profile: 150,
+  profile: 600,
   court_case: 420,
   breaking_news: 300,
   scientific_report: 380,
@@ -594,6 +602,16 @@ export function verifySlideCopy(
 
   const prose = [slide.title, slide.subtitle, slide.body].join('\n');
 
+  /*
+    Everything the reader sees, which is not the same set as everything checked
+    for invented figures. A verdict's *value* is a joke in the shape of a
+    number — `∞/100`, `-14/100` — so running the statistics rule over it would
+    reject the deck for the one thing it was asked to do. Its *label* is prose
+    on a card like any other, so it is policed like any other: a protected trait
+    or a phone number is no less exposed for being formatted as a rating.
+  */
+  const readable = [prose, ...(slide.jokeScores ?? []).map((v) => v.label)].join('\n');
+
   const invented = numbersIn(prose).filter((n) => n >= RHETORICAL_CEILING && !allowed.has(n));
   if (invented.length > 0) {
     issues.push(
@@ -605,7 +623,7 @@ export function verifySlideCopy(
   }
 
   for (const pattern of BANNED_PHRASES) {
-    const hit = pattern.exec(prose);
+    const hit = pattern.exec(readable);
     if (hit) {
       issues.push(issue('generic-phrasing', `Greeting-card phrasing: "${hit[0]}"`));
       break;
@@ -619,10 +637,10 @@ export function verifySlideCopy(
     );
   }
 
-  if (containsSensitiveData(prose)) {
+  if (containsSensitiveData(readable)) {
     issues.push(issue('sensitive-data', 'Copy carries a phone number, email or address.'));
   }
-  if (inferssensitiveTrait(prose)) {
+  if (inferssensitiveTrait(readable)) {
     issues.push(issue('off-limits', 'Copy infers a protected or private trait.'));
   }
 

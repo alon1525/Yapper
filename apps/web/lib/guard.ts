@@ -62,6 +62,8 @@ export function excerptChars(payload: {
   conversations?: { messages: { text: string }[] }[];
   /** The writer route carries verified quotes per slide. */
   evidence?: Record<string, { text: string }[]>;
+  /** …and a spread of each person's own messages, so it can hear them talk. */
+  voiceSamples?: Record<string, { text: string }[]>;
   /* Optional because each route's `people` rows differ — only the premium
      payload carries a quoted longest message. */
   /* Only the premium payload carries a quoted longest message; the other
@@ -80,8 +82,10 @@ export function excerptChars(payload: {
       for (const message of window.messages) total += message.text.length;
     }
   }
-  for (const quotes of Object.values(payload.evidence ?? {})) {
-    for (const quote of quotes) total += quote.text.length;
+  for (const group of [payload.evidence, payload.voiceSamples]) {
+    for (const messages of Object.values(group ?? {})) {
+      for (const message of messages) total += message.text.length;
+    }
   }
   for (const person of payload.people ?? []) {
     total += person.longestMessage?.length ?? 0;

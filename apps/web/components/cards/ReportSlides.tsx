@@ -277,6 +277,9 @@ function DossierSlide({
   // say it, how often they turn up. The rest were prose material.
   const facts = slide.stats.slice(0, 3);
   const scores = slide.scores.slice(0, 5);
+  // Measured bars first, then the invented ones. Five and six is a column, not
+  // a card, so the honest ones keep their places and the jokes take what's left.
+  const verdicts = (slide.jokeScores ?? []).slice(0, Math.max(0, 8 - scores.length));
 
   const pad = (n: number) => String(n).padStart(2, '0');
   const hebrew = HEBREW.test(slide.title);
@@ -409,6 +412,37 @@ function DossierSlide({
                 style={{ fontFamily: 'var(--yap-mono)' }}
               >
                 {score.value}
+              </span>
+            </motion.div>
+          ))}
+        </div>
+      )}
+
+      {/* Invented ratings. Deliberately drawn without a bar: a bar is the visual
+          grammar of something measured, and these are jokes. `∞/100` has no
+          width, and giving one a track would be the product claiming it counted
+          something it did not. Rules on the right, like a scoreboard. */}
+      {verdicts.length > 0 && (
+        <div className="mt-3 flex flex-col">
+          {verdicts.map((verdict, i) => (
+            <motion.div
+              key={`${verdict.label}-${i}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.25 + (scores.length + i) * 0.08, duration: 0.3 }}
+              className="flex items-baseline gap-1.5 py-1.5"
+              style={{ borderBottom: `1px dotted ${DOSSIER.leader}` }}
+            >
+              <span dir="auto" className="text-[12.5px] leading-tight" style={{ color: DOSSIER.body }}>
+                {verdict.label}
+              </span>
+              <span className="flex-1" />
+              <span
+                dir="ltr"
+                className="shrink-0 text-right text-[12px] font-medium tabular-nums"
+                style={{ fontFamily: 'var(--yap-mono)', color: accent }}
+              >
+                {verdict.value}
               </span>
             </motion.div>
           ))}

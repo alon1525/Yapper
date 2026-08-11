@@ -7,9 +7,12 @@ import { SlideFormat } from './schema';
  * of the validation failure. Two failures carry no limit to read:
  *
  * A format the writer invented — `meme_format`, `group_chat_receipt` — is not
- * too long, it is not one of the thirteen. The schema already names the answer:
- * `plain` is the format for a finding that does not want a costume, so a slide
- * wearing one that does not exist takes it off rather than being thrown away.
+ * too long, it is not one of the thirteen. The planner already chose one for
+ * this slide and the writer was free to pick a better one; inventing a
+ * fourteenth is not picking a better one, so the slide falls back to what the
+ * planner asked for. `plain` only when there is no brief to fall back to,
+ * because a court case that loses its costume is a worse slide than one that
+ * never wore one.
  *
  * A date arrives as `2024-03-05 14:22` where the schema wants `2024-03-05`,
  * and truncating it to the field's twelve characters would leave `2024-03-05 1`
@@ -38,14 +41,22 @@ function normalizeQuotes(holder: Record<string, unknown>): void {
   }
 }
 
-export function normalizeWrittenDeck(raw: unknown): unknown {
+/**
+ * @param plannedFormats The format the planner chose, by slide id. A slide that
+ * invents a format falls back to its own brief rather than to `plain`.
+ */
+export function normalizeWrittenDeck(
+  raw: unknown,
+  plannedFormats?: ReadonlyMap<string, string>,
+): unknown {
   if (!isRecord(raw)) return raw;
 
   if (Array.isArray(raw.slides)) {
     for (const slide of raw.slides) {
       if (!isRecord(slide)) continue;
       if (typeof slide.format === 'string' && !FORMATS.has(slide.format)) {
-        slide.format = 'plain';
+        const planned = typeof slide.id === 'string' ? plannedFormats?.get(slide.id) : undefined;
+        slide.format = planned && FORMATS.has(planned) ? planned : 'plain';
       }
       normalizeQuotes(slide);
     }
