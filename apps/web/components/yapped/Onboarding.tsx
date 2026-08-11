@@ -32,6 +32,7 @@ import {
 import { formatNumber } from '@/lib/format';
 import type { AnalyzerState } from '@/lib/useAnalyzer';
 import { localise, type CopyKey } from '@/lib/copy';
+import { AnimalFace } from '../cards/AnimalFace';
 import { GROUP_SLOT_BACKDROP, photoLayers } from '../cards/photos';
 import { LINE_GREEN, LineMark, WhatsAppMark } from './Sources';
 import { BACKDROPS } from '../cards/Shell';
@@ -209,18 +210,6 @@ const panel: CSSProperties = {
   borderRadius: 20,
   padding: 18,
 };
-
-function initialsOf(name: string): string {
-  const cleaned = name.replace(/[^\p{L}\p{N}\s]/gu, '').trim();
-  if (!cleaned) return '?';
-  return (
-    cleaned
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((word) => [...word][0] ?? '')
-      .join('') || '?'
-  );
-}
 
 /**
  * `YYYY-MM-DD` → `Aug 2016`, in the language the report is being written in.
@@ -1697,6 +1686,12 @@ export function Onboarding({
                     WhatsApp export with LINE selected, and Reg reads it anyway. */}
                 {t(readFrom === 'line' ? 'ob.people.ledeLine' : 'ob.people.ledeWa')}
               </p>
+              {/* The animals beside each name are a default, not a decision.
+                  Said here because this is where the reader first meets them —
+                  by the photo step they have already accepted them as fixed. */}
+              <p style={{ ...lede, maxWidth: '52ch', marginTop: 8, opacity: 0.75 }}>
+                {t('ob.people.photosNext')}
+              </p>
 
               {openMerges.length > 0 && (
                 <div
@@ -1845,12 +1840,21 @@ export function Onboarding({
                         padding: '11px 13px',
                       }}
                     >
+                      {/*
+                          The same animal the deck will draw for them, keyed on
+                          the name in the field beside it — so it re-draws as
+                          they type, which is the clearest signal that the edit
+                          took. A row that is still a bare phone number keeps
+                          the question mark instead: this step's whole job is to
+                          get those named, and a face on one reads as done.
+                      */}
                       <div
                         aria-hidden="true"
                         style={{
                           width: 40,
                           height: 40,
                           borderRadius: 999,
+                          overflow: 'hidden',
                           background:
                             row.unsaved && !typed.trim() ? '#F1E7D6' : colour[0],
                           color: row.unsaved && !typed.trim() ? '#B4A68F' : colour[1],
@@ -1862,7 +1866,11 @@ export function Onboarding({
                           flexShrink: 0,
                         }}
                       >
-                        {row.unsaved && !typed.trim() ? '?' : initialsOf(typed || row.name)}
+                        {row.unsaved && !typed.trim() ? (
+                          '?'
+                        ) : (
+                          <AnimalFace name={typed || row.name} size={40} />
+                        )}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         {/* The dashed box is the affordance. Without it this is
@@ -2090,11 +2098,6 @@ export function Onboarding({
                   const colour = PALETTE[k % PALETTE.length]!;
                   const url = faces[row.name];
                   const display = nameOf(row);
-                  // Somebody left as a phone number has no initials worth
-                  // showing — `+972 58-666-8048` reduces to "95", which reads
-                  // as a name nobody has. The people step already draws them
-                  // with a question mark; so does this one.
-                  const stillANumber = row.unsaved && !(renames[row.name] ?? '').trim();
                   return (
                     <label
                       key={row.name}
@@ -2138,9 +2141,18 @@ export function Onboarding({
                           fontSize: 20,
                         }}
                       >
-                        <span style={{ opacity: url ? 0 : 1 }}>
-                          {stillANumber ? '?' : initialsOf(display)}
-                        </span>
+                        {/*
+                          The tile has to promise what the deck will actually
+                          draw, so an empty slot shows that person's animal —
+                          the same one, from the same name. It also sidesteps
+                          the problem initials had here: `+972 58-666-8048`
+                          reduces to "95", which reads as a name nobody has.
+                        */}
+                        {!url && (
+                          <div className="absolute inset-0 overflow-hidden rounded-full">
+                            <AnimalFace name={display} size={64} />
+                          </div>
+                        )}
                         <div
                           style={{
                             position: 'absolute',

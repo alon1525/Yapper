@@ -1,21 +1,27 @@
-import Anthropic from '@anthropic-ai/sdk';
-import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import type { z } from 'zod';
+import { chat } from './providers';
 
 /**
  * One structured generation, validated, with a repair attempt.
  *
- * `output_config` constrains the model's output to the schema, which handles the
- * ordinary case. What it does not handle is a reply that is valid JSON of the
- * right shape but wrong in a way only zod's refinements catch, or a truncated
- * reply from hitting the token ceiling on a long deck. Both produce a parse
- * failure at the end of the most expensive request in the product, and throwing
- * that away costs the full price again.
+ * The provider constrains output to the schema, which handles the ordinary
+ * case. What it does not handle is a reply that is valid JSON of the right
+ * shape but wrong in a way only zod's refinements catch, or a truncated reply
+ * from hitting the token ceiling on a long deck. Both produce a parse failure
+ * at the end of the most expensive request in the product, and throwing that
+ * away costs the full price again.
  *
  * So there is exactly one retry, and it is a *repair*: the model is shown its
  * own output and the validation errors, rather than being asked the original
  * question a second time. One, not three — past the second attempt the failure
  * is the prompt or the schema, and looping only spends money proving it.
+ *
+ * The repair turn earns its keep more on some providers than others. Anthropic
+ * constrains decoding to the schema; the OpenAI-compatible path asks for
+ * `json_schema` in loose mode, because these schemas use `.default()` in a
+ * dozen places and strict mode rejects that shape outright. Loose mode steers
+ * rather than guarantees — so this is the stage that catches the difference,
+ * and it is the reason swapping providers does not mean rewriting validation.
  */
 
 export interface GenerateOptions<T extends z.ZodType> {
@@ -32,82 +38,75 @@ export type GenerateResult<T> =
   | { ok: true; value: T; repaired: boolean }
   | { ok: false; status: number; error: string };
 
+const REFUSED = {
+  ok: false as const,
+  status: 422,
+  error: 'The AI declined to write about this chat. Your statistics are all still here.',
+};
+const RATE_LIMITED = {
+  ok: false as const,
+  status: 429,
+  error: 'Too many requests right now. Try again in a minute.',
+};
+const EMPTY = { ok: false as const, status: 502, error: 'Empty response from the model.' };
+const FAILED = { ok: false as const, status: 502, error: 'Could not build your report.' };
+
 export async function generateStructured<T extends z.ZodType>(
-  client: Anthropic,
   options: GenerateOptions<T>,
 ): Promise<GenerateResult<z.infer<T>>> {
   const { model, system, prompt, schema, maxTokens, stage } = options;
 
-  const call = async (messages: Anthropic.Beta.BetaMessageParam[]) =>
-    client.beta.messages.create({
-      model,
-      max_tokens: maxTokens,
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
-      system,
-      output_config: { format: zodOutputFormat(schema) },
-      messages,
-    });
+  const messages: { role: 'user' | 'assistant'; content: string }[] = [
+    { role: 'user', content: prompt },
+  ];
 
-  try {
-    const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: 'user', content: prompt }];
-    const response = await call(messages);
+  const first = await chat({ model, system, messages, schema, maxTokens });
+  if (!first.ok) return failure(first, stage);
 
-    if (response.stop_reason === 'refusal') {
-      return {
-        ok: false,
-        status: 422,
-        error: 'The AI declined to write about this chat. Your statistics are all still here.',
-      };
-    }
+  const parsedFirst = parse(schema, first.text);
+  if (parsedFirst.ok) return { ok: true, value: parsedFirst.value, repaired: false };
 
-    const text = response.content.find((b) => b.type === 'text');
-    if (!text || text.type !== 'text') {
-      return { ok: false, status: 502, error: 'Empty response from the model.' };
-    }
+  console.warn(`[${stage}] output failed validation, attempting repair`, parsedFirst.detail);
 
-    const first = parse(schema, text.text);
-    if (first.ok) return { ok: true, value: first.value, repaired: false };
-
-    console.warn(`[${stage}] output failed validation, attempting repair`, first.detail);
-
-    // Show it its own reply and what was wrong with it. Asking the original
-    // question again would re-roll the same generation for the same money; this
-    // at least has new information in it.
-    const repair = await call([
+  // Show it its own reply and what was wrong with it. Asking the original
+  // question again would re-roll the same generation for the same money; this
+  // at least has new information in it.
+  const second = await chat({
+    model,
+    system,
+    schema,
+    maxTokens,
+    messages: [
       ...messages,
-      { role: 'assistant', content: text.text },
+      { role: 'assistant', content: first.text },
       {
         role: 'user',
         content:
           'That reply did not validate against the required schema. Fix exactly these problems ' +
           'and return the corrected object, changing nothing else:\n\n' +
-          first.detail +
+          parsedFirst.detail +
           '\n\nDo not add commentary. Return only the object.',
       },
-    ]);
+    ],
+  });
+  if (!second.ok) return failure(second, stage);
 
-    const repairedText = repair.content.find((b) => b.type === 'text');
-    if (!repairedText || repairedText.type !== 'text') {
-      return { ok: false, status: 502, error: 'Empty response from the model.' };
-    }
+  const parsedSecond = parse(schema, second.text);
+  if (parsedSecond.ok) return { ok: true, value: parsedSecond.value, repaired: true };
 
-    const second = parse(schema, repairedText.text);
-    if (second.ok) return { ok: true, value: second.value, repaired: true };
+  console.error(`[${stage}] repair also failed validation`, parsedSecond.detail);
+  return FAILED;
+}
 
-    console.error(`[${stage}] repair also failed validation`, second.detail);
-    return { ok: false, status: 502, error: 'Could not build your report.' };
-  } catch (error) {
-    if (error instanceof Anthropic.RateLimitError) {
-      return {
-        ok: false,
-        status: 429,
-        error: 'Too many requests right now. Try again in a minute.',
-      };
-    }
-    console.error(`[${stage}] generation failed`, error);
-    return { ok: false, status: 502, error: 'Could not build your report.' };
-  }
+function failure(result: { ok: false; kind: string; detail?: string }, stage: string) {
+  if (result.kind === 'refusal') return REFUSED;
+  if (result.kind === 'rate-limit') return RATE_LIMITED;
+  if (result.kind === 'empty') return EMPTY;
+  // The provider's own words. On a freshly pointed-at endpoint this is usually
+  // "unknown model" or "unsupported response_format", and it is the only thing
+  // that tells the operator which of the two it was.
+  console.error(`[${stage}] generation failed`, result.detail);
+  return FAILED;
 }
 
 function parse<T extends z.ZodType>(

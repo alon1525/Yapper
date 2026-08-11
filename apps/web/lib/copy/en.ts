@@ -276,10 +276,13 @@ export const EN = {
   'ob.people.name': 'Name',
   'ob.people.nameFor': 'Name for {name}',
 
+  'ob.people.photosNext':
+    'Everyone starts with an animal Reg drew for them. On the next screen you can swap anyone’s for a real photo.',
+
   'ob.photos.eyebrow': 'Last thing',
   'ob.photos.title': 'Give it faces.',
   'ob.photos.lede':
-    'Photos make the slides much funnier. They stay on your device — never uploaded, and never seen by Reg, who works from text only. Skip it and everyone gets initials and flat colour.',
+    'Photos make the slides much funnier. They stay on your device — never uploaded, and never seen by Reg, who works from text only. Skip it and everyone gets a drawn animal instead.',
   'ob.photos.group': 'Group photos → slide backgrounds',
   'ob.photos.groupNote':
     'Four slides get a full-bleed photo, colour-graded into the slide so the type still wins. Drop one per slide, or fill the first and leave the rest.',

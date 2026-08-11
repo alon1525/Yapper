@@ -110,6 +110,40 @@ export const BACKDROPS = {
 
 export type Backdrop = keyof typeof BACKDROPS;
 
+/**
+ * The dossier stock.
+ *
+ * The one slide in the deck that does not take the rotating ground. A case file
+ * is a *paper* object — printed rules, a dotted leader, a portrait plate — and
+ * every tone below is a shade of the same cream, which is what makes it read as
+ * one sheet rather than as a card with lines drawn on it. Run the same markup on
+ * lime and the rules become decoration.
+ *
+ * So this is a closed set, and it is here rather than in the slide for the same
+ * reason `BACKDROPS` is: the deck keeps its colours in one file.
+ *
+ * `accents` rotate per person. Three, because a dossier is a serious document
+ * with exactly one coloured thing on it, and a fourth hue starts to look like a
+ * palette rather than a file stamp.
+ */
+export const DOSSIER = {
+  stock: '#F3EADA',
+  ink: '#15251C',
+  /** The printed rules above and below the fact strip. */
+  rule: '#D9CDB5',
+  /** Leaders between a score's label and its number. */
+  leader: '#CFC2A8',
+  /** Unfilled part of a score bar. */
+  track: '#E0D4BC',
+  /** Small caps: exhibit number, field names, the official-title label. */
+  muted: '#8A7B63',
+  /** Body copy that is not the headline — the epithet, a score's label. */
+  body: '#3F4A36',
+  /** The portrait plate: the stock behind a photo, or behind the stand-in face. */
+  plate: '#E5D9C1',
+  accents: ['#C2571F', '#2F4FB8', '#1D3A2A'],
+} as const;
+
 /** Hebrew has no Anton. Names in it are set in Heebo's heaviest weight instead. */
 const HEBREW = /[֐-׿]/;
 
@@ -359,10 +393,10 @@ export function AnimatedNumber({
  * to the trailing edge — the design's own shape, and the reason it reads at a
  * glance is that the eye only has to scan one column.
  *
- * A face is added when the reader supplied one, and the row shrinks back to
- * rank-and-name when they did not. The portraits are deliberately small: the
- * ranking is the content, and eight circular photographs down the left edge
- * would turn a leaderboard into a contact list.
+ * Every row carries a face: the reader's photo of that person where there is
+ * one, the animal that stands in for them where there is not. The portraits are
+ * deliberately small — the ranking is the content, and eight circular
+ * photographs down the left edge would turn a leaderboard into a contact list.
  *
  * `share` is optional and adds a second line under each row: a bar drawn against
  * the leader, with the person's percentage of the whole chat at the end of it.

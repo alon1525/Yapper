@@ -214,3 +214,86 @@ describe('deck shape', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 });
+
+/**
+ * Score axes.
+ *
+ * The dossier's bars are the one thing on a slide that looks measured and could
+ * quietly not be. These tests are about the axes that must *not* appear: an axis
+ * whose leader never reached a level worth naming draws a bar reading 100 next
+ * to a label nobody in the chat has earned, and that is worse than no bar.
+ */
+describe('score axes', () => {
+  /*
+    Built here rather than taken from `groups.ts` because these tests are about
+    a *distribution*, and the shared fixtures are all deliberately small — under
+    `MIN_PERSONA_MESSAGES` nobody gets a dossier at all, so there is nothing to
+    score. Three people, a clear volume skew, and every message in the afternoon
+    so the night axis has nothing to find.
+  */
+  const skewed = (counts: Record<string, number>): string => {
+    const lines: string[] = [];
+    let n = 0;
+    for (const [who, count] of Object.entries(counts)) {
+      for (let i = 0; i < count; i++) {
+        // Spread across months so a standing claim can clear the two-day rule.
+        const day = (i % 26) + 1;
+        const month = (i % 5) + 1;
+        lines.push(
+          `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/2024, ` +
+            `${String(13 + (i % 6)).padStart(2, '0')}:${String(i % 60).padStart(2, '0')} - ` +
+            `${who}: message number ${n++} about nothing in particular`,
+        );
+      }
+    }
+    return lines.join('\n');
+  };
+
+  const SKEWED_GROUP = skewed({ Dana: 120, Eli: 60, Noa: 24 });
+
+  const axesFor = (text: string) => {
+    const plan = planDeck(build(text));
+    const out = new Map<string, Map<string, number>>();
+    for (const brief of plan.briefs.filter((b) => b.format === 'profile')) {
+      out.set(brief.people[0]!, new Map(brief.scoreAxes.map((a) => [a.key, a.value])));
+    }
+    return out;
+  };
+
+  it('gives every dossier the same axes, so two cards can be compared', () => {
+    const axes = axesFor(SKEWED_GROUP);
+    const keys = [...axes.values()].map((m) => [...m.keys()].sort().join(','));
+
+    expect(keys.length).toBeGreaterThan(1);
+    expect(new Set(keys).size).toBe(1);
+  });
+
+  it('scales the leader of an axis to 100', () => {
+    const axes = axesFor(SKEWED_GROUP);
+    const volumes = [...axes.values()].map((m) => m.get('volume')).filter((v) => v !== undefined);
+
+    expect(volumes.length).toBeGreaterThan(0);
+    expect(Math.max(...(volumes as number[]))).toBe(100);
+  });
+
+  it('drops an axis nobody in the group actually scored on', () => {
+    // Nobody in the gym group posts after midnight. Relative spread alone would
+    // still hand somebody a 100 for being fractionally the most nocturnal of a
+    // group of people who are all asleep.
+    const axes = axesFor(SKEWED_GROUP);
+    expect(axes.size).toBeGreaterThan(0);
+    for (const person of axes.values()) expect(person.has('night')).toBe(false);
+  });
+
+  it('gives a two-person chat no axes at all', () => {
+    // Every axis in a pair is 100 and 0 by construction — a bar chart of which
+    // of two people is taller, drawn as if it were a finding.
+    const axes = axesFor(PING_PONG_GROUP);
+    for (const person of axes.values()) expect(person.size).toBe(0);
+  });
+
+  it('gives a chat too small to compare nobody a card to score', () => {
+    const plan = planDeck(build(QUIET_GROUP));
+    expect(plan.briefs.filter((b) => b.format === 'profile' && b.scoreAxes.length > 0)).toHaveLength(0);
+  });
+});

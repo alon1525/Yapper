@@ -251,10 +251,13 @@ export const ES: Partial<Copy> = {
   'ob.people.name': 'Nombre',
   'ob.people.nameFor': 'Nombre de {name}',
 
+  'ob.people.photosNext':
+    'Todos empiezan con un animal que Reg les dibujó. En la pantalla siguiente puedes cambiar el de cualquiera por una foto real.',
+
   'ob.photos.eyebrow': 'Última cosa',
   'ob.photos.title': 'Ponle caras.',
   'ob.photos.lede':
-    'Las fotos hacen las diapositivas mucho más graciosas. Se quedan en vuestro dispositivo: no se suben y Reg no las ve, porque él solo trabaja con texto. Sáltatelo y todos saldrán con iniciales y color plano.',
+    'Las fotos hacen las diapositivas mucho más graciosas. Se quedan en vuestro dispositivo: no se suben y Reg no las ve, porque él solo trabaja con texto. Sáltatelo y todos saldrán con un animal dibujado.',
   'ob.photos.group': 'Fotos de grupo → fondos de diapositiva',
   'ob.photos.groupNote':
     'Cuatro diapositivas llevan foto a sangre, tratada con el color de la diapositiva para que el texto siga ganando. Una por diapositiva, o solo la primera.',

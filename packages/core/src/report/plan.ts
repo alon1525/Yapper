@@ -3,6 +3,7 @@ import type { InteractionReport } from '../patterns/interactions';
 import type { CommitmentReport, StalledPlan } from '../patterns/commitments';
 import type { PhraseReport } from '../patterns/phrases';
 import type { Finding, Sensitivity, SlideFormat, SlideType, Stat } from './schema';
+import { computeScoreAxes, type ScoreAxis } from './scores';
 
 /**
  * Slide planning: deciding what this particular group's report is made of.
@@ -32,6 +33,11 @@ export interface SlideBrief {
   angle: string;
   /** Deterministic figures. The writer interprets these and invents none. */
   stats: Stat[];
+  /**
+   * Measured 0..100 axes the writer may rename but not re-value. Only a
+   * `profile` brief carries any; see `scores.ts` for why the split exists.
+   */
+  scoreAxes: ScoreAxis[];
   people: string[];
   /** Messages that back it up — quotes are chosen from these. */
   evidenceMessageIds: number[];
@@ -137,7 +143,7 @@ function statSlides(input: PlanInput): Candidate[] {
 
   const token = (name: string | null | undefined) => (name ? tokenOf(name) : '');
   const add = (
-    brief: Omit<SlideBrief, 'findingIds' | 'sensitivity' | 'targetLength'> &
+    brief: Omit<SlideBrief, 'findingIds' | 'sensitivity' | 'targetLength' | 'scoreAxes'> &
       Partial<Pick<SlideBrief, 'sensitivity' | 'targetLength'>>,
     suppressed: string | null,
   ) => {
@@ -146,6 +152,7 @@ function statSlides(input: PlanInput): Candidate[] {
         findingIds: [],
         sensitivity: 'low',
         targetLength: 180,
+        scoreAxes: [],
         ...brief,
       },
       suppressed,
@@ -550,7 +557,7 @@ const MIN_PERSONA_MESSAGES = 20;
  * unless their absence is itself the joke, which is a *different* slide.
  */
 function personaSlides(input: PlanInput, limit: number): Candidate[] {
-  const { stats, phrases, commitments, tokenOf } = input;
+  const { stats, phrases, commitments, interactions, tokenOf } = input;
 
   /*
     An absolute floor, not a share.
@@ -565,15 +572,33 @@ function personaSlides(input: PlanInput, limit: number): Candidate[] {
   const signatureOf = new Map(phrases.signatures.map((s) => [s.owner, s]));
   const commitmentOf = new Map(commitments.people.map((c) => [c.sender, c]));
 
-  return eligible.slice(0, limit).map((person: PersonStats) => {
+  const shown = eligible.slice(0, limit);
+  /*
+    Scaled across the people who actually get a card, not across everybody in
+    the export. A twelve-person chat where six clear the message floor should
+    draw its bars against those six — including the absent seventh would put the
+    top of every axis somewhere no card can reach, and every bar on every card
+    would read low for no reason the reader can see.
+  */
+  const axesOf = computeScoreAxes({ stats, interactions, commitments, people: shown });
+
+  return shown.map((person: PersonStats) => {
     const signature = signatureOf.get(person.name);
     const commitment = commitmentOf.get(person.name);
 
+    /*
+      Order matters here in a way it does not on other slides: a dossier prints
+      its first three as the fact strip under the name, and the rest are prose
+      material. So the three that identify a person at a glance go first —
+      how much they said, how they say it, and how often they show up — and
+      share of the chat, which the leaderboard slide already made its whole
+      point, comes after them.
+    */
     const stat: Stat[] = [
       { label: 'Messages', value: person.messages },
-      { label: 'Share of the chat', value: `${Math.max(1, Math.round(person.share * 100))}%` },
       { label: 'Average message length', value: Math.round(person.characters / Math.max(1, person.messages)) },
       { label: 'Active days', value: person.activeDays },
+      { label: 'Share of the chat', value: `${Math.max(1, Math.round(person.share * 100))}%` },
     ];
     if (person.nightShare > 0.1) {
       stat.push({ label: 'Share after midnight', value: `${Math.round(person.nightShare * 100)}%` });
@@ -595,9 +620,10 @@ function personaSlides(input: PlanInput, limit: number): Candidate[] {
       brief: {
         id: `persona-${tokenOf(person.name).replace(/\s+/g, '-').toLowerCase()}`,
         type: 'persona' as SlideType,
-        format: 'plain' as SlideFormat,
+        format: 'profile' as SlideFormat,
         angle: `What ${tokenOf(person.name)} is actually like in this chat, argued from their own habits.`,
         stats: stat,
+        scoreAxes: axesOf.get(person.name) ?? [],
         people: [tokenOf(person.name)],
         evidenceMessageIds: evidence,
         findingIds: [],
@@ -607,7 +633,13 @@ function personaSlides(input: PlanInput, limit: number): Candidate[] {
           1,
           0.5 + (signature ? 0.2 : 0) + (commitment ? 0.1 : 0) + Math.min(0.2, person.share * 2),
         ),
-        targetLength: 200,
+        /*
+          The official title and nothing else — this is the shortest brief in the
+          deck. It has to sit under `BODY_BUDGET.profile`, or the prompt asks for
+          copy the verifier then flags `too-long` on every single card and the
+          audit fills with noise about a rule the writer was told to break.
+        */
+        targetLength: 120,
       },
       suppressed: null,
     };
@@ -648,6 +680,7 @@ function customSlides(input: PlanInput, floor: number): Candidate[] {
       format: FORMAT_FOR_KIND[finding.kind] ?? ('plain' as SlideFormat),
       angle: finding.detail ? `${finding.claim} — ${finding.detail}` : finding.claim,
       stats: [],
+      scoreAxes: [],
       people: finding.people,
       evidenceMessageIds: finding.evidenceMessageIds,
       findingIds: [finding.id],

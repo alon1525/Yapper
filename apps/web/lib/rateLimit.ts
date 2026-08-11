@@ -58,7 +58,8 @@ function warnOnce() {
   warned = true;
   console.warn(
     '[rateLimit] UPSTASH_REDIS_REST_URL/TOKEN are unset — per-IP limits are OFF. ' +
-      'Fine locally; on a deploy with ANTHROPIC_API_KEY set, configure them or a Vercel Firewall rule.',
+      'Fine locally; on any deploy with a model key set — ANTHROPIC_API_KEY or ' +
+      'OPENAI_API_KEY — configure them or a Vercel Firewall rule.',
   );
 }
 

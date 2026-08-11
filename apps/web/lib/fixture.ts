@@ -15,7 +15,7 @@ import { join } from 'node:path';
  * ever replace a sample, never a generation someone paid for. `WRAPPED_FIXTURE_DIR`
  * is a local path, so nothing here is reachable on a deploy that does not set it.
  */
-export function loadFixture(name: 'preview' | 'premium'): unknown | null {
+export function loadFixture(name: 'preview' | 'premium' | 'write'): unknown | null {
   const dir = process.env.WRAPPED_FIXTURE_DIR;
   if (!dir) return null;
 

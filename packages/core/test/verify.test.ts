@@ -4,6 +4,7 @@ import { parseChat } from '../src/parse/parse';
 import {
   createVerificationContext,
   isDuplicate,
+  similarity,
   verifyDictionary,
   verifyFinding,
   verifySlideCopy,
@@ -276,6 +277,7 @@ const slide = (over: Partial<Slide> = {}): Slide => ({
   quotes: [],
   people: ['Person A'],
   stats: [{ label: 'Workouts', value: 7 }],
+  scores: [],
   evidenceMessageIds: [0, 4],
   confidence: 0.9,
   sensitivity: 'low',
@@ -447,5 +449,131 @@ describe('isDuplicate', () => {
       people: ['Person B'],
     });
     expect(isDuplicate(a, b)).toBe(false);
+  });
+});
+
+/**
+ * Score bars.
+ *
+ * The dossier is the one slide where a model hands back something shaped like a
+ * statistic, so it is the one place the "never let it invent a number" rule
+ * could quietly stop holding. The value is computed in `scores.ts` and the
+ * writer only renames the axis — these tests are that sentence, enforced.
+ */
+describe('verifySlideCopy · scores', () => {
+  const AXES = [
+    { key: 'putting_it_off', value: 97, meaning: 'says "later" more than anyone else' },
+    { key: 'volume', value: 40, meaning: 'sends a large share of this chat' },
+  ];
+
+  const dossier = (scores: Slide['scores']): Slide =>
+    slide({ format: 'profile', body: 'Most likely to be the reason it moved.', scores });
+
+  it('keeps a renamed axis that still carries its own number', () => {
+    const { ctx } = context();
+    const verdict = verifySlideCopy(
+      dossier([{ key: 'putting_it_off', label: 'Deferral addiction', value: 97 }]),
+      ctx,
+      AXES,
+    );
+
+    expect(verdict.action).toBe('include');
+    expect(verdict.value.scores).toEqual([
+      { key: 'putting_it_off', label: 'Deferral addiction', value: 97 },
+    ]);
+  });
+
+  it('drops a bar whose number moved', () => {
+    const { ctx } = context();
+    const verdict = verifySlideCopy(
+      dossier([{ key: 'putting_it_off', label: 'Deferral addiction', value: 12 }]),
+      ctx,
+      AXES,
+    );
+
+    expect(verdict.issues.map((i) => i.code)).toContain('rescored-axis');
+    expect(verdict.value.scores).toHaveLength(0);
+  });
+
+  it('drops a bar citing an axis this slide was never given', () => {
+    const { ctx } = context();
+    const verdict = verifySlideCopy(
+      dossier([{ key: 'charisma', label: 'Charisma', value: 99 }]),
+      ctx,
+      AXES,
+    );
+
+    expect(verdict.issues.map((i) => i.code)).toContain('unknown-axis');
+    expect(verdict.value.scores).toHaveLength(0);
+  });
+
+  it('keeps the honest bars on a card that also has a dishonest one', () => {
+    // A dossier is five bars. One bad label should cost that bar, not the card —
+    // the other four are still measurements of a real person.
+    const { ctx } = context();
+    const verdict = verifySlideCopy(
+      dossier([
+        { key: 'putting_it_off', label: 'Deferral addiction', value: 97 },
+        { key: 'volume', label: 'Yap', value: 88 },
+      ]),
+      ctx,
+      AXES,
+    );
+
+    expect(verdict.action).not.toBe('reject');
+    expect(verdict.value.scores.map((s) => s.key)).toEqual(['putting_it_off']);
+  });
+
+  it('does not let a bar smuggle an unlisted figure into the prose', () => {
+    // The scores array is not a back door: a number is still only permitted in
+    // the copy if a stat or an axis actually carries it.
+    const { ctx } = context();
+    const verdict = verifySlideCopy(
+      dossier([{ key: 'volume', label: 'Yap', value: 40 }]),
+      ctx,
+      AXES,
+    );
+    expect(verdict.action).toBe('include');
+
+    const invented = verifySlideCopy(
+      slide({ format: 'profile', body: 'Sent 5,120 messages about nothing.', scores: [] }),
+      ctx,
+      AXES,
+    );
+    expect(invented.issues.map((i) => i.code)).toContain('invented-number');
+  });
+
+  it('rejects a bar when the slide was briefed with no axes at all', () => {
+    const { ctx } = context();
+    const verdict = verifySlideCopy(
+      dossier([{ key: 'volume', label: 'Yap', value: 40 }]),
+      ctx,
+    );
+
+    expect(verdict.issues.map((i) => i.code)).toContain('unknown-axis');
+    expect(verdict.value.scores).toHaveLength(0);
+  });
+});
+
+describe('isDuplicate · dossiers', () => {
+  const dossier = (token: string, body: string): Slide =>
+    slide({ id: `p-${token}`, type: 'persona', format: 'profile', title: token, people: [token], body });
+
+  it('does not mistake two people for one because both titles say "most likely to"', () => {
+    // Measured before names are restored, so every card carries `person` — and
+    // the official title's form adds `most` and `likely` to all of them. Three
+    // shared words out of four clears the text threshold, and the second person
+    // loses their card with nothing on screen to explain it.
+    const a = dossier('Person A', 'Most likely to survive.');
+    const b = dossier('Person B', 'Most likely to vanish.');
+
+    expect(similarity(a, b)).toBeGreaterThan(0.45);
+    expect(isDuplicate(a, b)).toBe(false);
+  });
+
+  it('still calls two cards about the same person a duplicate', () => {
+    expect(
+      isDuplicate(dossier('Person A', 'Most likely to survive.'), dossier('Person A', 'Most likely to vanish.')),
+    ).toBe(true);
   });
 });

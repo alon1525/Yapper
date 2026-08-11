@@ -2,6 +2,7 @@
 
 import { createContext, useContext, type CSSProperties } from 'react';
 import type { Brief, GroupSlot } from '@/lib/brief';
+import { AnimalFace } from './AnimalFace';
 import type { Backdrop } from './Shell';
 
 /**
@@ -259,20 +260,28 @@ export function SlidePhoto({ slot, ground }: { slot: GroupSlot; ground: string }
 }
 
 /**
- * Somebody's face, or nothing at all.
+ * Somebody's face — theirs if they gave one, an animal if they did not.
  *
- * Deliberately not an initials placeholder. Photos are optional and most decks
- * will not have them, so a fallback avatar would mean adding a circle to every
- * slide of every chat in order to serve the ones that filled the step in — and
- * an initials disc beside a name already set at poster size says nothing the
- * name did not. Absent is a better default than decorative.
+ * This used to render nothing without a photo, on the argument that an initials
+ * disc says nothing the name did not. That argument still holds against
+ * *initials*; it does not hold against a drawn face. The stand-in is a picture
+ * where a picture belongs, it makes the slide the same shape whether or not the
+ * reader filled the step in, and it gives a leaderboard eight distinct marks to
+ * scan instead of eight names. See `AnimalFace` for why it is an animal.
  *
- * The ring is `currentColor`, so a photo stays separated from lime, navy and
+ * The ring is `currentColor`, so a face stays separated from lime, navy and
  * paper without this component ever naming a colour.
  */
 export function Portrait({ name, size = 64 }: { name: string; size?: number }) {
   const url = usePhoto(name);
-  if (!url) return null;
+
+  if (!url) {
+    return (
+      <span aria-hidden="true" className="inline-block shrink-0 align-middle">
+        <AnimalFace name={name} size={size} />
+      </span>
+    );
+  }
 
   return (
     <span

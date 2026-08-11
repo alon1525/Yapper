@@ -1,9 +1,10 @@
-import Anthropic from '@anthropic-ai/sdk';
 import { NextResponse } from 'next/server';
 import { WrittenDeckSchema } from '@wrapped/core';
 import { z } from 'zod';
 import { REPORT_LANGUAGE_CODES } from '@/lib/languages';
+import { loadFixture } from '@/lib/fixture';
 import { generateStructured } from '@/lib/generate';
+import { modelConfigured, modelFor, modelMissingMessage } from '@/lib/providers';
 import { gatePaidRequest } from '@/lib/paidRoute';
 import { WRITER_SYSTEM, writerPrompt } from '@/lib/writerPrompt';
 
@@ -24,7 +25,6 @@ export const runtime = 'nodejs';
 export const maxDuration = 120;
 
 /** The pass whose output people actually read, so it gets the better model. */
-const MODEL = process.env.WRAPPED_WRITER_MODEL ?? 'claude-opus-5';
 
 const MAX_EXCERPT_CHARS = 120_000;
 
@@ -70,6 +70,18 @@ const RequestSchema = z.object({
         format: z.string().max(30),
         angle: z.string().max(600),
         stats: z.array(StatSchema).max(12),
+        /* Whitelisted like everything else on a brief. Left out, the writer is
+           asked to rename axes it was never shown and invents the lot. */
+        scoreAxes: z
+          .array(
+            z.object({
+              key: z.string().max(40),
+              value: z.number().int().min(0).max(100),
+              meaning: z.string().max(160),
+            }),
+          )
+          .max(16)
+          .default([]),
         people: z.array(z.string().max(40)).max(60),
         evidenceMessageIds: z.array(z.number().int().min(0)).max(40),
         findingIds: z.array(z.string().max(60)).max(8),
@@ -116,15 +128,43 @@ export async function POST(request: Request) {
   });
   if (blocked) return blocked;
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!modelConfigured()) {
+    /*
+      The same escape hatch the other two written routes have, and the stage that
+      needed it most: this is where slide *layout* is decided, and a format that
+      overflows its card or reads flat is only visible once real copy is playing
+      through the real deck. `/api/detective` degrades to an empty discovery
+      instead, so the planner still briefs every statistic and persona slide and
+      a fixture written against those ids plays end to end with no key attached.
+
+      Scoped exactly as `fixture.ts` describes: reachable only on a deploy with
+      no key, and only when `WRAPPED_FIXTURE_DIR` points somewhere local. It
+      cannot stand in for a generation somebody paid for.
+    */
+    const written = loadFixture('write');
+    if (written) {
+      const parsed = WrittenDeckSchema.safeParse(written);
+      if (!parsed.success) {
+        console.error('[write] fixture failed the schema', parsed.error.issues);
+        return NextResponse.json({ error: 'The deck fixture is not valid.' }, { status: 500 });
+      }
+      return NextResponse.json(parsed.data, { headers: { 'Cache-Control': 'no-store' } });
+    }
+
     return NextResponse.json(
       { error: 'AI writing is not configured on this server.' },
       { status: 503 },
     );
   }
 
-  const result = await generateStructured(new Anthropic(), {
-    model: MODEL,
+  const model = modelFor('write');
+  if (!model) {
+    console.error(`[write] ${modelMissingMessage('write')}`);
+    return NextResponse.json({ error: 'AI is not configured on this server.' }, { status: 503 });
+  }
+
+  const result = await generateStructured({
+    model,
     system: WRITER_SYSTEM,
     prompt: writerPrompt({
       language: payload.language,

@@ -1,11 +1,11 @@
-import Anthropic from '@anthropic-ai/sdk';
-import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { REPORT_LANGUAGE_CODES } from '@/lib/languages';
 import { demoReport } from '@/lib/demoReport';
 import { chatFingerprint, signingSecret, verify } from '@/lib/entitlement';
 import { loadFixture } from '@/lib/fixture';
+import { generateStructured } from '@/lib/generate';
+import { modelConfigured, modelFor, modelMissingMessage } from '@/lib/providers';
 import { crossSite, excerptChars, forbiddenCrossSite, payloadTooLarge } from '@/lib/guard';
 import { PREMIUM_SYSTEM, PremiumSchema, premiumPrompt } from '@/lib/premiumPrompt';
 import { checkRate, tooManyRequests } from '@/lib/rateLimit';
@@ -23,7 +23,6 @@ import { checkRate, tooManyRequests } from '@/lib/rateLimit';
 export const runtime = 'nodejs';
 export const maxDuration = 120;
 
-const MODEL = process.env.WRAPPED_PREMIUM_MODEL ?? 'claude-opus-5';
 
 const SENDER_TOKEN = /^Person [A-Z]+$/;
 
@@ -187,7 +186,7 @@ export async function POST(request: Request) {
   // With no key configured, return the deterministic report rather than an
   // error: the paid deck is then walkable end to end while the product is
   // being built, and the response says plainly that it is a sample.
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!modelConfigured()) {
     // A hand-written report, when one is configured, is closer to the thing
     // being designed for than the deterministic sample is — so it wins, and it
     // is not labelled a demo, because the point of it is to be read as the
@@ -238,42 +237,24 @@ export async function POST(request: Request) {
     }
   }
 
-  const client = new Anthropic();
-
-  try {
-    const response = await client.beta.messages.create({
-      model: MODEL,
-      max_tokens: 24000,
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
-      system: PREMIUM_SYSTEM,
-      output_config: { format: zodOutputFormat(PremiumSchema) },
-      messages: [{ role: 'user', content: premiumPrompt(payload) }],
-    });
-
-    if (response.stop_reason === 'refusal') {
-      return NextResponse.json(
-        { error: 'The AI declined to write about this chat. Your statistics are all still here.' },
-        { status: 422 },
-      );
-    }
-
-    const text = response.content.find((b) => b.type === 'text');
-    if (!text || text.type !== 'text') {
-      return NextResponse.json({ error: 'Empty response from the model.' }, { status: 502 });
-    }
-
-    const report = PremiumSchema.parse(JSON.parse(text.text));
-
-    return NextResponse.json(report, { headers: { 'Cache-Control': 'no-store' } });
-  } catch (error) {
-    if (error instanceof Anthropic.RateLimitError) {
-      return NextResponse.json(
-        { error: 'Too many requests right now. Try again in a minute.' },
-        { status: 429 },
-      );
-    }
-    console.error('[premium] generation failed', error);
-    return NextResponse.json({ error: 'Could not write your report.' }, { status: 502 });
+  const model = modelFor('premium');
+  if (!model) {
+    console.error(`[premium] ${modelMissingMessage('premium')}`);
+    return NextResponse.json({ error: 'AI is not configured on this server.' }, { status: 503 });
   }
+
+  const report = await generateStructured({
+    model,
+    system: PREMIUM_SYSTEM,
+    prompt: premiumPrompt(payload),
+    schema: PremiumSchema,
+    maxTokens: 24000,
+    stage: 'premium',
+  });
+
+  if (!report.ok) {
+    return NextResponse.json({ error: report.error }, { status: report.status });
+  }
+
+  return NextResponse.json(report.value, { headers: { 'Cache-Control': 'no-store' } });
 }

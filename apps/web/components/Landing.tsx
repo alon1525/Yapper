@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useState, type CSSProperties } from 'react';
 import type { ChatStats } from '@wrapped/core';
 import type { Brief } from '@/lib/brief';
@@ -603,6 +604,17 @@ export function Landing({
               Reg&apos;s lines are optional, and he only ever sees an anonymised copy.
             </div>
             <div style={privacyLine}>Nothing is stored. Close the tab and it&apos;s gone.</div>
+            {/* Three lines is the pitch; the policy is where the same three
+                claims are written out with their exceptions — the share card
+                being the one that matters. Linked from here rather than only
+                from the footer, because this is where a reader who cares has
+                just been given a reason to want the detail. */}
+            <Link
+              href="/privacy"
+              style={{ fontSize: 13.5, color: '#F5B324', marginTop: 2, width: 'fit-content' }}
+            >
+              Read the full privacy policy →
+            </Link>
           </div>
         </div>
       </div>
@@ -652,11 +664,21 @@ export function Landing({
             />
             © 2026 Yapped — Reg is a robot and has no legal standing.
           </div>
-          <div style={{ display: 'flex', gap: 20, fontSize: 13, color: '#5E5344' }}>
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '10px 20px',
+              fontSize: 13,
+              color: '#5E5344',
+            }}
+          >
             <a href="#upload">Get yapped</a>
             <a href="#preview">Sample</a>
-            <a href="#how">Privacy</a>
-            <a href="#how">Terms</a>
+            <Link href="/privacy">Privacy</Link>
+            <Link href="/terms">Terms</Link>
+            <Link href="/refunds">Refunds</Link>
+            <Link href="/accessibility">Accessibility</Link>
           </div>
         </div>
       </div>

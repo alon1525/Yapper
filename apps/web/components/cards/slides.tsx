@@ -42,9 +42,10 @@ export interface SlideDef {
 }
 
 /**
- * A name at poster size with the reader's photo of that person beside it.
- * Collapses to the headline alone when there is no photo, which is why the
- * portrait sits in a flex row rather than being positioned against it.
+ * A name at poster size with that person's face beside it — the reader's photo
+ * of them, or the animal that stands in when they did not supply one. Either
+ * way something occupies the slot, which is why the portrait sits in a flex row
+ * rather than being positioned against the headline.
  *
  * The headline box is `min-w-0` but deliberately not `flex-1`: stretching it to
  * the full column pushes a Hebrew name — which aligns to the end of its own box

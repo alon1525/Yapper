@@ -253,10 +253,13 @@ export const FR: Partial<Copy> = {
   'ob.people.name': 'Nom',
   'ob.people.nameFor': 'Nom de {name}',
 
+  'ob.people.photosNext':
+    'Chacun commence avec un animal dessiné par Reg. À l’écran suivant, vous pouvez remplacer celui de n’importe qui par une vraie photo.',
+
   'ob.photos.eyebrow': 'Dernière chose',
   'ob.photos.title': 'Mettez-y des visages.',
   'ob.photos.lede':
-    'Les photos rendent les slides bien plus drôles. Elles restent sur votre appareil : jamais envoyées, jamais vues par Reg, qui ne travaille qu’à partir du texte. Passez et tout le monde aura des initiales sur un aplat.',
+    'Les photos rendent les slides bien plus drôles. Elles restent sur votre appareil : jamais envoyées, jamais vues par Reg, qui ne travaille qu’à partir du texte. Passez et tout le monde aura un animal dessiné à la place.',
   'ob.photos.group': 'Photos de groupe → fonds de slides',
   'ob.photos.groupNote':
     'Quatre slides reçoivent une photo plein cadre, étalonnée dans la couleur du slide pour que le texte gagne quand même. Une par slide, ou seulement la première.',

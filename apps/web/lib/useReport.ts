@@ -190,6 +190,10 @@ export function useReport(analysis: Analysis, brief?: Brief) {
         const checked = verifySlideCopy(
           { ...slide, stats: planned?.stats ?? [], evidenceMessageIds: planned?.evidenceMessageIds ?? [] },
           ctx,
+          // Same rule as `stats` above, and the same reason: the axes a slide
+          // may cite are the planner's. A writer that returned its own would
+          // otherwise legitimise any score by declaring it.
+          planned?.scoreAxes ?? [],
         );
 
         if (checked.action === 'reject') {

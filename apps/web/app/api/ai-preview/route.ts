@@ -1,10 +1,10 @@
-import Anthropic from '@anthropic-ai/sdk';
-import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { REPORT_LANGUAGE_CODES } from '@/lib/languages';
 import { PreviewSchema, SYSTEM, userPrompt } from '@/lib/aiPrompt';
 import { loadFixture } from '@/lib/fixture';
+import { generateStructured } from '@/lib/generate';
+import { modelConfigured, modelFor, modelMissingMessage } from '@/lib/providers';
 import { crossSite, excerptChars, forbiddenCrossSite, payloadTooLarge } from '@/lib/guard';
 import { checkRate, tooManyRequests } from '@/lib/rateLimit';
 
@@ -23,7 +23,6 @@ export const maxDuration = 60;
 // Opus 5 by default: this pass is the product's hook, and the humour is the
 // whole point. Override to a cheaper model with WRAPPED_AI_MODEL if the volume
 // justifies it — that is a cost decision, not a default.
-const MODEL = process.env.WRAPPED_AI_MODEL ?? 'claude-opus-5';
 
 /** Guard: every sender the client sends must already be a token. */
 const SENDER_TOKEN = /^Person [A-Z]+$/;
@@ -95,7 +94,7 @@ export async function POST(request: Request) {
   const rate = await checkRate('preview', request);
   if (!rate.ok) return tooManyRequests(rate.retryAfter);
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!modelConfigured()) {
     // Stand-in for the model while the deck is being designed. Only ever
     // reachable on a server with no key, so it cannot shadow a real request.
     const written = loadFixture('preview');
@@ -137,51 +136,26 @@ export async function POST(request: Request) {
     }
   }
 
-  const client = new Anthropic();
-
-  try {
-    const response = await client.beta.messages.create({
-      model: MODEL,
-      max_tokens: 16000,
-      // Safety classifiers can decline a request outright; a group chat can
-      // contain anything. Falling back keeps a real refusal rare.
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
-      system: SYSTEM,
-      output_config: { format: zodOutputFormat(PreviewSchema) },
-      messages: [{ role: 'user', content: userPrompt(payload) }],
-    });
-
-    if (response.stop_reason === 'refusal') {
-      return NextResponse.json(
-        {
-          error:
-            'The AI declined to write about this chat. Your statistics are all still here.',
-        },
-        { status: 422 },
-      );
-    }
-
-    const text = response.content.find((b) => b.type === 'text');
-    if (!text || text.type !== 'text') {
-      return NextResponse.json({ error: 'Empty response from the model.' }, { status: 502 });
-    }
-
-    const preview = PreviewSchema.parse(JSON.parse(text.text));
-
-    // No store, no log, no database. The response goes straight back to the
-    // browser, which maps the tokens to real names locally.
-    return NextResponse.json(preview, {
-      headers: { 'Cache-Control': 'no-store' },
-    });
-  } catch (error) {
-    if (error instanceof Anthropic.RateLimitError) {
-      return NextResponse.json(
-        { error: 'Too many requests right now. Try again in a minute.' },
-        { status: 429 },
-      );
-    }
-    console.error('[ai-preview] generation failed', error);
-    return NextResponse.json({ error: 'Could not write your story.' }, { status: 502 });
+  const model = modelFor('preview');
+  if (!model) {
+    console.error(`[ai-preview] ${modelMissingMessage('preview')}`);
+    return NextResponse.json({ error: 'AI is not configured on this server.' }, { status: 503 });
   }
+
+  const result = await generateStructured({
+    model,
+    system: SYSTEM,
+    prompt: userPrompt(payload),
+    schema: PreviewSchema,
+    maxTokens: 16000,
+    stage: 'ai-preview',
+  });
+
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error }, { status: result.status });
+  }
+
+  // No store, no log, no database. The response goes straight back to the
+  // browser, which maps the tokens to real names locally.
+  return NextResponse.json(result.value, { headers: { 'Cache-Control': 'no-store' } });
 }

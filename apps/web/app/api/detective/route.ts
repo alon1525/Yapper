@@ -1,10 +1,10 @@
-import Anthropic from '@anthropic-ai/sdk';
 import { NextResponse } from 'next/server';
 import { DiscoverySchema } from '@wrapped/core';
 import { z } from 'zod';
 import { REPORT_LANGUAGE_CODES } from '@/lib/languages';
 import { DETECTIVE_SYSTEM, detectivePrompt } from '@/lib/detectivePrompt';
 import { generateStructured } from '@/lib/generate';
+import { modelConfigured, modelFor, modelMissingMessage } from '@/lib/providers';
 import { gatePaidRequest } from '@/lib/paidRoute';
 
 /**
@@ -28,7 +28,6 @@ export const maxDuration = 120;
  * reads a little and produces the thing people actually see. If only one of them
  * gets the expensive model, it should be the second.
  */
-const MODEL = process.env.WRAPPED_DETECTIVE_MODEL ?? 'claude-opus-5';
 
 const MAX_EXCERPT_CHARS = 300_000;
 
@@ -241,7 +240,7 @@ export async function POST(request: Request) {
   });
   if (blocked) return blocked;
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!modelConfigured()) {
     // No key means no investigation. Returning an empty discovery rather than an
     // error keeps the deck walkable: the planner still produces every statistic
     // slide, and the report is simply the deterministic half of itself.
@@ -255,8 +254,14 @@ export async function POST(request: Request) {
     );
   }
 
-  const result = await generateStructured(new Anthropic(), {
-    model: MODEL,
+  const model = modelFor('detective');
+  if (!model) {
+    console.error(`[detective] ${modelMissingMessage('detective')}`);
+    return NextResponse.json({ error: 'AI is not configured on this server.' }, { status: 503 });
+  }
+
+  const result = await generateStructured({
+    model,
     system: DETECTIVE_SYSTEM,
     prompt: detectivePrompt(payload),
     schema: DiscoverySchema,

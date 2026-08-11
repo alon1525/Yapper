@@ -5,10 +5,12 @@ import {
   type DictionaryEntry,
   type Finding,
   type Quote,
+  type Score,
   type Slide,
   type VerificationIssue,
   type Verdict,
 } from './schema';
+import type { ScoreAxis } from './scores';
 
 /**
  * Evidence verification — the stage that decides whether a model's observation
@@ -487,6 +489,14 @@ const RHETORICAL_CEILING = 10;
 /** Body-length budget per format, in characters. A slide does not scroll. */
 const BODY_BUDGET: Record<string, number> = {
   plain: 320,
+  /*
+    A dossier's body is the official title alone — one line under a fact strip
+    and five bars, at the bottom of an already full card. The budget is the
+    tightest in the deck on purpose: everything else on this slide was measured,
+    and the one sentence the writer gets should read like a verdict, not like a
+    paragraph that ran out of room.
+  */
+  profile: 150,
   court_case: 420,
   breaking_news: 300,
   scientific_report: 380,
@@ -520,7 +530,12 @@ function numbersIn(text: string): number[] {
  * produce one. Any figure in the prose that is not in `stats`, not in a verified
  * quote, and not small enough to be rhetoric, was made up.
  */
-export function verifySlideCopy(slide: Slide, ctx: VerificationContext): Verdict<Slide> {
+export function verifySlideCopy(
+  slide: Slide,
+  ctx: VerificationContext,
+  /** The axes this slide was briefed with. Omitted for slides that have none. */
+  axes: readonly ScoreAxis[] = [],
+): Verdict<Slide> {
   const issues: VerificationIssue[] = [];
 
   const allowed = new Set<number>();
@@ -533,6 +548,48 @@ export function verifySlideCopy(slide: Slide, ctx: VerificationContext): Verdict
   for (const quote of slide.quotes) {
     for (const n of numbersIn(quote.text)) allowed.add(n);
     for (const n of numbersIn(quote.date)) allowed.add(n);
+  }
+
+  /* --- score bars --------------------------------------------------- */
+
+  /*
+    The writer renames an axis; it does not re-value one. Checking membership in
+    a set of permitted values would not be enough — with five axes on a card the
+    model could keep every number and shuffle the labels between them, and each
+    bar would still "match". So the check is per key: this label is attached to
+    *this* measurement, at the value the measurement actually had.
+
+    A score that fails is dropped rather than fatal. The rest of the dossier is
+    still true, and a card with four honest bars beats no card at all.
+  */
+  const axisOf = new Map(axes.map((a) => [a.key, a]));
+  for (const axis of axes) allowed.add(axis.value);
+
+  const scores: Score[] = [];
+  const seenKeys = new Set<string>();
+  // Defaulted rather than assumed. Every slide that comes through the pipeline
+  // has been parsed by `SlideSchema`, which fills this in — but this function is
+  // also called on hand-built objects, and a new required field arriving as
+  // undefined at one call site should not take the verifier down with it.
+  for (const score of slide.scores ?? []) {
+    const axis = axisOf.get(score.key);
+    if (!axis) {
+      issues.push(issue('unknown-axis', `"${score.label}" cites an axis this slide was never given.`));
+      continue;
+    }
+    if (score.value !== axis.value) {
+      issues.push(
+        issue(
+          'rescored-axis',
+          `"${score.label}" reports ${score.value} for ${score.key}, which measured ${axis.value}.`,
+        ),
+      );
+      continue;
+    }
+    // Two labels on one measurement is the same bar drawn twice.
+    if (seenKeys.has(score.key)) continue;
+    seenKeys.add(score.key);
+    scores.push(score);
   }
 
   const prose = [slide.title, slide.subtitle, slide.body].join('\n');
@@ -592,7 +649,7 @@ export function verifySlideCopy(slide: Slide, ctx: VerificationContext): Verdict
   return {
     action: fatal ? 'reject' : soft ? 'rewrite' : 'include',
     issues,
-    value: { ...slide, quotes },
+    value: { ...slide, quotes, scores },
     strength: fatal ? 0 : slide.confidence,
   };
 }
@@ -701,6 +758,26 @@ export function similarity(a: Slide, b: Slide): number {
 
 /** Two slides about the same people saying the same thing. */
 export function isDuplicate(a: Slide, b: Slide, threshold = 0.45): boolean {
+  /*
+    Dossiers about different people are never duplicates, and the text test is
+    actively wrong on them.
+
+    A dossier's whole body is one official title, and the writer is told that
+    "most likely to" is the form of that line — so every card contributes `most`
+    and `likely`. Duplication is measured before names are restored, so every
+    card also contributes `person`. Two cards reading "Person A / Most likely to
+    survive." and "Person B / Most likely to vanish." share three of four content
+    words: Jaccard 0.60, comfortably over the threshold, and the second person
+    silently loses their card with nothing on screen to explain it.
+
+    There is nothing for this check to catch here anyway. The planner emits one
+    profile per participant by construction, so two of them being about the same
+    person is not a state that exists.
+  */
+  if (a.format === 'profile' && b.format === 'profile') {
+    return a.people[0] !== undefined && a.people[0] === b.people[0];
+  }
+
   if (similarity(a, b) >= threshold) return true;
 
   // A weaker text overlap still counts when both slides are about exactly the

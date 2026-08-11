@@ -53,6 +53,52 @@ Never state a statistic. Interpret it.
 The number is your raw material, not your output. If a slide's body could be
 replaced by the number itself with no loss, you have not written it yet.
 
+HOW A LINE IS BUILT
+
+Four moves. Most good slides are one of them, and the deck should not run the
+same one twice in a row.
+
+1. ESCALATE. Take what they did and follow it to the absurd place it actually
+   leads. Do not stop at the observation — the observation is the setup.
+
+     Flat:      They take a long time to agree on a meeting time.
+     Escalated: You do not make plans. You conduct multi-party negotiations
+                under international law.
+
+2. UNDERSTATE. After a big number, drop your voice instead of raising it. The
+   gap between the size of the fact and the flatness of the delivery is the joke.
+
+     Flat:        Person C sent 42 photos in a row and nobody replied!!
+     Understated: Forty-two photographs. No reply. He is still in there.
+
+3. TURN. State the pattern, then name the one thing it is actually about. Not a
+   compliment, not a softener — a second true thing that lands harder than the
+   first.
+
+     Person D asks the most questions in this group and receives the fewest
+     answers. Nobody is ignoring him. He is being scheduled around.
+
+4. ADDRESS THEM. You may speak to the group directly, in the second person, as
+   one short beat. Once or twice in a deck, never as a habit.
+
+     Brother. It is a Tuesday.
+
+THE REGISTER
+
+Write like the funniest person in their group, not like a brand doing comedy.
+
+- Short sentences. A fragment is a sentence. Rhythm beats grammar.
+- No hedging. Not "seems to", "tends to", "arguably", "a bit of a". Say it.
+- No throat-clearing. The first six words are the joke or they are cut.
+- No stage directions: not "and honestly?", not "let's be real", not "I said
+  what I said". A line that announces it is about to be funny is not.
+- Concrete beats abstract. A named thing they actually did beats a
+  characterisation of the kind of person they are.
+- Their words, not yours. If they say it, use it. Do not translate their slang
+  into yours, and do not import slang they have never used.
+- Punch at the pattern, never at the person's body, family or circumstances.
+  Behaviour is funny because they chose it. Nothing else here was chosen.
+
 NUMBERS
 
 You are given every figure you may use. Use those, exactly as given.
@@ -60,6 +106,51 @@ Do not compute anything. Do not round, scale, extrapolate or estimate. Do not
 introduce a figure that is not in the list you were handed — every number in
 your copy is checked against that list and a slide with an unlisted figure is
 thrown away. If a joke needs a number you do not have, write a different joke.
+
+SCORES
+
+A profile slide usually comes with measured axes: a key, a number out of 100,
+and what the number means. The number was computed from their messages. You
+rename the axis and nothing else.
+
+If a slide lists no axes, it has none — a chat too small to compare people in.
+Return an empty \`scores\` array for it. Do not invent axes to fill the card; the
+dossier reads perfectly well as a name, an epithet and a verdict.
+
+  Given:   message_length = 97 — writes much longer messages than anyone here
+  Bad:     "Message length: 97"        (you have retyped the label)
+  Bad:     "Explanation addiction: 88" (you have changed the measurement)
+  Good:    "Explanation addiction: 97"
+
+Return the key you were given alongside your label, and the value unchanged.
+Every score is checked against the axis it claims to be, and one that has been
+re-valued is dropped from the card.
+
+Your label must run in the SAME DIRECTION as the number. This is the easy
+mistake and it makes the bar a lie:
+
+  Given:  monologue = 100 — sends the longest unbroken runs without waiting
+  Bad:    "Restraint: 100"   (100 is the *most* monologuing — the bar now reads
+                              as high restraint, and the drawing contradicts it)
+  Good:   "Talking to nobody: 100"
+
+If the funny word is the opposite of the measurement, you cannot use it here.
+Pick a name for the thing that is actually high.
+
+The list is ordered by how far each score sits from the rest of the group, so
+the most characteristic axes are at the top. Take five, but build a card, not a
+column:
+
+- One or two extremes are the point of the card. Five are not — a person who
+  tops five axes at 100 has been described once, in five ways, and the reader
+  already saw that on the leaderboard.
+- Put at least one low score on every card. The contrast is what makes the high
+  ones land, and a 0 is usually the funniest number available.
+- If several axes sit at the same number, keep the one with the best label and
+  spend the other slots on something that disagrees with it.
+
+The label is the whole joke: name what the measurement is really describing
+about them, in their register, not the polite version of it.
 
 QUOTES
 
@@ -86,7 +177,9 @@ FORM
 - A slide is read in about four seconds, on a phone, and it does not scroll.
 - Setup, then punchline. In that order. Not one long observation.
 - Vary the shape. If three slides in a row open with a name, rewrite two.
-- Do not use "most likely to" more than once in the whole deck.
+- Do not use "most likely to" more than once in the whole deck — except on a
+  profile's official title, where it is the form of the thing and every card may
+  use it.
 - Do not explain the joke after making it.
 - Do not follow a roast with a compliment that takes it back. This is not
   performance feedback and nobody is owed a balanced review.
@@ -119,6 +212,8 @@ LIMITS
 /** What each format is for, told to the writer only for the formats in play. */
 const FORMAT_GUIDE: Record<string, string> = {
   plain: 'A headline and a short paragraph. No costume. Use when the observation is strong enough to stand up on its own.',
+  profile:
+    "One person's case file. Four fields, no paragraph: `title` is their name exactly as given (the Person token, nothing else). `subtitle` is their epithet — three to six words, the thing they would be introduced as, in the group's own register. `body` is one line: their official title, the sentence the group would read out when handing them the award. `scores` are the renamed axes below. There is no room for anything else and nothing else is wanted.",
   court_case:
     'Charge, evidence, verdict, sentence. Four short lines. Wants one defendant and one specific accusation.',
   breaking_news:
@@ -211,6 +306,15 @@ export function writerPrompt(payload: WriterPayload): string {
       for (const stat of slide.stats) lines.push(`  ${stat.label}: ${stat.value}`);
     } else {
       lines.push('no figures for this slide — do not introduce any.');
+    }
+
+    if (slide.scoreAxes.length > 0) {
+      lines.push(
+        'measured axes — pick five, rename each one, keep its key and its number exactly:',
+      );
+      for (const axis of slide.scoreAxes) {
+        lines.push(`  ${axis.key} = ${axis.value} — ${axis.meaning}`);
+      }
     }
 
     const quotes = evidence[slide.id] ?? [];

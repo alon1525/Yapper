@@ -69,6 +69,23 @@ export type Stat = z.infer<typeof StatSchema>;
 export const Sensitivity = z.enum(['low', 'medium', 'high']);
 export type Sensitivity = z.infer<typeof Sensitivity>;
 
+/**
+ * A score bar on a dossier.
+ *
+ * The one place in the deck where a model supplies something that *looks* like a
+ * statistic — so it does not supply the number. `key` names a computed axis the
+ * planner handed over, `value` must still be that axis's value, and `label` is
+ * the only field the writer actually invents: the group's own joke name for a
+ * measurement that was taken in TypeScript. See `scores.ts`.
+ */
+export const ScoreSchema = z.object({
+  key: z.string().min(1).max(40),
+  /** The group's name for this axis. The joke. */
+  label: z.string().min(1).max(44),
+  value: z.number().int().min(0).max(100),
+});
+export type Score = z.infer<typeof ScoreSchema>;
+
 /* ------------------------------------------------------------------ *
  * Stage 4 — the detective's structured findings
  * ------------------------------------------------------------------ */
@@ -180,6 +197,7 @@ export type Discovery = z.infer<typeof DiscoverySchema>;
  */
 export const SlideFormat = z.enum([
   'plain',
+  'profile',
   'court_case',
   'breaking_news',
   'scientific_report',
@@ -221,6 +239,8 @@ export const SlideSchema = z.object({
   quotes: z.array(QuoteSchema).max(4).default([]),
   people: z.array(PersonToken).max(60).default([]),
   stats: z.array(StatSchema).max(6).default([]),
+  /** Renamed score axes. Only a `profile` slide has any. */
+  scores: z.array(ScoreSchema).max(8).default([]),
   evidenceMessageIds: z.array(z.number().int().min(0)).max(40).default([]),
   confidence: z.number().min(0).max(1).default(1),
   sensitivity: Sensitivity.default('low'),
@@ -280,6 +300,10 @@ export type VerificationCode =
   | 'unknown-person'
   /** A figure in the copy is not one of the numbers supplied. */
   | 'invented-number'
+  /** A score bar names an axis this slide was never handed. */
+  | 'unknown-axis'
+  /** A score bar kept the axis and changed the number. */
+  | 'rescored-axis'
   /** Copy that would fit any group chat. */
   | 'generic-phrasing'
   /** Longer than the slide can show. */
