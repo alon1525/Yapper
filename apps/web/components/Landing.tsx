@@ -7,6 +7,7 @@ import { readExportFile } from '@/lib/readExport';
 import type { AnalyzerState } from '@/lib/useAnalyzer';
 import { StoryPreview } from './yapped/StoryPreview';
 import { Steps } from './yapped/Steps';
+import { SourceMarks } from './yapped/Sources';
 import { Onboarding } from './yapped/Onboarding';
 
 /**
@@ -276,7 +277,7 @@ export function Landing({
               textWrap: 'pretty',
             }}
           >
-            Drop in your WhatsApp export and Reg turns every message into a 40-slide story: the top
+            Drop in your WhatsApp or LINE export and Reg turns every message into a 40-slide story: the top
             yapper, the certified ghost, the night it all went sideways, and awards nobody asked
             for.
           </p>
@@ -305,12 +306,13 @@ export function Landing({
               <div style={{ fontFamily: 'var(--yap-serif)', fontSize: 26, lineHeight: 1.15 }}>
                 Feed Reg your chat export
               </div>
+              <SourceMarks size={22} style={{ marginTop: 12 }} />
               <div
                 style={{
                   fontFamily: 'var(--yap-mono)',
                   fontSize: 11,
                   color: '#8A7B63',
-                  marginTop: 8,
+                  marginTop: 10,
                 }}
               >
                 .txt or .zip — both work
@@ -407,6 +409,27 @@ export function Landing({
         </div>
         <div style={{ marginTop: 26 }}>
           <Steps />
+        </div>
+        {/* The three films are WhatsApp's menus. Saying so is the honest way to
+            carry LINE here — a LINE user who follows a WhatsApp film looks for
+            a "Without media" option their app has never had. */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            flexWrap: 'wrap',
+            marginTop: 18,
+            fontFamily: 'var(--yap-sans)',
+            fontSize: 13.5,
+            color: '#5E5344',
+          }}
+        >
+          <SourceMarks size={20} style={{ justifyContent: 'flex-start' }} />
+          <div>
+            WhatsApp is shown above. On LINE it&apos;s the ☰ menu → Settings → Export chat
+            history, and Reg reads that file just the same.
+          </div>
         </div>
       </div>
 

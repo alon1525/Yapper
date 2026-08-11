@@ -68,7 +68,7 @@ const heebo = Heebo({
 export const metadata: Metadata = {
   title: 'Yapped — nine years of your group chat, read by Reg',
   description:
-    'Drop in your WhatsApp export and Reg turns every message into a 40-slide story: the top yapper, the certified ghost, the night it all went sideways, and awards nobody asked for. Your chat never leaves your device.',
+    'Drop in your WhatsApp or LINE export and Reg turns every message into a 40-slide story: the top yapper, the certified ghost, the night it all went sideways, and awards nobody asked for. Your chat never leaves your device.',
   /* Reg reads the deck, so Reg is the tab. Same asset the slides use. */
   icons: {
     icon: '/reg.png',

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   ChatStats,
+  ExportFormat,
   MergeSuggestion,
   MomentWindow,
   ParseResult,
@@ -29,7 +30,13 @@ export type AnalyzerState =
    * arrives, and a counter that falls back to zero at the finish line reads as
    * the file having been dropped.
    */
-  | { phase: 'roster'; people: RosterEntry[]; merges: MergeSuggestion[]; messages: number }
+  | {
+      phase: 'roster';
+      people: RosterEntry[];
+      merges: MergeSuggestion[];
+      messages: number;
+      format: ExportFormat;
+    }
   | { phase: 'done'; analysis: Analysis }
   | { phase: 'error'; message: string };
 
@@ -83,6 +90,7 @@ export function useAnalyzer() {
           people: msg.people,
           merges: msg.merges,
           messages: msg.messages,
+          format: msg.format,
         });
       } else if (msg.type === 'done') {
         setState({

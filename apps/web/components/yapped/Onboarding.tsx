@@ -18,7 +18,7 @@ import {
   UsersRound,
   type LucideIcon,
 } from 'lucide-react';
-import type { ChatStats, MergeSuggestion, RosterEntry } from '@wrapped/core';
+import type { ChatStats, ExportFormat, MergeSuggestion, RosterEntry } from '@wrapped/core';
 import {
   CHAT_KINDS,
   GROUP_SLOTS,
@@ -32,6 +32,7 @@ import {
 import { formatNumber } from '@/lib/format';
 import type { AnalyzerState } from '@/lib/useAnalyzer';
 import { GROUP_SLOT_BACKDROP, photoLayers } from '../cards/photos';
+import { LINE_GREEN, LineMark, WhatsAppMark } from './Sources';
 import { BACKDROPS } from '../cards/Shell';
 
 /**
@@ -113,23 +114,51 @@ const KIND_ICONS: Record<KindIcon, LucideIcon> = {
   other: CircleQuestionMark,
 };
 
-const EXPORT_STEPS = [
-  {
-    n: '01',
-    title: 'Open the chat, tap the ⋯ menu',
-    note: 'Top right on iPhone, three dots on Android.',
-  },
-  {
-    n: '02',
-    title: 'Tap Export chat → Without media',
-    note: 'iPhone: More → Export Chat. Android: Menu → More → Export chat.',
-  },
-  {
-    n: '03',
-    title: 'Send it to yourself, then bring it here',
-    note: 'Save to Files, Mail, Drive — anywhere you can grab the file from.',
-  },
-];
+/**
+ * Where the file comes from.
+ *
+ * Two apps, two menus, and nothing in common between the routes through them.
+ * Showing both sets at once is how you get a reader following step 2 of the
+ * wrong list, so the step is asked which app first and only ever shows one.
+ */
+export type ChatSource = 'whatsapp' | 'line';
+
+const EXPORT_STEPS: Record<ChatSource, { n: string; title: string; note: string }[]> = {
+  whatsapp: [
+    {
+      n: '01',
+      title: 'Open the chat, tap the ⋯ menu',
+      note: 'Top right on iPhone, three dots on Android.',
+    },
+    {
+      n: '02',
+      title: 'Tap Export chat → Without media',
+      note: 'iPhone: More → Export Chat. Android: Menu → More → Export chat.',
+    },
+    {
+      n: '03',
+      title: 'Send it to yourself, then bring it here',
+      note: 'Save to Files, Mail, Drive — anywhere you can grab the file from.',
+    },
+  ],
+  line: [
+    {
+      n: '01',
+      title: 'Open the chat, tap the ☰ menu',
+      note: 'Top right of the chat, next to the search glass.',
+    },
+    {
+      n: '02',
+      title: 'Settings ⚙ → Export chat history',
+      note: 'LINE saves the whole chat as a .txt. There is no media option to choose.',
+    },
+    {
+      n: '03',
+      title: 'Send it to yourself, then bring it here',
+      note: 'Keep, Mail, Files — anywhere you can get the .txt back from.',
+    },
+  ],
+};
 
 /** Mirrors the deck's grounds, so a face picked here sits on the colour it will
     later be seen against rather than on a neutral chip. */
@@ -432,6 +461,187 @@ function ExportPhone() {
 }
 
 /**
+ * LINE's route to the same file, drawn still.
+ *
+ * The WhatsApp phone above it is a film because the menu it wants is hidden
+ * three taps deep and the animation is the instruction. LINE's is one sheet
+ * with the item written on it, so a still says everything a loop would and
+ * says it in the app's own light chrome — a reader who opens LINE and sees a
+ * dark WhatsApp screen has been told, wrongly, that they are in the wrong place.
+ */
+function LinePhone() {
+  const row: CSSProperties = {
+    padding: '11px 13px',
+    borderRadius: 10,
+    background: '#F4F4F2',
+    color: '#22231F',
+  };
+
+  return (
+    <div aria-hidden="true">
+      <div
+        style={{
+          position: 'relative',
+          width: 280,
+          maxWidth: '100%',
+          padding: 9,
+          borderRadius: 38,
+          background: '#20221E',
+          boxShadow: '0 24px 50px rgba(30,20,8,.28),inset 0 0 0 2px #3A3C36',
+        }}
+      >
+        <div
+          style={{
+            position: 'relative',
+            width: '100%',
+            height: 452,
+            borderRadius: 31,
+            overflow: 'hidden',
+            background: '#FFFFFF',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              padding: '14px 16px 8px',
+              ...mono({ fontSize: 9, color: 'rgba(0,0,0,.45)' }),
+            }}
+          >
+            <span>9:41</span>
+            <span>LINE</span>
+          </div>
+
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 9,
+              padding: '8px 14px 12px',
+              borderBottom: '1px solid rgba(0,0,0,.08)',
+            }}
+          >
+            <LineMark size={26} />
+            <div style={{ flex: 1, fontFamily: 'var(--yap-sans)', fontWeight: 700, fontSize: 12 }}>
+              ピザ会
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {[0, 1, 2].map((k) => (
+                <div key={k} style={{ width: 14, height: 2, borderRadius: 2, background: '#5B5D57' }} />
+              ))}
+            </div>
+          </div>
+
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 9, padding: 14 }}>
+            <div
+              style={{
+                alignSelf: 'flex-start',
+                width: '62%',
+                height: 28,
+                borderRadius: '4px 14px 14px 14px',
+                background: '#F0F0EE',
+              }}
+            />
+            <div
+              style={{
+                alignSelf: 'flex-end',
+                width: '54%',
+                height: 24,
+                borderRadius: '14px 4px 14px 14px',
+                background: '#8DE05B',
+              }}
+            />
+            <div
+              style={{
+                alignSelf: 'flex-start',
+                width: '44%',
+                height: 24,
+                borderRadius: '4px 14px 14px 14px',
+                background: '#F0F0EE',
+              }}
+            />
+          </div>
+
+          <div
+            style={{
+              background: '#FFFFFF',
+              borderRadius: '20px 20px 0 0',
+              padding: 14,
+              boxShadow: '0 -10px 30px rgba(0,0,0,.12)',
+            }}
+          >
+            <div
+              style={{
+                width: 38,
+                height: 4,
+                borderRadius: 3,
+                background: 'rgba(0,0,0,.15)',
+                margin: '0 auto 14px',
+              }}
+            />
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 7,
+                fontFamily: 'var(--yap-sans)',
+                fontSize: 12,
+              }}
+            >
+              <div style={row}>Albums</div>
+              <div style={row}>Notes</div>
+              <div
+                style={{
+                  ...row,
+                  background: LINE_GREEN,
+                  color: '#FFFFFF',
+                  fontWeight: 700,
+                  boxShadow: '0 4px 14px rgba(6,199,85,.35)',
+                }}
+              >
+                Export chat history
+              </div>
+            </div>
+            <div
+              style={{
+                marginTop: 12,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 9,
+                background: '#F6EFE4',
+                borderRadius: 12,
+                padding: '10px 12px',
+              }}
+            >
+              <div
+                style={{
+                  width: 22,
+                  height: 26,
+                  borderRadius: 4,
+                  background: '#10130E',
+                  display: 'grid',
+                  placeItems: 'center',
+                  ...mono({ fontSize: 7, color: '#C9F24D' }),
+                }}
+              >
+                TXT
+              </div>
+              <div style={mono({ fontSize: 10, color: '#10130E', lineHeight: 1.3 })}>
+                [LINE] chat.txt
+                <br />
+                <span style={{ opacity: 0.6 }}>Text only, always</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
  * The shape of the chat going past, not the chat itself.
  *
  * Bubbles with bars where the words would be. Real text here would be either
@@ -604,6 +814,9 @@ export function Onboarding({
 }) {
   const [step, setStep] = useState<Step>('lang');
   const [dragging, setDragging] = useState(false);
+  /* Which app's instructions the export step is showing. It steers the
+     copy and nothing else — the parser recognises either file itself. */
+  const [source, setSource] = useState<ChatSource>('whatsapp');
 
   /* Milliseconds the reading step has been on screen, and the count it is
      currently willing to show — see SCAN_FLOOR_MS. */
@@ -614,6 +827,10 @@ export function Onboarding({
      answering the question moves the analyzer on and takes the question's own
      data with it — the photos step still needs to know who is in this chat. */
   const [rows, setRows] = useState<RosterEntry[]>([]);
+  /* Which app actually wrote the file, taken off the parse. Copied out for the
+     same reason the roster is: the analyzer has moved on by the time the
+     question is answered. */
+  const [readFrom, setReadFrom] = useState<ExportFormat>('android');
   const [merges, setMerges] = useState<(MergeSuggestion & { verdict: 'open' | 'merged' | 'kept' })[]>(
     [],
   );
@@ -690,6 +907,7 @@ export function Onboarding({
   useEffect(() => {
     if (state.phase !== 'roster') return;
     setRows(state.people);
+    setReadFrom(state.format);
     setMerges(state.merges.map((m) => ({ ...m, verdict: 'open' as const })));
   }, [state]);
 
@@ -1043,7 +1261,7 @@ export function Onboarding({
                 })}
               </div>
               <div style={mono({ marginTop: 14 })}>
-                More languages are on Reg&apos;s desk. Arabic, Spanish and Russian next.
+                Arabic is next on Reg&apos;s desk. Ask for yours and he&apos;ll move it up.
               </div>
             </div>
           )}
@@ -1203,12 +1421,58 @@ export function Onboarding({
             <div style={{ animation: 'obPop .35s ease' }}>
               <div style={eyebrow}>The only fiddly part</div>
               <h1 style={question}>Export the chat, then drop it here.</h1>
-              <div className="yap-export" style={{ marginTop: 24 }}>
-                <ExportPhone />
+
+              {/* Which app, asked before the steps rather than after them. Reg
+                  reads either file and works out which is which on his own, so
+                  this changes nothing about the parse — it only decides which
+                  set of instructions the reader is looking at. */}
+              <div
+                role="group"
+                aria-label="Which app is the chat in?"
+                style={{ display: 'flex', gap: 8, marginTop: 20, flexWrap: 'wrap' }}
+              >
+                {(
+                  [
+                    ['whatsapp', 'WhatsApp', <WhatsAppMark key="w" size={20} />],
+                    ['line', 'LINE', <LineMark key="l" size={20} />],
+                  ] as const
+                ).map(([value, label, mark]) => {
+                  const on = source === value;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setSource(value)}
+                      aria-pressed={on}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 9,
+                        cursor: 'pointer',
+                        border: `1.5px solid ${on ? '#1D3A2A' : '#E3D5BE'}`,
+                        background: on ? '#FFFDF8' : 'transparent',
+                        color: '#15251C',
+                        borderRadius: 999,
+                        padding: '9px 16px 9px 11px',
+                        fontFamily: 'var(--yap-sans)',
+                        fontSize: 14,
+                        fontWeight: on ? 700 : 400,
+                        transition: 'all .16s ease',
+                      }}
+                    >
+                      {mark}
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="yap-export" style={{ marginTop: 20 }}>
+                {source === 'line' ? <LinePhone /> : <ExportPhone />}
 
                 <div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {EXPORT_STEPS.map((exportStep) => (
+                    {EXPORT_STEPS[source].map((exportStep) => (
                       <div
                         key={exportStep.n}
                         style={{ display: 'flex', gap: 12, alignItems: 'baseline' }}
@@ -1284,7 +1548,9 @@ export function Onboarding({
                   >
                     <div style={{ fontFamily: 'var(--yap-serif)', fontSize: 25, lineHeight: 1.15 }}>
                       Drop{' '}
-                      <span style={{ fontFamily: 'var(--yap-mono)', fontSize: 15 }}>_chat.txt</span>{' '}
+                      <span style={{ fontFamily: 'var(--yap-mono)', fontSize: 15 }}>
+                        {source === 'line' ? '[LINE] chat.txt' : '_chat.txt'}
+                      </span>{' '}
                       or the .zip
                     </div>
                     <div style={mono({ fontSize: 10.5, marginTop: 7 })}>
@@ -1313,8 +1579,17 @@ export function Onboarding({
                   <div
                     style={{ fontSize: 12.5, color: '#8A7B63', marginTop: 10, lineHeight: 1.5 }}
                   >
-                    Choose <strong>Without media</strong> — it&apos;s faster and Reg only reads
-                    text anyway.
+                    {source === 'line' ? (
+                      <>
+                        LINE exports the text and nothing else, which is all Reg wanted anyway.
+                        Drop the <strong>.txt</strong> exactly as it came.
+                      </>
+                    ) : (
+                      <>
+                        Choose <strong>Without media</strong> — it&apos;s faster and Reg only reads
+                        text anyway.
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1416,7 +1691,11 @@ export function Onboarding({
               <div style={eyebrow}>{people.length} people found</div>
               <h1 style={{ ...question, fontSize: 'clamp(32px, 5.6vw, 48px)' }}>Who is who?</h1>
               <p style={{ ...lede, maxWidth: '52ch' }}>
-                These are the names WhatsApp gave Reg. <strong>Tap any name to edit it</strong> —
+                {/* Named from the file that was actually read, not from the
+                    button the reader pressed two steps ago — they can drop a
+                    WhatsApp export with LINE selected, and Reg reads it anyway. */}
+                These are the names {readFrom === 'line' ? 'LINE' : 'WhatsApp'} gave Reg.{' '}
+                <strong>Tap any name to edit it</strong> —
                 fix the ones that are wrong, name the phone numbers, and merge anyone who shows up
                 twice.
               </p>

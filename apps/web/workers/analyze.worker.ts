@@ -8,6 +8,7 @@ import {
   roster,
   suggestMerges,
   type ChatStats,
+  type ExportFormat,
   type MergeSuggestion,
   type MomentWindow,
   type ParseResult,
@@ -52,7 +53,14 @@ export type WorkerRequest = AnalyzeRequest | FinalizeRequest;
 export type AnalyzeResponse =
   /** `messages` is a real running count, not the fraction scaled up. */
   | { type: 'progress'; stage: string; fraction: number; messages: number }
-  | { type: 'roster'; people: RosterEntry[]; merges: MergeSuggestion[]; messages: number }
+  | {
+      type: 'roster';
+      people: RosterEntry[];
+      merges: MergeSuggestion[];
+      messages: number;
+      /** Which app wrote the file, so the next question can name it correctly. */
+      format: ExportFormat;
+    }
   | { type: 'done'; parsed: ParseResult; stats: ChatStats; moments: MomentWindow[] }
   | { type: 'error'; message: string };
 
@@ -121,6 +129,7 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
       people: roster(parsed),
       merges: suggestMerges(parsed),
       messages: parsed.messages.length,
+      format: parsed.format,
     });
   } catch (error) {
     post({

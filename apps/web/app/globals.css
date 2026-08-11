@@ -46,11 +46,24 @@
    family directly — so the five faces it uses are aliased here rather than
    spelled out at every call site. */
 :root {
-  --yap-serif: var(--font-instrument-serif), Georgia, 'Times New Roman', serif;
-  --yap-sans: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
-  --yap-poster: var(--font-anton), Impact, 'Arial Narrow', sans-serif;
-  --yap-heb: var(--font-heebo), ui-sans-serif, system-ui, sans-serif;
-  --yap-mono: var(--font-dm-mono), ui-monospace, monospace;
+  /*
+    Every face here is a Latin subset, and none of them has a single Japanese
+    glyph. A report written in Japanese — or an ordinary chat where somebody is
+    called 中村 — otherwise falls through to whatever the browser picks last,
+    which is usually a serif at the wrong weight sitting next to Latin set in
+    Anton. Naming the platform CJK faces before the generic keeps the fallback a
+    decision rather than an accident, and costs no download: these ship with the
+    OS. The poster face has no CJK equivalent at any price, so its fallback is
+    the heaviest gothic each platform has.
+  */
+  --yap-cjk: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Yu Gothic UI', Meiryo,
+    'Noto Sans CJK JP', 'Noto Sans JP', 'Microsoft YaHei', 'Malgun Gothic';
+  --yap-serif: var(--font-instrument-serif), Georgia, 'Times New Roman', 'Hiragino Mincho ProN',
+    'Yu Mincho', var(--yap-cjk), serif;
+  --yap-sans: var(--font-space-grotesk), ui-sans-serif, system-ui, var(--yap-cjk), sans-serif;
+  --yap-poster: var(--font-anton), Impact, 'Arial Narrow', var(--yap-cjk), sans-serif;
+  --yap-heb: var(--font-heebo), ui-sans-serif, system-ui, var(--yap-cjk), sans-serif;
+  --yap-mono: var(--font-dm-mono), ui-monospace, var(--yap-cjk), monospace;
 }
 
 html {

@@ -20,6 +20,7 @@ import {
   SYSTEM_WITH_COLON_PATTERNS,
   stripInvisible,
 } from './patterns';
+import { looksLikeLineExport, parseLineExport } from './line';
 
 /** A header line decomposed into its raw numeric parts, before D/M resolution. */
 interface RawHeader {
@@ -198,6 +199,13 @@ function splitSender(remainder: string): { sender: string; body: string } | null
 }
 
 export function parseChat(raw: string, options: ParseOptions = {}): ParseResult {
+  // LINE's export is a different file, not a WhatsApp dialect, and it is read
+  // by its own function — everything below this line assumes a timestamp per
+  // message and a day/month ambiguity to resolve, and LINE has neither. Kept as
+  // a guard clause rather than a branch inside the loop so that a change to one
+  // reader cannot break the other.
+  if (looksLikeLineExport(raw)) return parseLineExport(raw, options);
+
   const { onProgress, dateOrder: forcedOrder, defaultDateOrder = 'DMY' } = options;
 
   // Normalise line endings. A leading BOM needs no special case here: every
@@ -252,8 +260,8 @@ export function parseChat(raw: string, options: ParseOptions = {}): ParseResult 
         {
           code: 'no-messages',
           message:
-            'No WhatsApp messages found. This does not look like a chat export — make sure ' +
-            'you exported the chat as a .txt file.',
+            'No messages found. This does not look like a chat export — make sure you ' +
+            'exported the chat as a .txt file from WhatsApp or LINE.',
         },
       ],
     };

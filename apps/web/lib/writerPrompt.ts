@@ -1,5 +1,6 @@
 import { transcriptLine, type AnonymizedMessage, type GroupVoice, type SlideBrief } from '@wrapped/core';
 import type { BriefDigest } from './brief';
+import { languageInstruction } from './languages';
 
 /**
  * Stage 7: the comedy pass.
@@ -76,9 +77,9 @@ Match the group. You are told how they talk and how hard they roast each other:
 - Use the group's own language and their own words. Do not import slang that
   never appears in their chat because it sounds young.
 - Do not use emoji more than they do.
-- If the report is in Hebrew, write Hebrew that sounds like Hebrew. Do not write
-  an English joke and translate it — the rhythm survives translation and the
-  joke does not.
+- Whatever language you are writing in, write jokes that were born in it. Do not
+  write an English joke and translate it — the rhythm survives translation and
+  the joke does not. Hebrew should sound like Hebrew, Japanese like Japanese.
 
 FORM
 
@@ -147,18 +148,8 @@ export function writerPrompt(payload: WriterPayload): string {
   const output = brief?.language ?? (payload.language === 'he' ? 'he' : 'en');
 
   const lines: string[] = [
-    output === 'he'
-      ? [
-          'Write your output in Hebrew.',
-          // The tokens are Latin, so Hebrew written around them attracts a
-          // hyphen, and that hyphen survives the swap back to real names as
-          // "ו-עומר", which is not how the language is written. Naming what must
-          // NOT attach matters as much as what must: told only about
-          // "one-letter prefixes", both models generalised to multi-letter
-          // prepositions and wrote "שלPerson G".
-          'Treat each Person token as a Hebrew word. Attach ONLY the seven single-letter prefixes (ו ה ל ב מ ש כ) directly to it, with no hyphen and no space: write "וPerson A", "לPerson B", never "ו-Person A". Every separate word keeps its normal space — write "של Person A", "את Person B", never "שלPerson A".',
-        ].join(' ')
-      : 'Write your output in English.',
+    // Same table as the other two prompts — see `languages.ts`.
+    languageInstruction(output),
     '',
     '=== THIS GROUP ===',
     '',

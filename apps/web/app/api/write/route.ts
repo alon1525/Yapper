@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { NextResponse } from 'next/server';
 import { WrittenDeckSchema } from '@wrapped/core';
 import { z } from 'zod';
+import { REPORT_LANGUAGE_CODES } from '@/lib/languages';
 import { generateStructured } from '@/lib/generate';
 import { gatePaidRequest } from '@/lib/paidRoute';
 import { WRITER_SYSTEM, writerPrompt } from '@/lib/writerPrompt';
@@ -38,7 +39,10 @@ const RequestSchema = z.object({
   participantCount: z.number().int().min(1).max(500),
   brief: z
     .object({
-      language: z.enum(['en', 'he']),
+      /* Built from the language table rather than written out again — a
+         language on the cards but not in this enum is one the reader can pick
+         and the route then rejects. */
+      language: z.enum(REPORT_LANGUAGE_CODES),
       kind: z.string().max(40),
       notes: z.string().max(600),
     })

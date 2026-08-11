@@ -66,7 +66,15 @@ export interface Message {
   lineCount: number;
 }
 
-export type ExportFormat = 'ios' | 'android';
+/**
+ * Which app wrote the file, and in which of its two shapes.
+ *
+ * `ios` and `android` are WhatsApp's. `line` is LINE's, which is a different
+ * file in every respect — tab-separated columns under a date heading rather
+ * than a timestamp per line — and is parsed by its own reader rather than by
+ * teaching the WhatsApp one a third dialect.
+ */
+export type ExportFormat = 'ios' | 'android' | 'line';
 export type DateOrder = 'DMY' | 'MDY';
 
 /**
@@ -93,6 +101,13 @@ export interface ParseDiagnostics {
   orphanLines: number;
   /** Subset of headerLines that produced a `system` message. */
   systemMessages: number;
+  /**
+   * LINE only: `2024/01/15(Mon)` lines, which open a day rather than a message.
+   * They belong to no message, so the invariant above becomes
+   * `headerLines + continuationLines + orphanLines + dateHeadingLines ===
+   * totalLines` for a LINE export. Absent for WhatsApp, which has no such line.
+   */
+  dateHeadingLines?: number;
 }
 
 export interface ParseWarning {

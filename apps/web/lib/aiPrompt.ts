@@ -1,6 +1,7 @@
 import { transcriptLine } from '@wrapped/core';
 import { z } from 'zod';
 import type { AiPreviewPayload } from './aiPayload';
+import { languageInstruction } from './languages';
 
 /**
  * The prompt, kept apart from the route that sends it.
@@ -72,21 +73,10 @@ export function userPrompt(payload: AiPreviewPayload): string {
   const output = brief?.language ?? (language === 'he' ? 'he' : 'en');
 
   const lines = [
-    output === 'he'
-      ? [
-          'Write your output in Hebrew.',
-          // The tokens are Latin, so writing Hebrew around them invites a
-          // hyphen — "ו-Person A". Every token is swapped for a Hebrew name
-          // before anyone reads this, and that hyphen survives the swap as
-          // "ו-עומר", which is not how the language is written. Attaching the
-          // prefix restores cleanly; verified against a real export.
-          // "One-letter prefixes" alone was not precise enough: both models
-          // generalised it to multi-letter prepositions and wrote "שלPerson G",
-          // which restores to "שלגבוה" instead of "של גבוה". The rule has to
-          // name what must NOT attach as well as what must.
-          'Treat each Person token as a Hebrew word. Attach ONLY the seven single-letter prefixes (ו ה ל ב מ ש כ) directly to it, with no hyphen and no space: write "וPerson A", "לPerson B", never "ו-Person A". Every separate word keeps its normal space — write "של Person A", "את Person B", never "שלPerson A".',
-        ].join(' ')
-      : 'Write your output in English.',
+    // What each language is told — including how it must not mangle the
+    // tokens — lives in `languages.ts`, so a new language is a row there
+    // rather than a fourth copy of this ternary.
+    languageInstruction(output),
     '',
     `The group has ${payload.participantCount} people and sent ${digest.totalMessages} messages (${digest.spanLabel}), about ${digest.perDay} a day.`,
   ];

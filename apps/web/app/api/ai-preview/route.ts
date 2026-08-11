@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { REPORT_LANGUAGE_CODES } from '@/lib/languages';
 import { PreviewSchema, SYSTEM, userPrompt } from '@/lib/aiPrompt';
 import { loadFixture } from '@/lib/fixture';
 import { crossSite, excerptChars, forbiddenCrossSite, payloadTooLarge } from '@/lib/guard';
@@ -46,7 +47,10 @@ const RequestSchema = z.object({
      forwarded to a paid model is a bill somebody else gets to write. */
   brief: z
     .object({
-      language: z.enum(['en', 'he']),
+      /* Built from the language table rather than written out again — a
+         language on the cards but not in this enum is one the reader can pick
+         and the route then rejects. */
+      language: z.enum(REPORT_LANGUAGE_CODES),
       kind: z.string().max(40),
       notes: z.string().max(600),
     })

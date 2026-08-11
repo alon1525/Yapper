@@ -1,6 +1,7 @@
 import { transcriptLine } from '@wrapped/core';
 import { z } from 'zod';
 import type { PremiumPayload } from './premiumPayload';
+import { languageInstruction } from './languages';
 
 /**
  * The paid report.
@@ -113,16 +114,8 @@ export function premiumPrompt(payload: PremiumPayload): string {
   const output = brief?.language ?? (language === 'he' ? 'he' : 'en');
 
   const lines: string[] = [
-    output === 'he'
-      ? [
-          'Write your output in Hebrew.',
-          // Same reason as the free preview: the tokens are Latin, so Hebrew
-          // written around them attracts a hyphen, and that hyphen survives
-          // into the reader's copy as "ו-עומר", which is not how the language
-          // is written.
-          'Treat each Person token as a Hebrew word. Attach ONLY the seven single-letter prefixes (ו ה ל ב מ ש כ) directly to it, with no hyphen and no space: write "וPerson A", "לPerson B", never "ו-Person A". Every separate word keeps its normal space — write "של Person A", "את Person B", "עם Person C", never "שלPerson A".',
-        ].join(' ')
-      : 'Write your output in English.',
+    // Same table as the free preview — see `languages.ts`.
+    languageInstruction(output),
     '',
     `This group has ${payload.participantCount} people. Together they sent ${digest.totalMessages} messages (${digest.spanLabel}) across ${digest.activeDays} days they actually spoke on — about ${digest.perDay} a day.`,
   ];

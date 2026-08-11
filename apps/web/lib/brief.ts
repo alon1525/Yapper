@@ -13,7 +13,13 @@
  * to the model, which never receives an image.
  */
 
-export type ReportLanguage = 'en' | 'he';
+/* The languages themselves live in `languages.ts`, which is also where the
+   prompts and the request schemas read them from. Re-exported here because the
+   brief is what everything else imports. */
+export { REPORT_LANGUAGES as LANGUAGES } from './languages';
+export type { ReportLanguage } from './languages';
+
+import type { ReportLanguage } from './languages';
 
 /** The four slides the design gives a full-bleed photo. */
 export const GROUP_SLOTS = ['opener', 'chaos', 'verdict', 'paywall'] as const;
@@ -48,11 +54,6 @@ export const CHAT_KINDS: { name: string; icon: KindIcon; note: string }[] = [
   { name: 'Family', icon: 'family', note: 'Gentler roast. Mostly.' },
   { name: 'Work', icon: 'work', note: 'Kept clean enough to share' },
   { name: 'Other', icon: 'other', note: 'Reg will figure it out' },
-];
-
-export const LANGUAGES: { code: ReportLanguage; name: string; note: string }[] = [
-  { code: 'en', name: 'English', note: 'Ready now' },
-  { code: 'he', name: 'עברית', note: 'Ready now · RTL' },
 ];
 
 export function emptyBrief(): Brief {
