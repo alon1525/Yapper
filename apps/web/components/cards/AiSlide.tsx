@@ -150,7 +150,7 @@ export function AiSlide({
 
       {showSample && (
         <div
-          className="mt-3 max-h-40 overflow-y-auto rounded-xl p-4"
+          className="yap-quiet-scroll mt-3 max-h-40 overflow-y-auto rounded-xl p-4"
           style={{ background: 'var(--slide-panel)' }}
         >
           {sample().map((m, i) => (

@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import type { PremiumState } from '@/lib/usePremium';
+import type { ReportState } from '@/lib/useReport';
 import { GROUP_SLOT_BACKDROP } from './photos';
 import { DeckButton, Eyebrow, RegProse, Slide, type Backdrop } from './Shell';
 
@@ -41,12 +41,20 @@ export function PaywallSlide({
   peopleCount,
   previewSeen,
 }: {
-  state: PremiumState;
+  state: ReportState;
   onUnlock: () => void;
   peopleCount: number;
   previewSeen: boolean;
 }) {
-  const busy = state.phase === 'unlocking' || state.phase === 'generating';
+  /* The pipeline has four working phases where the old single call had two.
+     Naming them on the button is not decoration: the whole run is two model
+     calls with verification between them, so the wait is longer than it used
+     to be, and a button that says "Unlocking…" for that long reads as stuck. */
+  const busy =
+    state.phase === 'unlocking' ||
+    state.phase === 'investigating' ||
+    state.phase === 'verifying' ||
+    state.phase === 'writing';
   const INCLUDED = included(previewSeen);
 
   return (
@@ -106,9 +114,13 @@ export function PaywallSlide({
           <DeckButton onClick={onUnlock} disabled={busy}>
             {state.phase === 'unlocking'
               ? 'Unlocking…'
-              : state.phase === 'generating'
-                ? 'Writing your report…'
-                : 'Unlock the full roast'}
+              : state.phase === 'investigating'
+                ? 'Reading your whole chat…'
+                : state.phase === 'verifying'
+                  ? 'Checking the receipts…'
+                  : state.phase === 'writing'
+                    ? 'Writing your report…'
+                    : 'Unlock the full roast'}
           </DeckButton>
         </motion.div>
 

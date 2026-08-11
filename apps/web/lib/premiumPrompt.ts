@@ -1,3 +1,4 @@
+import { transcriptLine } from '@wrapped/core';
 import { z } from 'zod';
 import type { PremiumPayload } from './premiumPayload';
 
@@ -210,7 +211,7 @@ export function premiumPrompt(payload: PremiumPayload): string {
   lines.push('=== THE MOMENTS ===', '');
   for (const moment of moments) {
     lines.push(`--- ${moment.id} (${moment.reasons.join('; ')}) ---`);
-    for (const m of moment.messages) lines.push(`[${m.time}] ${m.sender}: ${m.text}`);
+    for (const m of moment.messages) lines.push(transcriptLine(m));
     lines.push('');
   }
 

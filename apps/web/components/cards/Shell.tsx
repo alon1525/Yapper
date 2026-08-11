@@ -4,7 +4,7 @@ import { animate, motion, useMotionValue, useTransform } from 'framer-motion';
 import { useEffect, type CSSProperties, type ReactNode } from 'react';
 import type { ChatLanguage } from '@wrapped/core';
 import type { GroupSlot } from '@/lib/brief';
-import { formatNumber } from '@/lib/format';
+import { formatNumber, percent } from '@/lib/format';
 import { Portrait, SlidePhoto } from './photos';
 
 /**
@@ -145,7 +145,7 @@ export function Slide({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.35 }}
-      className="absolute inset-0 flex flex-col justify-center overflow-y-auto px-7 pt-24 pb-24 sm:px-14"
+      className="yap-quiet-scroll absolute inset-0 flex flex-col justify-center overflow-y-auto px-7 pt-24 pb-24 sm:px-14"
       style={slideVars(backdrop)}
     >
       {/* The ground is handed down rather than looked up, so the photo layer
@@ -362,14 +362,25 @@ export function AnimatedNumber({
  * rank-and-name when they did not. The portraits are deliberately small: the
  * ranking is the content, and eight circular photographs down the left edge
  * would turn a leaderboard into a contact list.
+ *
+ * `share` is optional and adds a second line under each row: a bar drawn against
+ * the leader, with the person's percentage of the whole chat at the end of it.
+ * Both live below rather than becoming further columns — the name row is already
+ * four items wide inside a 368px phone, and the name is the one thing on it that
+ * must not be squeezed. The percentage also belongs next to the bar it labels.
  */
 export function Ranking({
   rows,
   language = 'en',
 }: {
-  rows: { label: string; value: number }[];
+  rows: { label: string; value: number; share?: number }[];
   language?: ChatLanguage;
 }) {
+  // Bars are scaled to the leader, not to 100%: one person with 18% of a
+  // sixteen-person chat is the top of this board, and a bar filling a fifth of
+  // the slide would read as "barely spoke".
+  const topShare = Math.max(...rows.map((r) => r.share ?? 0), 0);
+
   return (
     <div className="mt-6 flex flex-col gap-2.5">
       {rows.map((row, i) => (
@@ -378,38 +389,74 @@ export function Ranking({
           initial={{ opacity: 0, x: -10 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.25 + i * 0.07, duration: 0.4 }}
-          className="flex items-center gap-3"
+          className="flex flex-col gap-1.5"
           style={{ opacity: i > 2 ? 0.62 : 1 }}
         >
-          <span
-            className="w-7 shrink-0 text-center"
-            style={{
-              fontFamily: 'var(--yap-poster)',
-              fontSize: `${Math.max(18, 34 - i * 4)}px`,
-              color: i === 0 ? 'var(--slide-accent)' : undefined,
-            }}
-          >
-            {i + 1}
-          </span>
-          <Portrait name={row.label} size={i === 0 ? 40 : 30} />
-          <span
-            dir="auto"
-            className="min-w-0 flex-1 truncate"
-            style={{
-              fontFamily: HEBREW.test(row.label) ? 'var(--yap-heb)' : 'var(--yap-poster)',
-              fontWeight: HEBREW.test(row.label) ? 900 : 400,
-              fontSize: `${Math.max(15, 25 - i * 2)}px`,
-              lineHeight: 1.1,
-            }}
-          >
-            {row.label}
-          </span>
-          <span
-            className="shrink-0 text-xs tabular-nums opacity-75"
-            style={{ fontFamily: 'var(--yap-mono)' }}
-          >
-            {formatNumber(row.value, language)}
-          </span>
+          <div className="flex items-center gap-3">
+            <span
+              className="w-7 shrink-0 text-center"
+              style={{
+                fontFamily: 'var(--yap-poster)',
+                fontSize: `${Math.max(18, 34 - i * 4)}px`,
+                color: i === 0 ? 'var(--slide-accent)' : undefined,
+              }}
+            >
+              {i + 1}
+            </span>
+            <Portrait name={row.label} size={i === 0 ? 40 : 30} />
+            <span
+              dir="auto"
+              className="min-w-0 flex-1 truncate"
+              style={{
+                fontFamily: HEBREW.test(row.label) ? 'var(--yap-heb)' : 'var(--yap-poster)',
+                fontWeight: HEBREW.test(row.label) ? 900 : 400,
+                fontSize: `${Math.max(15, 25 - i * 2)}px`,
+                lineHeight: 1.1,
+              }}
+            >
+              {row.label}
+            </span>
+            <span
+              className="shrink-0 text-xs tabular-nums opacity-75"
+              style={{ fontFamily: 'var(--yap-mono)' }}
+            >
+              {formatNumber(row.value, language)}
+            </span>
+          </div>
+          {row.share !== undefined && (
+            <div className="ml-10 flex items-center gap-3">
+              <div
+                aria-hidden="true"
+                className="h-[3px] flex-1 overflow-hidden rounded-full"
+                style={{ background: 'var(--slide-panel)' }}
+              >
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{
+                    width: `${Math.max(3, (row.share / Math.max(topShare, 0.0001)) * 100)}%`,
+                  }}
+                  transition={{ delay: 0.35 + i * 0.07, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                  className="h-full rounded-full"
+                  style={{
+                    background:
+                      i === 0
+                        ? 'var(--slide-accent)'
+                        : 'color-mix(in srgb, currentColor 45%, transparent)',
+                  }}
+                />
+              </div>
+              <span
+                className="w-9 shrink-0 text-right text-xs tabular-nums"
+                style={{
+                  fontFamily: 'var(--yap-mono)',
+                  color: i === 0 ? 'var(--slide-accent)' : undefined,
+                  opacity: i === 0 ? 1 : 0.75,
+                }}
+              >
+                {percent(row.share)}
+              </span>
+            </div>
+          )}
         </motion.div>
       ))}
     </div>

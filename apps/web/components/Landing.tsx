@@ -139,7 +139,11 @@ export function Landing({
         color: '#15251C',
         fontFamily: 'var(--yap-sans)',
         minHeight: '100vh',
-        overflowX: 'hidden',
+        // `clip`, not `hidden`: hiding one axis makes the other compute to
+        // `auto`, which quietly turns this wrapper into a second scroller and
+        // puts its own bar down the right of the page. `clip` trims the
+        // over-wide marquee without any of that.
+        overflowX: 'clip',
       }}
     >
       {/* ── Nav ────────────────────────────────────────────────────────── */}
@@ -475,7 +479,7 @@ export function Landing({
                   textTransform: 'uppercase',
                 }}
               >
-                Nine years. No cure.
+                Nine years. Still no pizza.
               </div>
             </div>
             <div
@@ -532,16 +536,18 @@ export function Landing({
                 CERTIFIED GHOST
               </div>
               <div
-                dir="rtl"
                 style={{
-                  fontFamily: 'var(--yap-heb)',
-                  fontWeight: 900,
-                  fontSize: 24,
-                  lineHeight: 1,
+                  fontFamily: 'var(--yap-poster)',
+                  fontSize: 30,
+                  lineHeight: 0.88,
+                  letterSpacing: '-.01em',
+                  textTransform: 'uppercase',
                   marginTop: 6,
                 }}
               >
-                תמיר הגבר
+                Submarine
+                <br />
+                Dave
               </div>
             </div>
           </div>

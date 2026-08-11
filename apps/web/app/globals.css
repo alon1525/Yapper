@@ -67,8 +67,76 @@ body {
   overflow-x: hidden;
 }
 
+/* Set while something owns the whole viewport — the onboarding sheet, the deck.
+   Both are fixed to the screen, so the page underneath is a scroller nobody can
+   see, and its bar is the second one that keeps turning up on the right. One
+   scroller on screen at a time. */
+body.yap-locked {
+  overflow: hidden;
+}
+
 * {
   box-sizing: border-box;
+}
+
+/*
+  Scrollbars.
+
+  Left alone, the browser draws a grey slab in a palette that belongs to the
+  operating system rather than to this page. There is exactly one bar worth
+  showing — the page's — so it is restyled as a quiet warm hairline, and every
+  panel that scrolls inside a frame of its own hides its bar entirely: inside a
+  368px phone or a rounded card, a scrollbar reads as a seam, not an affordance.
+
+  The pseudo-elements do the work rather than `scrollbar-width`, because they
+  are the only way to drop the stepper arrows — and `scrollbar-width` is worse
+  than useless here: set it, and Chrome discards every ::-webkit rule below and
+  goes back to drawing its own arrowed bar. So it is scoped to the one engine
+  that has no pseudo-elements to discard.
+*/
+::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* The little arrows at each end. Nothing on this page is a Windows 95 dialog. */
+::-webkit-scrollbar-button {
+  display: none;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgb(94 83 68 / 0.28);
+  /* Drawn through a transparent border so the thumb is a 5px pill floating in
+     the gutter rather than a bar wedged against the edge of the window. */
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(94 83 68 / 0.5);
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(94 83 68 / 0.28) transparent;
+  }
+}
+
+.yap-quiet-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.yap-quiet-scroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 /* Display type is set tight and heavy — at poster sizes the default tracking
@@ -432,6 +500,38 @@ body {
   }
   100% {
     opacity: 0;
+  }
+}
+
+/* The reading step's film of the chat going past.
+
+   The roller holds two identical columns and resets at exactly half its own
+   height, which is one column — the column carries its own bottom padding so
+   that half-height lands on a seam that matches, rather than half a gap out.
+   Slow enough to read as a chat being gone through rather than a slot machine. */
+@keyframes obScanRoll {
+  to {
+    transform: translateY(-50%);
+  }
+}
+
+/* The scanner over it. Both ends of the travel clear the window at its tallest,
+   so the band arrives and leaves rather than appearing at the edge, and it
+   fades at both ends so nothing about it snaps. On a short screen the film is
+   shorter than the travel and the sweep simply pauses off the bottom between
+   passes. */
+@keyframes obScanBand {
+  0% {
+    opacity: 0;
+    transform: translateY(-92px);
+  }
+  10%,
+  86% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(180px);
   }
 }
 

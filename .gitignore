@@ -30,3 +30,7 @@ npm-debug.log*
 .vercel
 .idea/
 .vscode/
+
+# Hand-written report fixtures. These are built from a real export and carry
+# real names and quotes from a private chat — local only, never committed.
+/fixtures/

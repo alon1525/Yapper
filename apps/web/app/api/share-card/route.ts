@@ -4,6 +4,8 @@ import { Resvg } from '@resvg/resvg-js';
 import { NextResponse } from 'next/server';
 import satori from 'satori';
 import { z } from 'zod';
+import { crossSite, forbiddenCrossSite } from '@/lib/guard';
+import { checkRate, tooManyRequests } from '@/lib/rateLimit';
 
 /**
  * Renders the 9:16 share card.
@@ -146,6 +148,11 @@ function heroFontSize(text: string, available: number, max: number): number {
 }
 
 export async function POST(request: Request) {
+  if (crossSite(request)) return forbiddenCrossSite();
+
+  const rate = await checkRate('card', request);
+  if (!rate.ok) return tooManyRequests(rate.retryAfter);
+
   let body: z.infer<typeof BodySchema>;
   try {
     body = BodySchema.parse(await request.json());

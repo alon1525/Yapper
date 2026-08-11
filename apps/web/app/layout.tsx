@@ -54,9 +54,10 @@ const anton = Anton({
   display: 'swap',
 });
 
-/* Every name in the preview deck is Hebrew, so the Hebrew subset is not
-   optional here — without it the leaderboard falls back to a system face and
-   the whole slide loses its weight. */
+/* The landing page is Latin throughout, but a reader's own names come out of
+   their export in whatever they were typed in, and Anton ships no Hebrew. This
+   is the face `Shell` falls back to for those — without the subset a leaderboard
+   of them drops to a system face and the slide loses all its weight. */
 const heebo = Heebo({
   subsets: ['hebrew', 'latin'],
   weight: ['700', '900'],
@@ -68,6 +69,12 @@ export const metadata: Metadata = {
   title: 'Yapped — nine years of your group chat, read by Reg',
   description:
     'Drop in your WhatsApp export and Reg turns every message into a 40-slide story: the top yapper, the certified ghost, the night it all went sideways, and awards nobody asked for. Your chat never leaves your device.',
+  /* Reg reads the deck, so Reg is the tab. Same asset the slides use. */
+  icons: {
+    icon: '/reg.png',
+    shortcut: '/reg.png',
+    apple: '/reg.png',
+  },
 };
 
 export const viewport: Viewport = {

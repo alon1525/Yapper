@@ -13,6 +13,7 @@ import {
   ANDROID_HEADER,
   ATTACHMENT_PATTERNS,
   DELETED_PATTERNS,
+  EDITED_PATTERNS,
   IOS_HEADER,
   KNOWN_SYSTEM_PATTERNS,
   MAX_SENDER_LENGTH,
@@ -149,6 +150,20 @@ function resolveDateOrder(
   };
 }
 
+/**
+ * Peel the "edited" marker off a body, if it has one.
+ *
+ * Done before classification, not after: `<Media omitted> <This message was
+ * edited>` matches no attachment pattern with the suffix still attached, and an
+ * edited media message would be counted as ordinary text.
+ */
+function stripEdited(body: string): { body: string; edited: boolean } {
+  for (const p of EDITED_PATTERNS) {
+    if (p.test(body)) return { body: body.replace(p, ''), edited: true };
+  }
+  return { body, edited: false };
+}
+
 function classifyBody(body: string): { kind: MessageKind; attachmentType?: AttachmentType } {
   const trimmed = body.trim();
 
@@ -279,12 +294,15 @@ export function parseChat(raw: string, options: ParseOptions = {}): ParseResult 
     continuationLines += continuation.length;
 
     const split = splitSender(header.remainder);
-    const fullBody =
+    const rawBody =
       continuation.length > 0
         ? [split ? split.body : header.remainder, ...continuation].join('\n')
         : split
           ? split.body
           : header.remainder;
+    // The marker sits at the very end of the whole message, so this has to run
+    // after the continuation lines are folded in, not on the header line alone.
+    const { body: fullBody, edited } = stripEdited(rawBody);
 
     const day = order === 'DMY' ? header.a : header.b;
     const month = order === 'DMY' ? header.b : header.a;
@@ -326,6 +344,7 @@ export function parseChat(raw: string, options: ParseOptions = {}): ParseResult 
       body: fullBody,
       kind,
       ...(attachmentType ? { attachmentType } : {}),
+      ...(edited ? { edited: true } : {}),
       lineStart: header.line,
       lineCount: 1 + continuation.length,
     });

@@ -32,12 +32,73 @@ export {
 export { computeVoiceProfiles } from './stats/voice';
 export type { VoiceProfile } from './stats/voice';
 
+export {
+  conversationMessages,
+  scoreRecall,
+  segmentConversations,
+} from './sessions/sessions';
+export type { Conversation, SessionOptions } from './sessions/sessions';
+
+export { analyzePhrases, signatureWords } from './patterns/phrases';
+export type {
+  PhraseContagion,
+  PhraseOptions,
+  PhraseReport,
+  PhraseUse,
+  RepeatedPhrase,
+  SignaturePhrase,
+  SignatureWord,
+} from './patterns/phrases';
+
+export { analyzeInteractions, monologueMessages } from './patterns/interactions';
+export type {
+  ConversationKiller,
+  InteractionOptions,
+  InteractionReport,
+  Mention,
+  Monologue,
+  Pair,
+} from './patterns/interactions';
+
+export { analyzeCommitments, findStalledPlans, planMessages } from './patterns/commitments';
+export type {
+  CommitmentKind,
+  CommitmentProfile,
+  CommitmentReport,
+  QuestionKind,
+  QuestionProfile,
+  RepeatedArrival,
+  StalledPlan,
+} from './patterns/commitments';
+
+export * from './report/schema';
+export { planDeck } from './report/plan';
+export type {
+  DeckPlan,
+  PlanInput,
+  PlanOptions,
+  SlideBrief,
+  SuppressionNote,
+} from './report/plan';
+export {
+  createVerificationContext,
+  isDuplicate,
+  similarity,
+  verifyDictionary,
+  verifyFinding,
+  verifySlideCopy,
+} from './report/verify';
+export type { TokenSource, VerificationContext } from './report/verify';
+
 export { findCandidateMoments, getWindowMessages } from './moments/moments';
 export type { MomentOptions, MomentSignals, MomentWindow } from './moments/moments';
 
 export {
   anonymizeMessages,
   createPseudonymizer,
+  evidenceId,
+  parseEvidenceId,
   restoreDeep,
+  transcriptLine,
 } from './anonymize/anonymize';
 export type { AnonymizedMessage, Pseudonymizer } from './anonymize/anonymize';

@@ -162,9 +162,31 @@ export function useStorySound(startEnabled = false): StorySound {
    * Starting muted is the default, but the deck is entered through a button
    * that says "with sound" — that click is the gesture, so honouring it here
    * is legitimate rather than an autoplay workaround.
+   *
+   * The sample story on the landing page also opens unmuted, and there no
+   * gesture has happened yet: the context comes up suspended, which would leave
+   * the chrome showing ♪ over silence — indistinguishable from broken. So when
+   * the bed cannot actually run, the first touch or keypress anywhere on the
+   * page is what starts it. That is not autoplay smuggled in; it is the same
+   * "sound is on, waiting for you" state the icon is already claiming.
    */
   useEffect(() => {
-    if (startEnabled) startBed();
+    if (!startEnabled) return;
+    startBed();
+    if (acRef.current?.state === 'running') return;
+
+    const unlock = () => {
+      // The gesture that unlocks the page may have been the mute button itself.
+      if (!enabledRef.current) return;
+      void acRef.current?.resume();
+      startBed();
+    };
+    window.addEventListener('pointerdown', unlock, { once: true });
+    window.addEventListener('keydown', unlock, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
     // Deliberately mount-only: `startEnabled` is an opening condition, not a
     // control. Toggling sound afterwards goes through `toggle`.
     // eslint-disable-next-line react-hooks/exhaustive-deps

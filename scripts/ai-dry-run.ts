@@ -23,6 +23,8 @@ import { SYSTEM, userPrompt } from '../apps/web/lib/aiPrompt';
 import type { Brief } from '../apps/web/lib/brief';
 import { buildPremiumPayload } from '../apps/web/lib/premiumPayload';
 import { PREMIUM_SYSTEM, premiumPrompt } from '../apps/web/lib/premiumPrompt';
+import { buildDetectivePayload } from '../apps/web/lib/detectivePayload';
+import { DETECTIVE_SYSTEM, detectivePrompt } from '../apps/web/lib/detectivePrompt';
 
 const [exportPath, outDir = 'dry-run'] = process.argv.slice(2);
 if (!exportPath) throw new Error('usage: ai-dry-run.ts <export.txt> [outDir]');
@@ -71,6 +73,26 @@ const premium = buildPremiumPayload(
   brief,
 );
 const premiumText = premiumPrompt(premium.payload);
+
+/*
+  The detective payload is the widest surface in the product by a distance, and
+  every new field on it is derived from message *bodies* rather than quoted from
+  them — which is exactly the category the README already flags as the likeliest
+  leak. Repeated n-grams are worse than the distinctive single words that
+  prompted that warning: a two- or three-word phrase carries a nickname far more
+  often than one word does, and "words this group repeats" is a metric built to
+  surface precisely the phrases outsiders would not understand.
+  
+  It also carries session keywords, session summaries, stalled-plan topics (which
+  are matched straight out of message text and routinely include a venue or a
+  person) and per-person signature phrases. Every one of them is scrubbed in the
+  builder; this is the check that keeps that true.
+*/
+const detective = buildDetectivePayload(
+  { parsed, stats, moments, fileName: exportPath },
+  brief,
+);
+const detectiveText = detectivePrompt(detective.payload);
 
 // --- Gate 1: the route's own zod enum. Bypassing the schema offline would let
 // this script produce a prompt the real server rejects with a 400.
@@ -123,6 +145,20 @@ writeFileSync(
   'utf8',
 );
 writeFileSync(
+  join(outDir, 'detective-payload.json'),
+  JSON.stringify(detective.payload, null, 2),
+  'utf8',
+);
+writeFileSync(
+  join(outDir, 'detective-prompt.txt'),
+  `${DETECTIVE_SYSTEM}
+
+===== USER =====
+
+${detectiveText}`,
+  'utf8',
+);
+writeFileSync(
   join(outDir, 'mapping.json'),
   JSON.stringify(Object.fromEntries(pseudonymizer.reverse), null, 2),
   'utf8',
@@ -141,6 +177,11 @@ console.log(`prompt characters   ${promptChars} (free) · ${premiumChars} (premi
 console.log(`premium people      ${premium.payload.people.length}`);
 console.log(`premium moments     ${premium.payload.moments.length}`);
 console.log(`premium eras        ${premium.payload.eras.length}`);
+console.log(`detective chars     ${DETECTIVE_SYSTEM.length + detectiveText.length}`);
+console.log(`detective convos    ${detective.payload.conversations.length}`);
+console.log(`detective phrases   ${detective.payload.phrases.length}`);
+console.log(`detective contagion ${detective.payload.contagions.length}`);
+console.log(`detective plans     ${detective.payload.stalledPlans.length}`);
 console.log(`leaked names        ${leaks.length === 0 ? 'none' : [...new Set(leaks)].join(', ')}`);
 if (embedded.length > 0) {
   console.log(`  (inside other words, correctly left alone: ${[...new Set(embedded)].join(', ')})`);

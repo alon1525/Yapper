@@ -50,6 +50,16 @@ export interface Message {
   kind: MessageKind;
   attachmentType?: AttachmentType;
 
+  /**
+   * True when WhatsApp marked this message as edited after sending. The marker
+   * itself is stripped from `body` — it is written in the phone's UI language,
+   * so leaving it in makes "edited" one of the group's most-used words.
+   *
+   * Absent rather than `false` on ordinary messages: this rides on every message
+   * of a 173k-message parse, and the field only means something when it is set.
+   */
+  edited?: boolean;
+
   /** 1-indexed line in the source file where this message's header sits. */
   lineStart: number;
   /** Number of source lines this message occupies (1 + continuation lines). */

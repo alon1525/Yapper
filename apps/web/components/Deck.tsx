@@ -5,14 +5,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Brief } from '@/lib/brief';
 import type { Analysis } from '@/lib/useAnalyzer';
 import { useAiPreview } from '@/lib/useAiPreview';
-import { usePremium } from '@/lib/usePremium';
+import { useReport } from '@/lib/useReport';
 import { useStorySound } from '@/lib/useStorySound';
 import { PhotoProvider } from './cards/photos';
 import { slidesFor } from './cards/slides';
 import { BACKDROPS, Slide, type Backdrop } from './cards/Shell';
 import { AiSlide, AI_BACKDROP } from './cards/AiSlide';
 import { PaywallSlide, PAYWALL_BACKDROP } from './cards/PaywallSlide';
-import { premiumSlidesFor } from './cards/PremiumSlides';
+import { reportSlidesFor } from './cards/ReportSlides';
 import { FinalSlide, FINAL_BACKDROP } from './cards/FinalSlide';
 
 export function Deck({
@@ -31,7 +31,7 @@ export function Deck({
   const { stats } = analysis;
   const free = useMemo(() => slidesFor(stats), [stats]);
   const preview = useAiPreview(analysis, brief);
-  const premium = usePremium(analysis, brief);
+  const report = useReport(analysis, brief);
   const sound = useStorySound(startWithSound);
 
   /**
@@ -42,10 +42,10 @@ export function Deck({
    */
   const paid = useMemo(
     () =>
-      premium.state.phase === 'ready'
-        ? premiumSlidesFor(premium.state.report, premium.state.demo)
+      report.state.phase === 'ready'
+        ? reportSlidesFor(report.state.deck.slides, report.state.deck.dictionary)
         : [],
-    [premium.state],
+    [report.state],
   );
 
   const slides = free;
@@ -90,6 +90,14 @@ export function Deck({
   useEffect(() => {
     sound.sting(index, isFinal);
   }, [index, isFinal, sound]);
+
+  // The deck is one screen deep and taps rather than scrolls. Leaving the page
+  // scrollable underneath it puts a bar down the right of a story player, and
+  // on a phone lets the whole deck rubber-band.
+  useEffect(() => {
+    document.body.classList.add('yap-locked');
+    return () => document.body.classList.remove('yap-locked');
+  }, []);
 
   const chromeButton =
     'grid h-8 w-8 place-items-center rounded-full text-[13px] transition hover:opacity-100';
@@ -148,8 +156,8 @@ export function Deck({
         ) : index === paywallIndex ? (
           <PaywallSlide
             key="paywall"
-            state={premium.state}
-            onUnlock={() => void premium.unlock()}
+            state={report.state}
+            onUnlock={() => void report.run()}
             peopleCount={stats.people.length}
             previewSeen={preview.state.phase === 'done'}
           />

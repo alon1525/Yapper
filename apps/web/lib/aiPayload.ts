@@ -51,6 +51,16 @@ export interface AiPreviewPayload {
   }[];
 }
 
+/*
+  These two are capped again on the server. `app/api/ai-preview/route.ts` bounds
+  the arrays at 6 moments and 50 messages, and rejects the whole request over
+  150,000 characters of excerpt — a schema bound is the only thing standing
+  between a hostile client and a very large bill, so it sits just above what an
+  honest client sends rather than wherever these constants happen to be.
+
+  Which means raising either number without raising the route's cap turns every
+  real request into a bare "Malformed request." Change them together.
+*/
 const MOMENTS_IN_PREVIEW = 5;
 const MESSAGES_PER_MOMENT = 40;
 

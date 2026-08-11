@@ -140,10 +140,31 @@ export function createPseudonymizer(participants: readonly string[]): Pseudonymi
 }
 
 export interface AnonymizedMessage {
+  /**
+   * `Message.id` — the index into the parse's message array, carried verbatim.
+   *
+   * This is what makes every downstream claim checkable. A model that says
+   * something funny happened has to say *which messages*, and the browser still
+   * holds the real ones, so the citation can be resolved back to a body, a
+   * sender and a date and compared against what was actually claimed. Without an
+   * id here there is no way to tell a real quote from an invented one.
+   *
+   * Safe to expose: an index into an array the model never sees is not
+   * identifying. It is only meaningful to the browser that produced it.
+   *
+   * Stable across the roster step — `applyAliases` rewrites the sender field of
+   * each message in place and preserves both order and id, so an id collected
+   * before the reader renamed anybody still points at the same message after.
+   */
+  id: number;
   sender: string;
   /** `HH:MM`, enough for the model to feel pacing without leaking a calendar. */
   time: string;
+  /** `YYYY-MM-DD`, so the model can date a memory instead of guessing at one. */
+  date: string;
   text: string;
+  /** Present only when true, matching `Message.edited`. */
+  edited?: boolean;
 }
 
 export function anonymizeMessages(
@@ -151,15 +172,49 @@ export function anonymizeMessages(
   p: Pseudonymizer,
 ): AnonymizedMessage[] {
   return messages.map((m) => ({
+    id: m.id,
     sender: p.tokenFor(m.sender),
     time: `${String(m.localHour).padStart(2, '0')}:${String(m.localMinute).padStart(2, '0')}`,
+    date: `${m.localYear}-${String(m.localMonth).padStart(2, '0')}-${String(m.localDay).padStart(2, '0')}`,
     text:
       m.kind === 'attachment'
         ? `<${m.attachmentType ?? 'media'}>`
         : m.kind === 'deleted'
           ? '<deleted>'
           : p.scrub(m.body),
+    ...(m.edited ? { edited: true } : {}),
   }));
+}
+
+/**
+ * How a message is addressed in a prompt and cited back in a model's reply.
+ *
+ * One shared helper rather than a format string in each prompt: the writer's
+ * citations are parsed with `parseEvidenceId`, and a prompt that renders ids one
+ * way while the parser reads another is a silent, total failure of the evidence
+ * chain — every citation unresolvable, every finding rejected, no error anywhere.
+ */
+export function evidenceId(id: number): string {
+  return `m${id}`;
+}
+
+/** Inverse of {@link evidenceId}. Returns null for anything malformed. */
+export function parseEvidenceId(token: string): number | null {
+  const m = /^m(\d+)$/.exec(token.trim());
+  if (!m) return null;
+  const n = Number(m[1]);
+  return Number.isSafeInteger(n) && n >= 0 ? n : null;
+}
+
+/**
+ * One transcript line as the model sees it:
+ * `m1234 [2023-03-14 10:42] Person A: tomorrow we start seriously`
+ *
+ * The id leads because a model copying a citation reads left to right, and
+ * burying it after the text made both models drop it on long windows.
+ */
+export function transcriptLine(m: AnonymizedMessage): string {
+  return `${evidenceId(m.id)} [${m.date} ${m.time}] ${m.sender}:${m.edited ? ' (edited)' : ''} ${m.text}`;
 }
 
 /**

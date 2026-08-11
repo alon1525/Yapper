@@ -1,3 +1,4 @@
+import { transcriptLine } from '@wrapped/core';
 import { z } from 'zod';
 import type { AiPreviewPayload } from './aiPayload';
 
@@ -137,9 +138,7 @@ export function userPrompt(payload: AiPreviewPayload): string {
 
   for (const moment of moments) {
     lines.push(`--- ${moment.id} (${moment.reasons.join('; ')}) ---`);
-    for (const m of moment.messages) {
-      lines.push(`[${m.time}] ${m.sender}: ${m.text}`);
-    }
+    for (const m of moment.messages) lines.push(transcriptLine(m));
     lines.push('');
   }
 

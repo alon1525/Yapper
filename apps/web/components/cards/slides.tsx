@@ -133,7 +133,14 @@ export const SLIDES: SlideDef[] = [
           <Eyebrow>The yap leaderboard</Eyebrow>
           <Ranking
             language={s.language}
-            rows={[top, ...rest].map((p) => ({ label: p.name, value: p.messages }))}
+            rows={[top, ...rest].map((p) => ({
+              label: p.name,
+              value: p.messages,
+              // The person's own share, not one derived from the counts on
+              // screen — these are the top five of a larger chat, and the
+              // punchline below quotes the same figure.
+              share: p.share,
+            }))}
           />
           <Punchline>
             {percent(top.share)} of every message in this chat came from one person.
@@ -145,30 +152,38 @@ export const SLIDES: SlideDef[] = [
     },
   },
 
+  /**
+   * The chat's own clock, not one person's.
+   *
+   * This slide used to be headlined with whoever won the night-owl award, which
+   * put a single name above a chart nobody could tell apart from the group's —
+   * and the sample story on the landing page promises the group's. The award
+   * still appears, as a footnote where it belongs.
+   */
   {
-    id: 'nightowl',
+    id: 'hours',
     backdrop: 'navy',
-    available: (s) => person(s, s.awards.nightOwl) !== null,
+    available: (s) => s.totalMessages > 0,
     render: (s) => {
-      const owl = person(s, s.awards.nightOwl)!;
-      const peakHour = owl.hourHistogram.indexOf(Math.max(...owl.hourHistogram));
-      const max = Math.max(...owl.hourHistogram, 1);
+      const peakHour = s.busiestHour?.hour ?? 0;
+      const max = Math.max(...s.hourHistogram, 1);
+      const night = s.hourHistogram.slice(0, 5).reduce((sum, count) => sum + count, 0);
+      const owl = person(s, s.awards.nightOwl);
       return (
         <>
-          <Eyebrow>When they yap</Eyebrow>
-          <Named name={owl.name} />
-          <Poster size="sm">
-            <span className="mt-3 block">
+          <Eyebrow>When you yap</Eyebrow>
+          <Poster size="md">
+            <span className="mt-2 block">
               Peak hour:{' '}
               <span style={{ color: 'var(--slide-accent)' }}>{formatHour(peakHour)}</span>
             </span>
           </Poster>
 
-          {/* The shape of someone's day is the actual content here, so it is
+          {/* The shape of the group's day is the actual content here, so it is
               drawn rather than described — and only the small hours are given
               the accent, because those are the ones that make the point. */}
           <div className="mt-6 flex h-[130px] items-end justify-center gap-[3px]" aria-hidden="true">
-            {owl.hourHistogram.map((count, hour) => (
+            {s.hourHistogram.map((count, hour) => (
               <motion.div
                 key={hour}
                 initial={{ height: 2 }}
@@ -194,9 +209,18 @@ export const SLIDES: SlideDef[] = [
           </p>
 
           <Punchline>
-            {formatNumber(owl.nightMessages, s.language)} messages sent between midnight and
-            5 AM. Nobody asked for them. They arrived anyway.
+            {formatNumber(night, s.language)} messages sent between midnight and 5 AM. Nobody
+            asked for them. They arrived anyway.
           </Punchline>
+          {/* The count, not just the share: the night-owl award only needs five
+              messages to win, and "50% after midnight" on its own would be six
+              messages dressed up as a habit. */}
+          {owl && (
+            <Tag>
+              Night shift: {shortName(owl.name)} ·{' '}
+              {formatNumber(owl.nightMessages, s.language)} after midnight
+            </Tag>
+          )}
         </>
       );
     },
@@ -214,7 +238,9 @@ export const SLIDES: SlideDef[] = [
           <Eyebrow>Fastest trigger finger</Eyebrow>
           <Named name={fast.name} />
           <Poster size="md">
-            <span className="mt-2 block">{formatDuration(fast.medianResponseMs)}</span>
+            <span className="mt-2 block">
+              {formatDuration(fast.medianResponseMs, s.timestampPrecisionMs)}
+            </span>
           </Poster>
           <Punchline>
             Across {formatNumber(fast.responseSamples, s.language)} replies, they somehow got
@@ -222,10 +248,13 @@ export const SLIDES: SlideDef[] = [
           </Punchline>
           {slow && slow.name !== fast.name && (
             <div className="mt-6 grid grid-cols-2 gap-2">
-              <Stat label="Fastest" value={formatDuration(fast.medianResponseMs)} />
+              <Stat
+                label="Fastest"
+                value={formatDuration(fast.medianResponseMs, s.timestampPrecisionMs)}
+              />
               <Stat
                 label={`Slowest · ${shortName(slow.name)}`}
-                value={formatDuration(slow.medianResponseMs)}
+                value={formatDuration(slow.medianResponseMs, s.timestampPrecisionMs)}
               />
             </div>
           )}

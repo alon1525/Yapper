@@ -21,8 +21,15 @@ export type AnalyzerState =
   | { phase: 'idle' }
   /** `messages` is the real running count, which the scan step shows. */
   | { phase: 'working'; stage: string; fraction: number; messages: number }
-  /** Parsed. Who is who is the one question only the reader can answer. */
-  | { phase: 'roster'; people: RosterEntry[]; merges: MergeSuggestion[] }
+  /**
+   * Parsed. Who is who is the one question only the reader can answer.
+   *
+   * `messages` is the final count and is carried here rather than left to the
+   * next phase to recover: the reading step is still on screen when this
+   * arrives, and a counter that falls back to zero at the finish line reads as
+   * the file having been dropped.
+   */
+  | { phase: 'roster'; people: RosterEntry[]; merges: MergeSuggestion[]; messages: number }
   | { phase: 'done'; analysis: Analysis }
   | { phase: 'error'; message: string };
 
@@ -71,7 +78,12 @@ export function useAnalyzer() {
         countRef.current = msg.messages;
         // The worker keeps the parsed chat in memory while we ask, so answering
         // resumes rather than re-parses.
-        setState({ phase: 'roster', people: msg.people, merges: msg.merges });
+        setState({
+          phase: 'roster',
+          people: msg.people,
+          merges: msg.merges,
+          messages: msg.messages,
+        });
       } else if (msg.type === 'done') {
         setState({
           phase: 'done',

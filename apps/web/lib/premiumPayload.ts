@@ -85,6 +85,13 @@ function collapseCombining(text: string): string {
   return text.replace(/(\p{M}{2})\p{M}+/gu, '$1');
 }
 
+/*
+  Capped again on the server: `app/api/premium/route.ts` bounds these arrays at
+  14 moments and 40 messages and rejects over 250,000 characters of excerpt.
+  This is the most expensive call in the product, so the route does not take the
+  client's word for the size of it. Raise either number there as well, or every
+  real request starts failing as "Malformed request."
+*/
 const MOMENTS = 12;
 const MESSAGES_PER_MOMENT = 30;
 const DISTINCTIVE_PER_PERSON = 6;

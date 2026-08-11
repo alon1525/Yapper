@@ -3,6 +3,9 @@ import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { PreviewSchema, SYSTEM, userPrompt } from '@/lib/aiPrompt';
+import { loadFixture } from '@/lib/fixture';
+import { crossSite, excerptChars, forbiddenCrossSite, payloadTooLarge } from '@/lib/guard';
+import { checkRate, tooManyRequests } from '@/lib/rateLimit';
 
 /**
  * The only route in this application that ever receives chat text.
@@ -23,6 +26,16 @@ const MODEL = process.env.WRAPPED_AI_MODEL ?? 'claude-opus-5';
 
 /** Guard: every sender the client sends must already be a token. */
 const SENDER_TOKEN = /^Person [A-Z]+$/;
+
+/**
+ * Ceiling on the excerpt text in one request, in characters.
+ *
+ * `buildPreviewPayload` sends five moments of forty messages — about forty
+ * thousand characters on a talkative chat. This is several times that, so no
+ * real export comes near it, and it is far below what the array bounds alone
+ * would allow through.
+ */
+const MAX_EXCERPT_CHARS = 150_000;
 
 const RequestSchema = z.object({
   language: z.enum(['en', 'he', 'other']),
@@ -56,19 +69,41 @@ const RequestSchema = z.object({
         messages: z
           .array(
             z.object({
+              /* An index into the reader's own message array — the anchor for
+                 any citation, and meaningless to anyone without that array. */
+              id: z.number().int().min(0),
               sender: z.string().max(40),
               time: z.string().max(10),
+              date: z.string().max(12),
               text: z.string().max(4000),
+              edited: z.boolean().optional(),
             }),
           )
-          .max(80),
+          .max(50),
       }),
     )
-    .max(8),
+    .max(6),
 });
 
 export async function POST(request: Request) {
+  if (crossSite(request)) return forbiddenCrossSite();
+
+  const rate = await checkRate('preview', request);
+  if (!rate.ok) return tooManyRequests(rate.retryAfter);
+
   if (!process.env.ANTHROPIC_API_KEY) {
+    // Stand-in for the model while the deck is being designed. Only ever
+    // reachable on a server with no key, so it cannot shadow a real request.
+    const written = loadFixture('preview');
+    if (written) {
+      const parsed = PreviewSchema.safeParse(written);
+      if (!parsed.success) {
+        console.error('[ai-preview] fixture failed the schema', parsed.error.issues);
+        return NextResponse.json({ error: 'The preview fixture is not valid.' }, { status: 500 });
+      }
+      return NextResponse.json(parsed.data, { headers: { 'Cache-Control': 'no-store' } });
+    }
+
     return NextResponse.json(
       { error: 'AI is not configured on this server.' },
       { status: 503 },
@@ -81,6 +116,8 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: 'Malformed request.' }, { status: 400 });
   }
+
+  if (excerptChars(payload) > MAX_EXCERPT_CHARS) return payloadTooLarge();
 
   // Defence in depth. Anonymisation happens in the browser, but if a bug ever
   // let a real name through, this refuses the request rather than forwarding

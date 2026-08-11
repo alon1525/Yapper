@@ -9,10 +9,11 @@ and only ever sees an anonymised copy. Nothing is stored — close the tab and i
 is gone.
 
 ```
-packages/core   Pure TypeScript engine — parse, stats, moments, anonymise.
-                Zero DOM dependencies, so a future Expo app can import it as-is.
-apps/web        Next.js 15 app. The landing page, the deck, a Web Worker,
-                and four server routes.
+packages/core   Pure TypeScript engine — parse, stats, sessions, patterns,
+                planning, verification, anonymise. Zero DOM dependencies, so a
+                future Expo app can import it as-is.
+apps/web        Next.js app. The landing page, the deck, a Web Worker, and the
+                server routes.
 ```
 
 ## Running it
@@ -21,7 +22,7 @@ apps/web        Next.js 15 app. The landing page, the deck, a Web Worker,
 npm install
 cp apps/web/.env.example apps/web/.env.local   # then fill in the signing secret
 npm run dev                                    # http://localhost:3000
-npm test                                       # 82 unit tests across both workspaces
+npm test                                       # 160 unit tests across both workspaces
 ```
 
 Nothing in `.env.local` is required to see the app — the landing page, the
@@ -32,7 +33,19 @@ you; the short version:
 | Variable | Without it |
 |---|---|
 | `WRAPPED_SIGNING_SECRET` | Premium unlock 503s. Set any random 16+ char string. |
-| `ANTHROPIC_API_KEY` | AI slide unavailable; premium report falls back to a deterministic sample, labelled as one. |
+| `ANTHROPIC_API_KEY` | AI slide unavailable; the detective returns no findings, so the deck is its deterministic half — every statistic slide, no discovered ones. |
+
+Model choice per stage is configurable, because the two stages want different
+things: the detective reads a great deal and returns a little structured output,
+while the comedy pass reads little and writes the thing people actually see. If
+only one gets the expensive model it should be the second.
+
+| Variable | Stage | Default |
+|---|---|---|
+| `WRAPPED_AI_MODEL` | free preview | `claude-opus-5` |
+| `WRAPPED_DETECTIVE_MODEL` | investigation | `claude-opus-5` |
+| `WRAPPED_WRITER_MODEL` | comedy | `claude-opus-5` |
+| `WRAPPED_PREMIUM_MODEL` | legacy single-shot report | `claude-opus-5` |
 
 ## The shape of it
 
@@ -151,6 +164,89 @@ exactly one of header / continuation / orphan, with zero orphans.** WhatsApp
 exposes no message count to compare against, so this is the check that catches
 a parser bug.
 
+## How the report is built
+
+The report is a pipeline, not a prompt. The thing it is trying not to be is a
+dashboard, and the thing that stops it being one is that **no stage both
+discovers a fact and jokes about it**.
+
+```
+1  statistics        deterministic          parse → stats → phrases, interactions,
+                                            commitments, stalled plans
+2  segmentation      deterministic          the chat cut into conversations
+3  candidates        deterministic          scored, ranked, capped
+4  detective         model, structured      findings + message ids. No jokes.
+5  verification      deterministic, local   every claim checked against the real
+                                            messages. Rejects.
+6  planning          deterministic          which slides this group has earned
+7  comedy            model, structured      copy only. Cannot introduce a number.
+8  quality control   deterministic, local   invented figures, banned phrasing,
+                                            length, duplicates
+```
+
+Stages 5 and 8 run **in the browser**, and that is not where they ended up by
+convenience. The server was only ever sent an anonymised excerpt, so the server
+cannot tell a quote that was said from one that was invented. The browser still
+holds every message the excerpt was cut from, so it can — and it is the browser
+that throws findings away.
+
+**Message ids are the spine.** `AnonymizedMessage` carries `Message.id`, the
+prompt renders every line as `m1234 [2023-03-14 10:42] Person A: …`, and the
+model is told — truthfully — that a program checks each citation and discards
+what does not match. An id is an index into an array the model never sees, so it
+identifies nobody; without it, `evidence_message_ids` is decoration and every
+stage after stage 4 is unverifiable. The property that makes this work is that
+`applyAliases` rewrites the sender field in place and preserves order, so an id
+collected before the reader renamed anybody still points at the same message
+after.
+
+**The writer is never asked for a figure.** Statistics are computed in
+TypeScript and handed to it as the only numbers it may use; `verifySlideCopy`
+rejects any figure in the prose that is not in that list, not in a verified
+quote, and not small enough to be rhetoric. "Never state a statistic, interpret
+it" was already the instruction — this is the version that is enforced rather
+than requested.
+
+**The planner's real job is saying no.** Every guaranteed slide declares the
+condition under which it earns its place, and the ones that fail are dropped
+with a recorded reason. A night-owl slide in a group that keeps one schedule, a
+leaderboard where nobody is ahead, a reply-time slide on an export that only
+records minutes — each is true, and each is a rounding error with a name on it.
+`plan.suppressed` keeps the list, because "why is there no ghost slide" has a
+better answer than the slide would have been.
+
+**Verification repairs before it rejects.** A model reading a forty-line window
+routinely attaches the right quote to the id one row above it. That is a
+clerical slip, not an invention, so a quote is searched for in the finding's own
+evidence and a four-message neighbourhood, and repaired to the true speaker and
+date. Widened past that it would stop being repair and start laundering
+fabrications into verified quotes, which is why the radius is small and tested.
+
+### What a text export does not contain
+
+Stated here because the obvious assumption is wrong in both cases. WhatsApp `.txt`
+exports carry **no reply metadata and no reactions** — both exist in the app and
+neither is written to the file. So there is no `reactions` field anywhere in this
+codebase, and what can be recovered from adjacency is named `inferredReplies`
+rather than `replies`. A field that is structurally always empty is worse than an
+absent one.
+
+Edited messages *are* recoverable — WhatsApp appends `<This message was edited>`
+— and the marker is stripped from the body rather than left in it. Left in, it
+lands in the word counts, wins "longest message" for anyone who edits, and,
+because it is written in the phone's UI language, turns "edited" into one of the
+group's most-used words.
+
+### `\b` does not work in Hebrew
+
+JavaScript defines `\b` on `[A-Za-z0-9_]`, so it never fires between two Hebrew
+letters. `/\bמתי\b/` is not a stricter match — it is a match that cannot
+succeed. Written the obvious way, every Hebrew pattern in the commitment,
+question, plan and conflict lexicons silently found nothing: no error, no
+warning, just a Hebrew group getting an empty report section. They all use
+letter/digit lookarounds and the glued single-letter prefixes instead, exactly
+as the pseudonymiser does. A test caught this; nothing else would have.
+
 ## Things that are true and non-obvious
 
 **Timezones.** WhatsApp writes timestamps in the exporter's local time with no
@@ -248,7 +344,7 @@ the ratio is what makes a card impossible to swap with someone else's.
 ## Testing the AI without paying for it
 
 ```bash
-npx vite-node scripts/ai-dry-run.ts -- "<export.txt>" <outDir>   # builds both prompts, gates both
+npx vite-node scripts/ai-dry-run.ts -- "<export.txt>" <outDir>   # builds all three prompts, gates all three
 npx vite-node scripts/ai-restore.ts -- <mapping.json> <reply.json>
 npx vite-node scripts/premium-restore.ts -- <mapping.json> <report.json>
 ```
@@ -272,7 +368,33 @@ than a promise:
 |---|---|
 | Free | Nothing. Parse, stats and moment detection all run in a Web Worker. |
 | AI preview | Opt-in only. An anonymised digest, the top few conversation windows, and the brief. |
-| Premium | Opt-in, entitlement-gated. The same anonymised copy, plus a per-person digest. |
+| Premium | Opt-in, entitlement-gated. The same anonymised copy, plus a per-person digest, the deterministic pattern report, and the top conversations. |
+
+**The detective payload is the widest surface in the product**, and nearly every
+field on it is *derived from* message bodies rather than quoted from them —
+which is the category the note on distinctive words already flags as the
+likeliest leak. Repeated n-grams are worse than single words: a two- or
+three-word phrase carries a nickname far more often than one word does, and
+"phrases this group repeats" is a metric built to surface exactly the language
+outsiders would not understand. Session keywords, session summaries,
+stalled-plan topics and signature phrases are all in the same category. Every
+one goes through `scrub()` in the payload builder, and `ai-dry-run` walks all of
+them — the gate inspects payload *contents*, so a new field that skips the
+scrubber fails the gate rather than shipping.
+
+**Message ids leave the device and that is fine.** An id is an index into the
+reader's own message array. It resolves to a message only for the browser that
+produced it, and it is what makes every claim in the report checkable.
+
+**Dates leave the device now, and that is a deliberate reversal.** They used to
+be withheld — `anonymizeMessages` carried the time of day and no calendar. A
+dated report is most of what the product is for: "May 2023: everyone believed
+the trip was happening" is the nostalgia slide, and a prophecy that aged badly
+cannot be told without knowing when it was made. Withholding the date did not
+stop a model writing those; it made it guess, and a confidently wrong date is
+worse than none. The payload already carried the span label, the busiest day and
+a per-year breakdown, and the message text is far more identifying than the day
+it was sent on. What is still withheld is the name.
 
 **The notes box is the one field the reader types names *at* the model.**
 Everywhere else names arrive through `anonymizeMessages`; here somebody writes
@@ -335,6 +457,16 @@ Verified against a stubbed route: three billed requests. Both paid paths hold th
 guard in a ref instead, which closes synchronously.
 
 ## Not built yet
+
+**The legacy single-shot path is still in the tree and no longer wired up.**
+`/api/premium`, `lib/premiumPayload.ts`, `lib/premiumPrompt.ts`,
+`lib/usePremium.ts` and `cards/PremiumSlides.tsx` still work and are still
+gated, tested and dry-run-able; the deck now runs the staged pipeline instead.
+They are kept because `scripts/premium-restore.ts` and the fixture path depend
+on them, and deleting a working paid route in the same change that adds two new
+ones is one rollback away from having neither.
+
+
 
 Stripe itself (the seam is built — `/api/checkout` mints without charging) ·
 video / TikTok export · AI photo memories (photos are collected and rendered

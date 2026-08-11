@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   anonymizeMessages,
   createPseudonymizer,
+  evidenceId,
+  parseEvidenceId,
   restoreDeep,
+  transcriptLine,
 } from '../src/anonymize/anonymize';
 import { parseChat } from '../src/parse/parse';
 
@@ -111,11 +114,58 @@ describe('anonymizeMessages', () => {
     expect(payload).toContain('<unknown>');
   });
 
-  it('carries time of day but no calendar date', () => {
+  /*
+    This assertion used to read `not.toContain('2023')` — the date was withheld
+    on purpose, on the reasoning that a model needs pacing and not a calendar.
+
+    Reversed deliberately. A dated report is most of what the product is for:
+    "May 2023: everyone believed the trip was happening" is the nostalgia slide,
+    and "the prophecy that aged badly" cannot be told without knowing when the
+    prophecy was made and when it failed. Withholding the date did not prevent a
+    model from writing those — it made it guess, and a confidently wrong date is
+    worse than no date.
+
+    The trade is small: the payload already carried the span label, the busiest
+    day and a per-year breakdown, and the message *text* is far more identifying
+    than the day it was sent on. What is still withheld is the thing that
+    actually identifies someone — the name — and that has not changed.
+  */
+  it('carries the day and the time, so a memory can be dated', () => {
     const parsed = parseChat('12/01/2023, 23:47 - Alon: late one');
     const p = createPseudonymizer(parsed.participants);
     const [msg] = anonymizeMessages(parsed.messages, p);
     expect(msg!.time).toBe('23:47');
-    expect(JSON.stringify(msg)).not.toContain('2023');
+    expect(msg!.date).toBe('2023-01-12');
+  });
+
+  it('carries the message id, so a claim can be traced to a message', () => {
+    const parsed = parseChat(
+      ['12/01/2023, 23:47 - Alon: one', '12/01/2023, 23:48 - Sarah: two'].join('\n'),
+    );
+    const p = createPseudonymizer(parsed.participants);
+    const out = anonymizeMessages(parsed.messages, p);
+
+    // The id is the index into the real message array, which is what makes it
+    // resolvable back to a body and a sender the model never saw.
+    expect(out.map((m) => m.id)).toEqual([0, 1]);
+    expect(parsed.messages[out[1]!.id]!.body).toBe('two');
+  });
+
+  it('round-trips an evidence id through its wire format', () => {
+    expect(evidenceId(1234)).toBe('m1234');
+    expect(parseEvidenceId('m1234')).toBe(1234);
+    expect(parseEvidenceId(' m0 ')).toBe(0);
+    // Anything a model might hallucinate instead of a citation.
+    expect(parseEvidenceId('message 12')).toBeNull();
+    expect(parseEvidenceId('m')).toBeNull();
+    expect(parseEvidenceId('12')).toBeNull();
+    expect(parseEvidenceId('m12x')).toBeNull();
+  });
+
+  it('renders a transcript line the writer can cite back', () => {
+    const parsed = parseChat('12/01/2023, 23:47 - Alon: late one');
+    const p = createPseudonymizer(parsed.participants);
+    const [msg] = anonymizeMessages(parsed.messages, p);
+    expect(transcriptLine(msg!)).toBe('m0 [2023-01-12 23:47] Person A: late one');
   });
 });

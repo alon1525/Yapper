@@ -182,6 +182,10 @@ export function computeStats(parsed: ParseResult, options: StatsOptions = {}): C
   let totalLinks = 0;
   let totalEmoji = 0;
   let longestOverall: Message | null = null;
+  // A single message with a non-zero seconds field is enough to prove the
+  // export was written to the second; without one, every gap in the file is a
+  // whole number of minutes.
+  let hasSeconds = false;
 
   const silences: Silence[] = [];
 
@@ -202,6 +206,8 @@ export function computeStats(parsed: ParseResult, options: StatsOptions = {}): C
     acc.days.add(dk);
     acc.lastTs = ts;
     acc.lastDay = dk;
+
+    if (!hasSeconds && m.ts.getUTCSeconds() !== 0) hasSeconds = true;
 
     if (m.localHour < 5) acc.nightMessages++;
     else if (m.localHour < 8) acc.earlyMessages++;
@@ -403,6 +409,7 @@ export function computeStats(parsed: ParseResult, options: StatsOptions = {}): C
       label: spanLabel(firstMsg, lastMsg),
     },
     perDay: msgs.length / spanDays,
+    timestampPrecisionMs: hasSeconds ? 1_000 : 60_000,
     people,
     hourHistogram,
     weekdayHistogram,
@@ -556,6 +563,7 @@ function emptyStats(
     totalEmoji: 0,
     span: { first: '', last: '', days: 0, activeDays: 0, label: '' },
     perDay: 0,
+    timestampPrecisionMs: 60_000,
     people: [],
     hourHistogram: new Array<number>(24).fill(0),
     weekdayHistogram: new Array<number>(7).fill(0),

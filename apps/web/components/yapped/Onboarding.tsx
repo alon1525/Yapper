@@ -59,6 +59,42 @@ type Step = (typeof STEPS)[number];
 /** The last step is the summary, not a question — the bar counts the other seven. */
 const COUNTED_STEPS = 7;
 
+/**
+ * The floor under the reading step.
+ *
+ * A 900-message export parses in about a fifth of a second, which puts a
+ * counter, a progress bar, a film of the chat being scanned and six lines of
+ * checklist on screen for four frames — the reader sees a flicker and arrives
+ * at the next question with no sense that anything was read. So the panel is
+ * given a minimum time on screen and everything in it moves at the slower of
+ * real progress and that floor.
+ *
+ * Nothing here invents progress the parse has not made: the bar is still
+ * `min(work, time)`, so a large export is never held back by a single
+ * millisecond, and the step ends the moment both the work and the floor are
+ * done with.
+ */
+const SCAN_FLOOR_MS = 4200;
+
+/**
+ * The end of that, kept back so it can be seen.
+ *
+ * The counter landing on the real total and the line under it turning from
+ * "and counting…" to "All of them" is the whole point of the step, and paced
+ * to the last millisecond of the floor it is painted in the same frame the
+ * step is left on — which is to say never. So the numbers finish early and the
+ * finished panel is held for a beat before the next question.
+ *
+ * Only the floor is shortened, not the wait: an export slow enough to be
+ * running the pace itself still moves on the moment it is read.
+ */
+const SCAN_SETTLE_MS = 700;
+
+/** Parsing owns the first 55% of the worker's bar — see `analyze.worker.ts`,
+    which stops there and hands the roster back. The reading step covers
+    exactly that stretch, so its own 0→1 is the worker's 0→0.55. */
+const ROSTER_AT = 0.55;
+
 const HINTS = ['Nicknames', "Who's dating who", 'Keep it clean'];
 
 /**
@@ -395,6 +431,154 @@ function ExportPhone() {
   );
 }
 
+/**
+ * The shape of the chat going past, not the chat itself.
+ *
+ * Bubbles with bars where the words would be. Real text here would be either
+ * somebody else's messages — which is the one thing this page promises never
+ * to show — or a fake conversation the reader would start reading instead of
+ * their own numbers. Widths and line counts are hand-set rather than random so
+ * the loop looks like a conversation at a glance and is identical on every
+ * render.
+ */
+const SCAN_ROWS: { mine: boolean; width: number; lines: number[] }[] = [
+  { mine: false, width: 72, lines: [92, 61] },
+  { mine: true, width: 54, lines: [80] },
+  { mine: false, width: 44, lines: [68] },
+  { mine: true, width: 67, lines: [88, 50] },
+  { mine: false, width: 81, lines: [96, 83, 44] },
+  { mine: true, width: 38, lines: [62] },
+  { mine: false, width: 59, lines: [90, 55] },
+  { mine: true, width: 75, lines: [86, 63] },
+  { mine: false, width: 48, lines: [74] },
+  { mine: true, width: 64, lines: [93, 47] },
+  { mine: false, width: 70, lines: [88, 58] },
+];
+
+/**
+ * The read, made watchable.
+ *
+ * The work is real and it is invisible: a number climbing on a beige page is
+ * the whole of it. This is the same fact drawn as something happening — the
+ * chat scrolling past under a scanner sweeping down it.
+ *
+ * Two identical columns roll upward and the loop resets at exactly one
+ * column's height, so the seam never lands anywhere the eye can find it. The
+ * column carries its own bottom padding rather than the roller carrying a gap,
+ * because half a gap is precisely the offset that makes a seamless loop jump.
+ *
+ * The sweep lifts what it passes over rather than laying a colour on top —
+ * `screen` against the bubbles, inside an isolated stacking context so it
+ * blends with the film and not with the beige sheet behind it.
+ */
+function ScanFilm() {
+  const fade = 'linear-gradient(180deg,transparent 0,#000 13%,#000 87%,transparent 100%)';
+
+  const column = (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 9, paddingBottom: 9 }}>
+      {SCAN_ROWS.map((row, k) => (
+        <div
+          key={k}
+          style={{
+            alignSelf: row.mine ? 'flex-end' : 'flex-start',
+            width: `${row.width}%`,
+            background: row.mine ? '#005C4B' : '#202C33',
+            borderRadius: row.mine ? '10px 10px 3px 10px' : '10px 10px 10px 3px',
+            padding: '8px 9px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 5,
+          }}
+        >
+          {row.lines.map((line, i) => (
+            <div
+              key={i}
+              style={{
+                height: 5,
+                width: `${line}%`,
+                borderRadius: 3,
+                background: 'rgba(233,237,239,.22)',
+              }}
+            />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+
+  return (
+    <div
+      aria-hidden="true"
+      className="yap-loop"
+      style={{
+        position: 'relative',
+        /* Gives way on a short screen rather than pushing the checklist under
+           the fold — this step has no footer to scroll to, so a line that says
+           what is happening and cannot be seen is worse than one bubble less. */
+        height: 'clamp(128px, 20vh, 168px)',
+        marginTop: 22,
+        borderRadius: 18,
+        overflow: 'hidden',
+        background: '#0B141A',
+        isolation: 'isolate',
+        boxShadow: 'inset 0 0 0 1px rgba(255,255,255,.07)',
+      }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          padding: '0 14px',
+          maskImage: fade,
+          WebkitMaskImage: fade,
+        }}
+      >
+        {/* Held to a column narrow enough that a bubble sitting on the right
+            is visibly on the right. Run to the full width of the sheet, the
+            same bubbles read as bars on a loading screen rather than as a
+            conversation going past. */}
+        <div style={{ maxWidth: 440, margin: '0 auto' }}>
+          <div style={{ animation: 'obScanRoll 15s linear infinite' }}>
+            {column}
+            {column}
+          </div>
+        </div>
+      </div>
+
+      {/* Starts hidden in its own style as well as in its keyframes, so with
+          animations off it is absent rather than parked halfway down the film. */}
+      <div
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: 0,
+          height: 88,
+          opacity: 0,
+          mixBlendMode: 'screen',
+          backgroundImage: [
+            'repeating-linear-gradient(180deg,rgba(201,242,77,.16) 0 1px,transparent 1px 4px)',
+            'linear-gradient(180deg,rgba(201,242,77,0) 0%,rgba(201,242,77,.16) 62%,rgba(201,242,77,.42) 94%,rgba(201,242,77,0) 100%)',
+          ].join(','),
+          animation: 'obScanBand 2.6s linear infinite',
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: 2,
+            background: '#C9F24D',
+            boxShadow: '0 0 16px 3px rgba(201,242,77,.5)',
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export function Onboarding({
   state,
   brief,
@@ -421,6 +605,11 @@ export function Onboarding({
   const [step, setStep] = useState<Step>('lang');
   const [dragging, setDragging] = useState(false);
 
+  /* Milliseconds the reading step has been on screen, and the count it is
+     currently willing to show — see SCAN_FLOOR_MS. */
+  const [elapsed, setElapsed] = useState(0);
+  const shownCount = useRef(0);
+
   /* The roster is copied out of the analyzer the moment it arrives, because
      answering the question moves the analyzer on and takes the question's own
      data with it — the photos step still needs to know who is in this chat. */
@@ -434,6 +623,7 @@ export function Onboarding({
   const [faces, setFaces] = useState<Record<string, string>>({});
 
   const fileInput = useRef<HTMLInputElement>(null);
+  const sheet = useRef<HTMLDivElement>(null);
 
   const index = STEPS.indexOf(step);
 
@@ -473,8 +663,29 @@ export function Onboarding({
   useEffect(() => {
     if (state.phase === 'working' && step === 'upload') setStep('scan');
     if (state.phase === 'error' && (step === 'scan' || step === 'upload')) setStep('upload');
-    if (state.phase === 'roster' && step === 'scan') setStep('people');
   }, [state.phase, step]);
+
+  /* Leaving the reading step is the one move that waits — for the floor under
+     it as well as for the worker. Kept apart from the flow above so that a
+     file that cannot be read still bounces straight back to the drop zone
+     instead of sitting under four seconds of pretend scanning first. */
+  useEffect(() => {
+    if (state.phase === 'roster' && step === 'scan' && elapsed >= SCAN_FLOOR_MS) setStep('people');
+  }, [state.phase, step, elapsed]);
+
+  /* Ticked by an interval rather than a frame loop: a hidden tab stops
+     painting frames altogether, which would strand the reader behind a floor
+     that had quietly stopped counting. Intervals keep firing, and the elapsed
+     time is measured rather than accumulated, so one tick after coming back is
+     enough to settle it. */
+  useEffect(() => {
+    if (step !== 'scan') return;
+    const start = performance.now();
+    shownCount.current = 0;
+    setElapsed(0);
+    const id = setInterval(() => setElapsed(performance.now() - start), 33);
+    return () => clearInterval(id);
+  }, [step]);
 
   useEffect(() => {
     if (state.phase !== 'roster') return;
@@ -483,10 +694,19 @@ export function Onboarding({
   }, [state]);
 
   // Every panel is a new screenful of copy; leaving the scroll where the last
-  // one ended puts the reader halfway down the next question.
+  // one ended puts the reader halfway down the next question. The sheet is the
+  // scroller, not the window, so it is the one that has to be sent back to the
+  // top.
   useEffect(() => {
-    window.scrollTo({ top: 0 });
+    sheet.current?.scrollTo({ top: 0 });
   }, [step]);
+
+  // The page behind the sheet is still a scroller, and a fixed panel over a
+  // scrollable page is how you end up with two bars down the right-hand side.
+  useEffect(() => {
+    document.body.classList.add('yap-locked');
+    return () => document.body.classList.remove('yap-locked');
+  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -618,23 +838,47 @@ export function Onboarding({
                 ? `${people.length} people · ${Object.keys(faces).length} with a face`
                 : '';
 
-  const counted = state.phase === 'working' ? state.messages : (stats?.totalMessages ?? 0);
-  const fraction = state.phase === 'working' ? state.fraction : 1;
+  const counted =
+    state.phase === 'working' || state.phase === 'roster'
+      ? state.messages
+      : (stats?.totalMessages ?? 0);
 
-  const scanLines: { text: string; value: string }[] = [
-    { text: 'Opening your export', value: 'read locally' },
-    { text: 'Reading your messages', value: formatNumber(counted, 'en') },
-    { text: 'Sorting out who said what', value: `${rows.length || '—'} people` },
-    { text: 'Counting every single emoji', value: '' },
-    { text: 'Looking for the moments you forgot', value: '' },
-    { text: 'Writing your story', value: '' },
-  ];
-  const scanAt = scanLines.findIndex(
-    (line) => line.text === (state.phase === 'working' ? state.stage : ''),
+  /* How far the worker actually is through the stretch this step covers, and
+     how much of that the floor is prepared to have shown yet. */
+  const scanWork = state.phase === 'working' ? Math.min(1, state.fraction / ROSTER_AT) : 1;
+  const scanShown = Math.min(scanWork, elapsed / (SCAN_FLOOR_MS - SCAN_SETTLE_MS), 1);
+
+  /* The count, held to the same pace — and only ever allowed upward. The real
+     figure arrives in two jumps of very different sizes (running totals while
+     parsing, then the true total with the roster), and scaling the second one
+     back down to where the floor has got to would take thousands of messages
+     off a number the reader has already watched climb. */
+  /* Held down to the real count as well as up to itself: the step is set to
+     `scan` one render before the effect that clears the last file's total, and
+     that render would otherwise show the old number under a bar back at zero. */
+  shownCount.current = Math.min(
+    counted,
+    Math.max(shownCount.current, scanWork > 0 ? Math.round(counted * (scanShown / scanWork)) : 0),
   );
+  const scanCount = shownCount.current;
+
+  /* `at` is where each line sits on this step's own 0→1. The last three
+     happen after the naming step; they are on the list so the reader can see
+     what is still to come, and they stay unticked here because they have not
+     happened yet. */
+  const scanLines: { text: string; value: string; at: number }[] = [
+    { text: 'Opening your export', value: 'read locally', at: 0 },
+    { text: 'Reading your messages', value: formatNumber(scanCount, 'en'), at: 0.05 },
+    { text: 'Sorting out who said what', value: `${rows.length || '—'} people`, at: 0.55 },
+    { text: 'Counting every single emoji', value: '', at: Infinity },
+    { text: 'Looking for the moments you forgot', value: '', at: Infinity },
+    { text: 'Writing your story', value: '', at: Infinity },
+  ];
+  const scanAt = scanLines.reduce((last, line, k) => (scanShown >= line.at ? k : last), 0);
 
   return (
     <div
+      ref={sheet}
       style={{
         position: 'fixed',
         inset: 0,
@@ -890,7 +1134,7 @@ export function Onboarding({
                   dir="auto"
                   value={brief.notes}
                   onChange={(e) => onBrief({ notes: e.target.value.slice(0, NOTES_LIMIT) })}
-                  placeholder="e.g. תמיר never replies because he works nights. Do not mention the trip to Eilat."
+                  placeholder="e.g. Dave never replies because he works nights. Do not mention the camping trip."
                   aria-label="Anything Reg should know"
                   style={{
                     width: '100%',
@@ -1104,12 +1348,12 @@ export function Onboarding({
                   fontVariantNumeric: 'tabular-nums',
                 }}
               >
-                {formatNumber(counted, 'en')}
+                {formatNumber(scanCount, 'en')}
               </div>
               <div
                 style={{ fontFamily: 'var(--yap-serif)', fontSize: 30, lineHeight: 1.1, marginTop: 2 }}
               >
-                {fraction >= 1 ? 'messages. All of them.' : 'messages and counting…'}
+                {scanShown >= 1 ? 'messages. All of them.' : 'messages and counting…'}
               </div>
 
               <div
@@ -1121,15 +1365,20 @@ export function Onboarding({
                   overflow: 'hidden',
                 }}
               >
+                {/* The width is already moved thirty times a second, so it is
+                    eased over one tick and no further — a 0.45s transition on
+                    top of that is a bar permanently a beat behind itself. */}
                 <div
                   style={{
                     height: '100%',
                     background: '#1D3A2A',
-                    width: `${Math.round(fraction * 100)}%`,
-                    transition: 'width .45s ease',
+                    width: `${Math.round(scanShown * 100)}%`,
+                    transition: 'width .1s linear',
                   }}
                 />
               </div>
+
+              <ScanFilm />
 
               <div
                 style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 20 }}
