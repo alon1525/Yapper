@@ -36,7 +36,13 @@ export interface GenerateOptions<T extends z.ZodType> {
 
 export type GenerateResult<T> =
   | { ok: true; value: T; repaired: boolean }
-  | { ok: false; status: number; error: string };
+  /**
+   * `error` is what the reader sees and is deliberately vague. `detail` is the
+   * provider's own words — an unknown model id, a billing refusal, a reply that
+   * was cut off — and is never shown unless the operator asks for it. See
+   * `failureBody`.
+   */
+  | { ok: false; status: number; error: string; detail?: string };
 
 const REFUSED = {
   ok: false as const,
@@ -95,7 +101,14 @@ export async function generateStructured<T extends z.ZodType>(
   if (parsedSecond.ok) return { ok: true, value: parsedSecond.value, repaired: true };
 
   console.error(`[${stage}] repair also failed validation`, parsedSecond.detail);
-  return FAILED;
+  // Both turns, not just the second. The two failures usually differ, and the
+  // difference is the diagnosis: a first turn that was cut off followed by a
+  // repair with a bad enum is a token ceiling, not a schema problem, and
+  // reporting only the repair would name the wrong cause.
+  return {
+    ...FAILED,
+    detail: `first: ${parsedFirst.detail} | repair: ${parsedSecond.detail}`,
+  };
 }
 
 function failure(result: { ok: false; kind: string; detail?: string }, stage: string) {
@@ -106,7 +119,34 @@ function failure(result: { ok: false; kind: string; detail?: string }, stage: st
   // "unknown model" or "unsupported response_format", and it is the only thing
   // that tells the operator which of the two it was.
   console.error(`[${stage}] generation failed`, result.detail);
-  return FAILED;
+  return { ...FAILED, detail: result.detail };
+}
+
+/**
+ * The body a route sends when generation failed.
+ *
+ * The reader's message never changes. What changes is whether the provider's
+ * explanation rides along, and that is off unless `WRAPPED_DEBUG_ERRORS=1` is
+ * set on the deployment — because the detail can quote a model id, a billing
+ * state, or a fragment of the reply, and none of that belongs in a response
+ * anyone can reach.
+ *
+ * It exists because the alternative is reading a serverless log to find out
+ * that an environment variable is wrong, and on a preview deployment that is
+ * several minutes of authentication to recover one line of text.
+ *
+ * Read per call, not at module load: a constant would freeze whatever the
+ * environment held when the module graph was built, which is exactly wrong for
+ * a switch an operator flips on a deployment that is already misbehaving.
+ */
+export function failureBody(result: { error: string; detail?: string }): {
+  error: string;
+  detail?: string;
+} {
+  if (process.env.WRAPPED_DEBUG_ERRORS !== '1' || !result.detail) {
+    return { error: result.error };
+  }
+  return { error: result.error, detail: result.detail.slice(0, 600) };
 }
 
 function parse<T extends z.ZodType>(

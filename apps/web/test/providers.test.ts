@@ -1,7 +1,7 @@
 import { createServer, type Server } from 'node:http';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { WrittenDeckSchema } from '@wrapped/core';
-import { generateStructured } from '../lib/generate';
+import { failureBody, generateStructured } from '../lib/generate';
 import { activeProvider, modelConfigured, modelFor, modelMissingMessage } from '../lib/providers';
 
 /**
@@ -23,7 +23,7 @@ const PORT = 4611;
 const BASE = `http://127.0.0.1:${PORT}/v1`;
 
 /** What the stub should do next, set per test. */
-let mode: 'ok' | 'refusal' | 'ratelimit' | 'http-error' | 'repair' = 'ok';
+let mode: 'ok' | 'refusal' | 'ratelimit' | 'http-error' | 'repair' | 'always-invalid' = 'ok';
 let requests: { url: string; auth?: string; body: Record<string, any> }[] = [];
 
 const DECK = { slides: [], dictionary: [] };
@@ -59,7 +59,10 @@ beforeAll(async () => {
       }
       // The repair case is invalid once, then correct — so a passing test proves
       // the second turn happened rather than that the first one got lucky.
-      const payload = mode === 'repair' && requests.length === 1 ? INVALID_DECK : DECK;
+      const payload =
+        mode === 'always-invalid' || (mode === 'repair' && requests.length === 1)
+          ? INVALID_DECK
+          : DECK;
       res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(payload) } }] }));
     });
   });
@@ -75,6 +78,7 @@ beforeEach(() => {
   process.env.WRAPPED_PROVIDER = 'openai';
   process.env.WRAPPED_OPENAI_BASE_URL = BASE;
   delete process.env.ANTHROPIC_API_KEY;
+  delete process.env.WRAPPED_DEBUG_ERRORS;
   for (const v of ['WRAPPED_AI_MODEL', 'WRAPPED_DETECTIVE_MODEL', 'WRAPPED_WRITER_MODEL', 'WRAPPED_PREMIUM_MODEL']) {
     delete process.env[v];
   }
@@ -220,6 +224,68 @@ describe('failures keep their meaning', () => {
     if (result.ok) return;
     expect(result.status).toBe(502);
     expect(result.error).toBe('Could not build your report.');
+  });
+});
+
+describe('the operator switch', () => {
+  /**
+   * Four different faults produce the same 502 and the same sentence: an
+   * unknown model id, a refused key, a reply that was cut off, and a reply that
+   * failed validation twice. Telling them apart meant reading a serverless log.
+   * This is the switch that puts the provider's own words in the response
+   * instead — off by default, because they are nobody else's business.
+   */
+
+  it('carries the vendor error when the operator asked for it', async () => {
+    process.env.WRAPPED_DEBUG_ERRORS = '1';
+    mode = 'http-error';
+    const result = await generate();
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+
+    const body = failureBody(result);
+    expect(body.error).toBe('Could not build your report.');
+    expect(body.detail).toContain('The model does not exist');
+  });
+
+  it('reports both turns, because the difference between them is the diagnosis', async () => {
+    process.env.WRAPPED_DEBUG_ERRORS = '1';
+    // Invalid every time, so both turns fail validation — the case that used to
+    // reach the browser as a bare "Could not build your report."
+    mode = 'always-invalid';
+    const result = await generate();
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+
+    // A first turn that was cut off and a repair that came back with a bad enum
+    // are a token ceiling; two bad enums are a schema problem. Reporting only
+    // the second turn cannot tell those apart.
+    const body = failureBody(result);
+    expect(body.detail).toContain('first:');
+    expect(body.detail).toContain('repair:');
+    expect(body.detail).toContain('slides.0.type');
+  });
+
+  it('stays silent by default', async () => {
+    mode = 'http-error';
+    const result = await generate();
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+
+    // The detail exists on the result — the log needs it — and does not reach
+    // the body. A reader on a normal deployment sees exactly what they saw
+    // before this switch existed.
+    expect(result.detail).toBeDefined();
+    expect(failureBody(result)).toEqual({ error: 'Could not build your report.' });
+  });
+
+  it('bounds what it will echo', () => {
+    process.env.WRAPPED_DEBUG_ERRORS = '1';
+    const body = failureBody({ error: 'Could not build your report.', detail: 'x'.repeat(5000) });
+    expect(body.detail).toHaveLength(600);
   });
 });
 

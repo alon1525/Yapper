@@ -3,7 +3,7 @@ import { WrittenDeckSchema } from '@wrapped/core';
 import { z } from 'zod';
 import { REPORT_LANGUAGE_CODES } from '@/lib/languages';
 import { loadFixture } from '@/lib/fixture';
-import { generateStructured } from '@/lib/generate';
+import { failureBody, generateStructured } from '@/lib/generate';
 import { modelConfigured, modelFor, modelMissingMessage } from '@/lib/providers';
 import { gatePaidRequest } from '@/lib/paidRoute';
 import { WRITER_SYSTEM, writerPrompt } from '@/lib/writerPrompt';
@@ -182,7 +182,7 @@ export async function POST(request: Request) {
   });
 
   if (!result.ok) {
-    return NextResponse.json({ error: result.error }, { status: result.status });
+    return NextResponse.json(failureBody(result), { status: result.status });
   }
 
   return NextResponse.json(result.value, { headers: { 'Cache-Control': 'no-store' } });

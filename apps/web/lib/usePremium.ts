@@ -30,8 +30,14 @@ async function post(url: string, body: unknown): Promise<{ data: unknown; demo: 
     body: JSON.stringify(body),
   });
   if (!response.ok) {
-    const parsed = (await response.json().catch(() => ({}))) as { error?: string };
-    throw new Error(parsed.error ?? 'Something went wrong.');
+    const parsed = (await response.json().catch(() => ({}))) as {
+      error?: string;
+      detail?: string;
+    };
+    // Only ever set when the deployment runs with WRAPPED_DEBUG_ERRORS — see the
+    // identical handling in useReport, which this must not drift from.
+    const message = parsed.error ?? 'Something went wrong.';
+    throw new Error(parsed.detail ? `${message} (${parsed.detail})` : message);
   }
   // Set by the server when no key is configured and the report was built
   // deterministically. The deck labels it rather than passing it off as written.

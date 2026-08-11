@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { REPORT_LANGUAGE_CODES } from '@/lib/languages';
 import { PreviewSchema, SYSTEM, userPrompt } from '@/lib/aiPrompt';
 import { loadFixture } from '@/lib/fixture';
-import { generateStructured } from '@/lib/generate';
+import { failureBody, generateStructured } from '@/lib/generate';
 import { modelConfigured, modelFor, modelMissingMessage } from '@/lib/providers';
 import { crossSite, excerptChars, forbiddenCrossSite, payloadTooLarge } from '@/lib/guard';
 import { checkRate, tooManyRequests } from '@/lib/rateLimit';
@@ -152,7 +152,7 @@ export async function POST(request: Request) {
   });
 
   if (!result.ok) {
-    return NextResponse.json({ error: result.error }, { status: result.status });
+    return NextResponse.json(failureBody(result), { status: result.status });
   }
 
   // No store, no log, no database. The response goes straight back to the

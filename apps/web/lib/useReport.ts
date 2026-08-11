@@ -81,8 +81,16 @@ async function post(url: string, body: unknown): Promise<unknown> {
     body: JSON.stringify(body),
   });
   if (!response.ok) {
-    const parsed = (await response.json().catch(() => ({}))) as { error?: string };
-    throw new Error(parsed.error ?? 'Something went wrong.');
+    const parsed = (await response.json().catch(() => ({}))) as {
+      error?: string;
+      detail?: string;
+    };
+    // `detail` is present only on a deployment running with WRAPPED_DEBUG_ERRORS
+    // set. Carrying it into the thrown message is the whole point of that
+    // switch: the operator reads why in the browser rather than in a log they
+    // have to authenticate against.
+    const message = parsed.error ?? 'Something went wrong.';
+    throw new Error(parsed.detail ? `${message} (${parsed.detail})` : message);
   }
   return response.json();
 }

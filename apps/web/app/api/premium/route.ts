@@ -4,7 +4,7 @@ import { REPORT_LANGUAGE_CODES } from '@/lib/languages';
 import { demoReport } from '@/lib/demoReport';
 import { chatFingerprint, signingSecret, verify } from '@/lib/entitlement';
 import { loadFixture } from '@/lib/fixture';
-import { generateStructured } from '@/lib/generate';
+import { failureBody, generateStructured } from '@/lib/generate';
 import { modelConfigured, modelFor, modelMissingMessage } from '@/lib/providers';
 import { crossSite, excerptChars, forbiddenCrossSite, payloadTooLarge } from '@/lib/guard';
 import { PREMIUM_SYSTEM, PremiumSchema, premiumPrompt } from '@/lib/premiumPrompt';
@@ -253,7 +253,7 @@ export async function POST(request: Request) {
   });
 
   if (!report.ok) {
-    return NextResponse.json({ error: report.error }, { status: report.status });
+    return NextResponse.json(failureBody(report), { status: report.status });
   }
 
   return NextResponse.json(report.value, { headers: { 'Cache-Control': 'no-store' } });
