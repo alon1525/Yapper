@@ -1,5 +1,5 @@
 import type { ChatLanguage } from '../lang/language';
-import { minWordLength, stopwordsFor } from '../lang/language';
+import { minWordLength, stopwordsFor, wordSegmenterFor } from '../lang/language';
 import { dayKey } from '../stats/stats';
 import { countLaughter, extractWords, increment, topEntries } from '../stats/text';
 import type { Message, ParseResult } from '../types';
@@ -113,6 +113,18 @@ const CONFLICT_MARKERS: Record<ChatLanguage, readonly RegExp[]> = {
     /(?:אתה|את) (?:תמיד|אף פעם)|הבטחת|אמרת ש/u,
     /ברצינות|נו באמת/u,
   ],
+  /*
+    Japanese disagrees quietly, and the quiet forms are the reliable ones. は？
+    on its own is an argument starting; そうかな is a contradiction being
+    softened. The politeness levels are listed rather than generalised because
+    違う and 違います are not the same message even though they are the same word.
+  */
+  ja: [
+    /違う|違います|そうじゃない|間違って/u,
+    /(?:いつも|絶対)(?:.{0,6})(?:ない|しない)|約束した(?:のに|よね)/u,
+    /ありえない|意味不明|は？|なんで(?:だよ|ですか)/u,
+    /別に|勝手に(?:しろ|して)|もういい/u,
+  ],
   other: [],
 };
 
@@ -193,6 +205,7 @@ export function segmentConversations(
 
   const stopwords = stopwordsFor(language);
   const floor = minWordLength(language);
+  const segmenter = wordSegmenterFor(language);
 
   /* --- the chat's own idea of a pause ------------------------------- */
   const gaps: number[] = [];
@@ -216,7 +229,7 @@ export function segmentConversations(
 
   /* --- pass 2: cut long stretches again where the subject turned over */
   const words: string[][] = msgs.map((m) =>
-    m.kind === 'text' ? extractWords(m.body, stopwords, floor) : [],
+    m.kind === 'text' ? extractWords(m.body, stopwords, floor, segmenter) : [],
   );
 
   const LOOKAROUND = 8;

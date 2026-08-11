@@ -11,10 +11,21 @@ import type { Message } from '../types';
  * you nothing about the other.
  */
 
-export type ChatLanguage = 'en' | 'he' | 'other';
+export type ChatLanguage = 'en' | 'he' | 'ja' | 'other';
 
 const HEBREW_RANGE = new RegExp('[\\u0590-\\u05FF]');
 const LATIN_RANGE = /[A-Za-z]/;
+/**
+ * Hiragana, katakana and the CJK ideographs.
+ *
+ * A Chinese chat lands here too, and is called `ja`. That is a deliberate
+ * approximation rather than a mistake we have not noticed: what this flag
+ * actually selects is "a language that does not put spaces between its words",
+ * and everything that depends on it — the segmenter, the length floor — is
+ * right for both. The stopword list is the one thing that is not, and a wrong
+ * stopword list only leaves a few extra function words in a ranking.
+ */
+const CJK_RANGE = new RegExp('[\\u3040-\\u30FF\\u3400-\\u4DBF\\u4E00-\\u9FFF\\uF900-\\uFAFF]');
 
 /** True when the deck should be laid out right-to-left. */
 export function isRtl(language: ChatLanguage): boolean {
@@ -29,6 +40,7 @@ export function isRtl(language: ChatLanguage): boolean {
 export function detectLanguage(messages: readonly Message[], sampleSize = 3000): ChatLanguage {
   let hebrew = 0;
   let latin = 0;
+  let cjk = 0;
   let seen = 0;
 
   const step = Math.max(1, Math.floor(messages.length / sampleSize));
@@ -38,12 +50,17 @@ export function detectLanguage(messages: readonly Message[], sampleSize = 3000):
     seen++;
     for (const ch of m.body) {
       if (HEBREW_RANGE.test(ch)) hebrew++;
+      else if (CJK_RANGE.test(ch)) cjk++;
       else if (LATIN_RANGE.test(ch)) latin++;
     }
   }
 
-  const total = hebrew + latin;
+  const total = hebrew + latin + cjk;
   if (total < 50) return 'other';
+  // A lower bar than the others on purpose: Japanese is written with Latin
+  // letters mixed in constantly — brand names, URLs, "lol" — and a chat that is
+  // a quarter kana is not an English chat with decoration.
+  if (cjk / total > 0.25) return 'ja';
   if (hebrew / total > 0.35) return 'he';
   if (latin / total > 0.5) return 'en';
   return 'other';
@@ -87,9 +104,32 @@ const HE_STOPWORDS = [
   'איזה','איזו','כמה','למי','ממה','בכל','בגלל','למרות','אפילו','בערך','בדיוק',
 ];
 
+/**
+ * Japanese particles, copulas and the handful of words every chat is made of.
+ *
+ * Longer than it looks because Japanese glues its grammar onto the end of
+ * words: です, ます, した and って are not words anybody means, but they are what
+ * a segmenter hands back most often. Slang and laughter are left in for the
+ * same reason they are left in Hebrew — 草 and めっちゃ are exactly the words
+ * whose frequency is the joke.
+ */
+const JA_STOPWORDS = [
+  'の','に','は','を','た','が','で','て','と','し','れ','さ','ある','いる','も','する',
+  'から','な','こと','として','い','や','れる','など','なっ','ない','この','ため','その',
+  'あっ','よう','また','もの','という','あり','まで','られ','なる','へ','か','だ','これ',
+  'によって','により','おり','より','による','ず','なり','られる','において','ば','なかっ',
+  'なく','しかし','について','せ','だっ','その後','できる','それ','う','ので','なお','のみ',
+  'でき','き','つ','における','および','いう','さらに','でも','ら','たり','その他','に関する',
+  'たち','ます','ん','なら','に対して','特に','せる','及び','これら','とき','では','にて',
+  'ほか','ながら','うち','そして','とともに','ただし','かつて','それぞれ','または','に対する',
+  'です','ました','ください','そう','どう','なに','なん','じゃ','けど','って','ね','よ','わ',
+  'あの','その','どの','ここ','そこ','あそこ','いい','やっぱり','ちょっと','みたい','思う',
+];
+
 const STOPWORDS: Record<ChatLanguage, Set<string>> = {
   en: new Set(EN_STOPWORDS),
   he: new Set(HE_STOPWORDS),
+  ja: new Set(JA_STOPWORDS),
   // For an unrecognised language, filtering with the wrong list is worse than
   // not filtering: it silently deletes real content words.
   other: new Set(),
@@ -102,8 +142,29 @@ export function stopwordsFor(language: ChatLanguage): ReadonlySet<string> {
 /**
  * Minimum token length worth counting. Hebrew packs meaning into shorter
  * tokens than English does — a three-character floor would throw away most of
- * the interesting words.
+ * the interesting words — and Japanese packs it shorter still: 猫, 家, 米 are
+ * whole words, and the particles that are also one character are filtered by
+ * the stopword list instead.
  */
 export function minWordLength(language: ChatLanguage): number {
+  if (language === 'ja') return 1;
   return language === 'he' ? 2 : 3;
+}
+
+/**
+ * A word segmenter for languages that do not separate words with spaces.
+ *
+ * Japanese writes 今日は寿司を食べた as one unbroken run, so the whitespace
+ * tokeniser that serves every other language hands back the entire sentence as
+ * a single "word" — and the vocabulary slides then show one clause with a count
+ * of one, over and over. ICU knows where the boundaries are and ships with the
+ * runtime, so this costs nothing to use and needs no dictionary of our own.
+ *
+ * Null for every other language: for those the existing regex is both correct
+ * and considerably faster, and this runs over every message in the export.
+ */
+export function wordSegmenterFor(language: ChatLanguage): Intl.Segmenter | null {
+  if (language !== 'ja') return null;
+  if (typeof Intl === 'undefined' || !('Segmenter' in Intl)) return null;
+  return new Intl.Segmenter('ja', { granularity: 'word' });
 }

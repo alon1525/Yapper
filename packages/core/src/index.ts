@@ -16,6 +16,7 @@ export {
   detectLanguage,
   isRtl,
   minWordLength,
+  wordSegmenterFor,
   stopwordsFor,
   type ChatLanguage,
 } from './lang/language';

@@ -146,6 +146,38 @@ const COMMITMENTS: Record<ChatLanguage, Record<CommitmentKind, readonly RegExp[]
       he('מבטיח|מבטיחה'),
     ],
   },
+  /*
+    Japanese needs no boundary trick and no prefix class: it glues grammar onto
+    the *end* of a word rather than the front, so 向かって, 向かってる and
+    向かいます are three surface forms of one verb and are listed as such. Plain
+    substring matches, like the Hebrew set, and for the same reason — a pattern
+    tight enough to be elegant matches one of the five ways people write it.
+  */
+  ja: {
+    arriving: [
+      /\d{1,2}\s*分(?:後|くらい|ほど)?/,
+      /向かって(?:る|います|ます)?/,
+      /もうすぐ(?:着く|つく|行く)?/,
+      /今(?:から)?(?:出る|出ます|出た|行く)/,
+      /すぐ(?:行く|着く|向かう)/,
+      /着きます|もう着く|そろそろ出る/,
+    ],
+    deferral: [
+      /明日|あした/,
+      /来週|来月|再来週/,
+      /今度|そのうち|いつか/,
+      /あとで|後で/,
+      /落ち着いたら|終わったら/,
+    ],
+    undertaking: [
+      /(?:やっ|し)(?:とく|ときます|ておく|ておきます)/,
+      /予約(?:する|しとく|しておく|します)/,
+      /任せて|まかせて/,
+      /(?:僕|俺|私|わたし)が(?:やる|やります|行く)/,
+      /約束(?:する|します)?/,
+      /送(?:る|ります|っとく)/,
+    ],
+  },
   other: { arriving: [], deferral: [], undertaking: [] },
 };
 
@@ -163,6 +195,16 @@ const QUESTIONS: Record<ChatLanguage, Record<QuestionKind, readonly RegExp[]>> =
     who: [/מי (?:בא|באה|מגיע|מגיעה|בפנים|איתנו|עוד)/u],
     what_plan: [/מה (?:ה)?תוכנית/u, /מה עושים/u, /מה קורה עם/u, /מה הסיפור/u],
     confirm: [/(?:זה|אנחנו) עדיין/u, /זה קורה/u, /נשאר בתוקף/u],
+  },
+  ja: {
+    // A Japanese question does not need a question mark — か at the end does
+    // the same job — so the interrogative word alone has to be enough, and the
+    // words below are ones that are almost never anything else.
+    when: [/いつ/, /何時|なんじ/, /日程/],
+    where: [/どこ(?:で|に)?/, /場所は/],
+    who: [/誰(?:が|か)(?:来る|行く|くる|いく)/, /他に誰/],
+    what_plan: [/どうする|どうしよう/, /何(?:する|やる)/, /予定(?:は|ある)/],
+    confirm: [/(?:まだ|やっぱり)(?:やる|ある|行く)/, /予定通り/, /本当に(?:やる|行く)/],
   },
   other: { when: [], where: [], who: [], what_plan: [], confirm: [] },
 };
@@ -370,6 +412,11 @@ const PLAN_WORDS: Record<ChatLanguage, Record<PlanCategory, RegExp>> = {
     travel: he('טיול|טיולים|חופשה|נופש|סופש|טיסה|טיסות|מלון|צימר|הזמנה', 'g'),
     gathering: he('ארוחה|מנגל|מסיבה|מפגש|פיקניק', 'g'),
     logistics: he('אקסל|סקר|טבלה', 'g'),
+  },
+  ja: {
+    travel: /旅行|温泉|ホテル|航空券|飛行機|民泊|合宿|遠征/g,
+    gathering: /飲み会|食事会|パーティー|バーベキュー|BBQ|同窓会|集まり|ランチ会/g,
+    logistics: /日程調整|スプレッドシート|アンケート|幹事/g,
   },
   other: {
     travel: /(?!)/g,

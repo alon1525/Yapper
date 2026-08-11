@@ -854,3 +854,297 @@ body.yap-locked {
   background: var(--color-tick);
   color: var(--color-ink);
 }
+
+/*
+  ── The legal pages ─────────────────────────────────────────────────────────
+
+  Same parchment as the landing, but set as a document rather than a feature:
+  one measure-limited column, no illustration, no motion. These are pages
+  somebody reads under duress — before paying, or after something went wrong —
+  so the only design goal is that a wall of text stays navigable.
+
+  Deliberately a stylesheet rather than the landing's inline-style approach.
+  The landing is one authored 1280×900 frame and its values belong with it;
+  this is prose, where every `<p>` wants the same treatment and repeating it at
+  each element is how two paragraphs end up 0.5px apart.
+*/
+.yap-legal {
+  background: var(--color-parchment);
+  color: #2C2519;
+  font-family: var(--yap-sans);
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.yap-legal a {
+  color: var(--color-ember);
+  text-underline-offset: 3px;
+}
+
+.yap-legal-bar {
+  border-bottom: 1px solid var(--color-rule);
+  background: var(--color-parchment-2);
+}
+
+.yap-legal-bar-inner,
+.yap-legal-body,
+.yap-legal-foot-inner {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.yap-legal-bar-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-block: 16px;
+  font-size: 13px;
+  color: var(--color-stone);
+}
+
+.yap-legal-bar-inner img {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  display: block;
+}
+
+.yap-legal-body {
+  padding-block: 56px 72px;
+  flex: 1;
+}
+
+.yap-legal-eyebrow {
+  font-family: var(--yap-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-stone-2);
+}
+
+.yap-legal h1 {
+  font-family: var(--yap-serif);
+  font-weight: 400;
+  font-size: clamp(34px, 6vw, 52px);
+  line-height: 1.02;
+  margin: 12px 0 0;
+}
+
+/* The one-paragraph plain-English summary each page opens with. Set apart
+   because for most readers it is the whole document. */
+.yap-legal-standfirst {
+  font-size: 17px;
+  line-height: 1.55;
+  color: #43392A;
+  margin: 18px 0 0;
+}
+
+.yap-legal-dates {
+  font-family: var(--yap-mono);
+  font-size: 12px;
+  color: var(--color-stone-2);
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--color-rule);
+}
+
+.yap-legal h2 {
+  font-family: var(--yap-serif);
+  font-weight: 400;
+  font-size: 27px;
+  line-height: 1.15;
+  margin: 46px 0 0;
+  scroll-margin-top: 24px;
+}
+
+.yap-legal h3 {
+  font-family: var(--yap-sans);
+  font-weight: 600;
+  font-size: 16px;
+  margin: 28px 0 0;
+}
+
+.yap-legal p,
+.yap-legal li {
+  font-size: 15.5px;
+  line-height: 1.62;
+}
+
+.yap-legal p {
+  margin: 14px 0 0;
+}
+
+.yap-legal ul,
+.yap-legal ol {
+  margin: 14px 0 0;
+  padding-inline-start: 22px;
+}
+
+.yap-legal li {
+  margin-top: 8px;
+}
+
+.yap-legal ul {
+  list-style: disc;
+}
+
+.yap-legal ol {
+  list-style: decimal;
+}
+
+.yap-legal strong {
+  font-weight: 600;
+  color: #1D1810;
+}
+
+/* Contents list at the top of the longer pages. */
+.yap-legal-toc {
+  margin: 32px 0 0;
+  padding: 18px 22px;
+  background: var(--color-card);
+  border: 1px solid var(--color-rule);
+  border-radius: 16px;
+}
+
+.yap-legal-toc ol {
+  margin: 0;
+  columns: 2;
+  column-gap: 26px;
+}
+
+.yap-legal-toc li {
+  break-inside: avoid;
+  margin-top: 4px;
+  font-size: 14px;
+}
+
+/* Pulled-out statements of fact — the promises worth not burying in a
+   paragraph, and the warnings worth the same. */
+.yap-legal-note {
+  margin: 22px 0 0;
+  padding: 18px 22px;
+  border-radius: 16px;
+  background: var(--color-forest);
+  color: var(--color-parchment);
+}
+
+.yap-legal-note p {
+  margin: 0;
+}
+
+.yap-legal-note p + p {
+  margin-top: 10px;
+}
+
+.yap-legal-note strong {
+  color: inherit;
+}
+
+.yap-legal-note a {
+  color: var(--color-amber);
+}
+
+.yap-legal-note--warn {
+  background: #FBF0DC;
+  color: #4A3A1B;
+  border: 1px solid #EBD9AE;
+}
+
+.yap-legal-note--warn strong {
+  color: #3A2C11;
+}
+
+.yap-legal-note--warn a {
+  color: var(--color-ember);
+}
+
+/* Data-flow and retention tables. Scrolls inside itself rather than pushing
+   the page sideways on a phone. */
+.yap-legal-table-wrap {
+  margin: 20px 0 0;
+  overflow-x: auto;
+  border: 1px solid var(--color-rule);
+  border-radius: 16px;
+  background: var(--color-card);
+}
+
+.yap-legal table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 520px;
+  font-size: 14px;
+}
+
+.yap-legal th,
+.yap-legal td {
+  text-align: start;
+  vertical-align: top;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-rule);
+  line-height: 1.5;
+}
+
+.yap-legal tr:last-child th,
+.yap-legal tr:last-child td {
+  border-bottom: 0;
+}
+
+.yap-legal thead th {
+  font-family: var(--yap-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-stone-2);
+  font-weight: 400;
+}
+
+.yap-legal tbody th {
+  font-weight: 600;
+  color: #1D1810;
+}
+
+/* Every unresolved detail is marked with this, so a reader can see what is
+   still a blank and the operator can find them all with one search. */
+.yap-legal-fill {
+  font-family: var(--yap-mono);
+  font-size: 0.9em;
+  background: #FBE7C7;
+  border-bottom: 1px solid #E6C68B;
+  padding: 1px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.yap-legal-foot {
+  border-top: 1px solid var(--color-rule);
+  background: var(--color-parchment-2);
+}
+
+.yap-legal-foot-inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 20px;
+  align-items: center;
+  justify-content: space-between;
+  padding-block: 22px;
+  font-size: 13px;
+  color: var(--color-stone);
+}
+
+.yap-legal-foot nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+}
+
+@media (max-width: 620px) {
+  .yap-legal-body {
+    padding-block: 38px 56px;
+  }
+
+  .yap-legal-toc ol {
+    columns: 1;
+  }
+}

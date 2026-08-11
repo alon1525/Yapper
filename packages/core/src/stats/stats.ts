@@ -3,6 +3,7 @@ import {
   detectLanguage,
   minWordLength,
   stopwordsFor,
+  wordSegmenterFor,
   type ChatLanguage,
 } from '../lang/language';
 import {
@@ -156,6 +157,10 @@ export function computeStats(parsed: ParseResult, options: StatsOptions = {}): C
   const language = options.language ?? detectLanguage(parsed.messages);
   const stopwords = stopwordsFor(language);
   const minWord = minWordLength(language);
+  /* Built once for the whole export rather than per message: a chat with no
+     spaces in it needs ICU to find its word boundaries, and constructing a
+     segmenter 173,000 times is most of the cost of doing so. */
+  const segmenter = wordSegmenterFor(language);
 
   // System messages are excluded from every per-person statistic. They belong
   // to nobody, and attributing them silently inflates whoever spoke last.
@@ -237,11 +242,11 @@ export function computeStats(parsed: ParseResult, options: StatsOptions = {}): C
       acc.characters += chars;
       totalCharacters += chars;
 
-      const wordTotal = countWords(m.body);
+      const wordTotal = countWords(m.body, segmenter);
       acc.words += wordTotal;
       totalWords += wordTotal;
 
-      for (const w of extractWords(m.body, stopwords, minWord)) {
+      for (const w of extractWords(m.body, stopwords, minWord, segmenter)) {
         increment(acc.wordCounts, w);
         increment(wordsAll, w);
       }
