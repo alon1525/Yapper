@@ -125,12 +125,18 @@ export type ChatResult =
 /**
  * The schema, as the chat-completions API wants it.
  *
- * `strict: false` on purpose. Strict mode requires every property to be listed
- * in `required` and forbids `additionalProperties`, and these schemas lean on
- * `.default()` throughout — a slide's `scores`, `quotes` and `stats` are all
- * optional-with-a-default, which is exactly the shape strict mode rejects.
- * Loose mode still steers the model hard, and `generateStructured`'s repair
- * turn already exists to catch what steering misses.
+ * `strict: true`, which this spent a while believing was impossible. The reason
+ * given was that these schemas lean on `.default()` and strict mode wants every
+ * property in `required` — but `io: 'output'` is the view *after* parsing, and
+ * a field with a default is always present there, so zod lists it as required
+ * already. Only `.optional()` produces a genuinely absent key, and the one that
+ * existed has been given a default instead.
+ *
+ * The distinction is worth the words, because loose mode is not a weaker
+ * version of this — it is nothing. The schema goes down the wire as a
+ * suggestion, and a writer that answers with a fourteenth slide format gets no
+ * complaint from the host at all; the first thing that notices is zod, one
+ * paid call later. `strictSchemas` in the tests keeps the door shut.
  */
 function jsonSchemaFor(schema: z.ZodType): Record<string, unknown> {
   return z.toJSONSchema(schema, { io: 'output', target: 'draft-2020-12' }) as Record<string, unknown>;
@@ -153,7 +159,7 @@ async function openaiChat(request: ChatRequest): Promise<ChatResult> {
         max_completion_tokens: request.maxTokens,
         response_format: {
           type: 'json_schema',
-          json_schema: { name: 'report', strict: false, schema: jsonSchemaFor(request.schema) },
+          json_schema: { name: 'report', strict: true, schema: jsonSchemaFor(request.schema) },
         },
         messages: [
           { role: 'system', content: request.system },

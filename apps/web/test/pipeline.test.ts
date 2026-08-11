@@ -94,6 +94,7 @@ const finding = (over: Partial<Finding> = {}): Finding => ({
   recognition: 0.9,
   uniqueness: 0.8,
   sensitivity: 'low',
+  suggestedTitle: '',
   ...over,
 });
 

@@ -126,6 +126,7 @@ describe('discovered slides', () => {
     recognition: 0.9,
     uniqueness: 0.9,
     sensitivity: 'low',
+    suggestedTitle: '',
     ...over,
   });
 
@@ -195,6 +196,7 @@ describe('deck shape', () => {
             recognition: 0.9,
             uniqueness: 0.9,
             sensitivity: 'low',
+            suggestedTitle: '',
           },
           strength: 0.9,
         },

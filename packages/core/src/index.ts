@@ -73,6 +73,7 @@ export type {
 } from './patterns/commitments';
 
 export * from './report/schema';
+export { normalizeWrittenDeck } from './report/normalize';
 export { computeScoreAxes } from './report/scores';
 export type { ScoreAxis, ScoreInput } from './report/scores';
 export { planDeck } from './report/plan';

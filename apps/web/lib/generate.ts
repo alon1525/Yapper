@@ -1,4 +1,5 @@
 import type { z } from 'zod';
+import { coerceToSchema } from './coerce';
 import { chat } from './providers';
 
 /**
@@ -32,6 +33,12 @@ export interface GenerateOptions<T extends z.ZodType> {
   maxTokens: number;
   /** Named in logs so a failure says which stage produced it. */
   stage: string;
+  /**
+   * Applied to the parsed reply before validation, for the repairs that need to
+   * know what the thing *is* — see `normalizeWrittenDeck`. Budgets are handled
+   * generically by `coerceToSchema` and need nothing here.
+   */
+  normalize?: (raw: unknown) => unknown;
 }
 
 export type GenerateResult<T> =
@@ -60,7 +67,7 @@ const FAILED = { ok: false as const, status: 502, error: 'Could not build your r
 export async function generateStructured<T extends z.ZodType>(
   options: GenerateOptions<T>,
 ): Promise<GenerateResult<z.infer<T>>> {
-  const { model, system, prompt, schema, maxTokens, stage } = options;
+  const { model, system, prompt, schema, maxTokens, stage, normalize } = options;
 
   const messages: { role: 'user' | 'assistant'; content: string }[] = [
     { role: 'user', content: prompt },
@@ -69,8 +76,11 @@ export async function generateStructured<T extends z.ZodType>(
   const first = await chat({ model, system, messages, schema, maxTokens });
   if (!first.ok) return failure(first, stage);
 
-  const parsedFirst = parse(schema, first.text);
-  if (parsedFirst.ok) return { ok: true, value: parsedFirst.value, repaired: false };
+  const parsedFirst = parse(schema, first.text, normalize);
+  if (parsedFirst.ok) {
+    if (parsedFirst.coerced) console.warn(`[${stage}] reply trimmed to fit the schema's budgets`);
+    return { ok: true, value: parsedFirst.value, repaired: false };
+  }
 
   console.warn(`[${stage}] output failed validation, attempting repair`, parsedFirst.detail);
 
@@ -97,7 +107,7 @@ export async function generateStructured<T extends z.ZodType>(
   });
   if (!second.ok) return failure(second, stage);
 
-  const parsedSecond = parse(schema, second.text);
+  const parsedSecond = parse(schema, second.text, normalize);
   if (parsedSecond.ok) return { ok: true, value: parsedSecond.value, repaired: true };
 
   console.error(`[${stage}] repair also failed validation`, parsedSecond.detail);
@@ -152,7 +162,8 @@ export function failureBody(result: { error: string; detail?: string }): {
 function parse<T extends z.ZodType>(
   schema: T,
   raw: string,
-): { ok: true; value: z.infer<T> } | { ok: false; detail: string } {
+  normalize?: (raw: unknown) => unknown,
+): { ok: true; value: z.infer<T>; coerced: boolean } | { ok: false; detail: string } {
   let json: unknown;
   try {
     json = JSON.parse(raw);
@@ -162,12 +173,17 @@ function parse<T extends z.ZodType>(
     return { ok: false, detail: 'The reply was not valid JSON. It may have been cut off.' };
   }
 
-  const result = schema.safeParse(json);
-  if (result.success) return { ok: true, value: result.data };
+  if (normalize) json = normalize(json);
+
+  // Budgets are applied, not asserted — see `coerceToSchema`. What reaches the
+  // repair turn from here is a reply that is wrong in some way trimming cannot
+  // fix, which is the only kind worth paying a second call to correct.
+  const result = coerceToSchema(schema, json);
+  if (result.ok) return { ok: true, value: result.value, coerced: result.coerced };
 
   return {
     ok: false,
-    detail: result.error.issues
+    detail: result.issues
       .slice(0, 12)
       .map((i) => `- ${i.path.join('.') || '(root)'}: ${i.message}`)
       .join('\n'),

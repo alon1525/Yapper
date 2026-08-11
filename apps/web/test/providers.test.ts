@@ -174,9 +174,10 @@ describe('the OpenAI-compatible request', () => {
     expect(sent.auth).toBe('Bearer sk-test');
     expect(sent.body.model).toBe('some-model-id');
     expect(sent.body.response_format.type).toBe('json_schema');
-    // Loose on purpose: these schemas use `.default()` throughout, which strict
-    // mode rejects outright. See the comment in `providers.ts`.
-    expect(sent.body.response_format.json_schema.strict).toBe(false);
+    // Strict, so the host enforces the schema rather than suggesting it. Loose
+    // mode is not a weaker version of this — nothing is checked at all, and the
+    // first thing to notice is zod, one paid call later.
+    expect(sent.body.response_format.json_schema.strict).toBe(true);
     expect(sent.body.response_format.json_schema.schema.properties.slides).toBeDefined();
   });
 

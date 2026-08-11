@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { WrittenDeckSchema } from '@wrapped/core';
+import { WrittenDeckSchema, normalizeWrittenDeck } from '@wrapped/core';
 import { z } from 'zod';
 import { REPORT_LANGUAGE_CODES } from '@/lib/languages';
 import { loadFixture } from '@/lib/fixture';
@@ -179,6 +179,7 @@ export async function POST(request: Request) {
     schema: WrittenDeckSchema,
     maxTokens: 20000,
     stage: 'write',
+    normalize: normalizeWrittenDeck,
   });
 
   if (!result.ok) {

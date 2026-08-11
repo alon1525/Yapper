@@ -150,8 +150,16 @@ export const FindingSchema = z.object({
   /** How specific to *this* group. A finding true of any chat scores 0. */
   uniqueness: z.number().min(0).max(1).default(0.5),
   sensitivity: Sensitivity.default('low'),
-  /** What the detective thinks this should look like. The planner may override. */
-  suggestedTitle: z.string().max(120).optional(),
+  /**
+   * What the detective thinks this should look like. The planner may override.
+   *
+   * Defaulted rather than optional, and the difference is load-bearing: a
+   * provider asked to *enforce* a schema requires every property to be
+   * required, so one optional field anywhere in a stage's schema turns that
+   * stage's structured output off. Empty says the same thing as absent to the
+   * two places that read it, and costs nothing to carry.
+   */
+  suggestedTitle: z.string().max(120).default(''),
 });
 export type Finding = z.infer<typeof FindingSchema>;
 
