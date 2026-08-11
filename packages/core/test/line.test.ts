@@ -78,6 +78,21 @@ describe('detecting a LINE export', () => {
     expect(looksLikeLineExport(raw)).toBe(false);
   });
 
+  it('lets one WhatsApp header veto the whole guess', () => {
+    // A tab-separated timetable pasted into a WhatsApp group is odd but not
+    // impossible, and it is the one way the shape test could be talked into a
+    // false positive. A single real WhatsApp header ends the argument.
+    const raw = [
+      '12/01/2023, 09:06 - Alon: here is the rota',
+      '2024/01/15',
+      '10:30\tBagel\tshift one',
+      '11:30\tGinger\tshift two',
+      '12:30\tMitzi\tshift three',
+    ].join('\n');
+    expect(looksLikeLineExport(raw)).toBe(false);
+    expect(parseChat(raw).format).not.toBe('line');
+  });
+
   it('routes a LINE file through parseChat without being asked', () => {
     const r = parseChat(LINE_BASIC);
     expect(r.format).toBe('line');
@@ -165,6 +180,35 @@ describe('parsing a LINE export', () => {
     // happened to be in the sender column the chattiest member of the group.
     expect(r.messages.filter((m) => m.kind === 'system').every((m) => m.sender === null)).toBe(true);
     expect(r.participants).toEqual(['Mitzi']);
+  });
+
+  /* The expensive half of the notice rule. Mislabelling a real message does
+     not just put the wrong icon on it — it nulls the sender, and the message
+     leaves that person's count, the leaderboard and every word statistic. */
+  it('leaves ordinary messages alone when they use the words a notice uses', () => {
+    const raw = [
+      '2024/01/15(Mon)',
+      '10:30\tBagel\tI invited Dave to the thing',
+      '10:31\tGinger\tthe train has left the station',
+      '10:32\tBagel\tanyone else joined the group chat for the free pizza',
+      '10:33\tGinger\twe should call time on this',
+    ].join('\n');
+    const r = parseLineExport(raw);
+    expect(r.messages.map((m) => m.kind)).toEqual(['text', 'text', 'text', 'text']);
+    expect(r.messages.map((m) => m.sender)).toEqual(['Bagel', 'Ginger', 'Bagel', 'Ginger']);
+  });
+
+  it('reports progress while it reads, not only when it has finished', () => {
+    const lines = ['[LINE] Chat history with Pizza Tonight?', '', '2024/01/15(Mon)'];
+    for (let i = 0; i < 3000; i++) {
+      lines.push(`10:${String(i % 60).padStart(2, '0')}\tBagel\tmessage ${i}`);
+    }
+    const seen: number[] = [];
+    parseLineExport(lines.join('\n'), { onProgress: (f) => seen.push(f) });
+    // Without a tick from inside the loop the reading step shows a bar at zero
+    // for the whole parse and then a total that arrives from nowhere.
+    expect(seen.some((f) => f > 0 && f < 1)).toBe(true);
+    expect(seen[seen.length - 1]).toBe(1);
   });
 
   it('folds a wrapped message and drops the indentation LINE adds', () => {

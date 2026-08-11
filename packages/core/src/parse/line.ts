@@ -6,7 +6,7 @@ import type {
   ParseResult,
   ParseWarning,
 } from '../types';
-import { MAX_SENDER_LENGTH, stripInvisible } from './patterns';
+import { ANDROID_HEADER, IOS_HEADER, MAX_SENDER_LENGTH, stripInvisible } from './patterns';
 
 /**
  * LINE exports.
@@ -96,9 +96,19 @@ const EVENTS = [
   /^通話時間/,
   /^(No answer|Canceled the call|Missed call)\.?$/i,
   /^(不在着信|通話をキャンセルしました|応答がありませんでした)$/,
-  /\b(joined the group|left the group|invited|was invited by|has left)\b/i,
+  // Anchored to the whole line, every one of them. "invited" and "has left"
+  // are words people use — "I invited Dave to the thing", "the train has left"
+  // — and an unanchored match on them does not merely mislabel a message, it
+  // takes it out of its sender's count, the leaderboard and the word stats.
+  /^.{1,80} (joined the group|left the group|has left|joined via invitation link)\.?$/i,
+  // LINE's invite notice is "Alice invited Bob." — and so is a sentence
+  // somebody types. There is no shape that separates them, so it is left as a
+  // message on purpose: a notice counted as a message adds one to somebody's
+  // total, while a message counted as a notice takes a real one out of their
+  // total, off the leaderboard and out of the word counts. Only the Japanese
+  // form below is kept, where the grammar makes it unambiguous.
+  /^.{1,80} changed the group name to .{1,120}$/i,
   /(がグループに参加しました|がグループから退出しました|を招待しました|が退出しました|がグループに招待されました)$/,
-  /^(.{1,80}) changed the group name to /i,
   /(がグループ名を変更しました|がノートを投稿しました|がアルバムを作成しました)$/,
 ];
 
@@ -124,6 +134,11 @@ export function looksLikeLineExport(raw: string): boolean {
 
   for (const line of head) {
     const s = stripInvisible(line);
+    // One WhatsApp header settles it. Somebody pasting a tab-separated
+    // timetable into a WhatsApp group is a stranger thing to do than exporting
+    // a LINE chat, but it is not impossible, and this is the direction where
+    // being wrong costs everybody rather than one person.
+    if (ANDROID_HEADER.test(s) || IOS_HEADER.test(s)) return false;
     if (!banner && (/^\[LINE\]/.test(s) || /トーク履歴$/.test(s))) banner = true;
     if (MESSAGE_LINE.test(s)) messages++;
     else if (DATE_HEADING.test(s)) dates++;
@@ -243,6 +258,13 @@ export function parseLineExport(raw: string, options: ParseOptions = {}): ParseR
   };
 
   for (let i = 0; i < totalLines; i++) {
+    // Reported at the top of the loop, because almost every line in a LINE
+    // export is a message or a date heading and both of those branches leave
+    // early. Reported from the bottom, the only ticks in a whole file were the
+    // first line and the last, and the reading step showed a bar stuck at zero
+    // for the entire parse and then a number that arrived from nowhere.
+    if ((i & 0x3ff) === 0) onProgress?.(i / totalLines, messages.length);
+
     const line = stripInvisible(lines[i] ?? '');
 
     const date = DATE_HEADING.exec(line);
@@ -299,8 +321,6 @@ export function parseLineExport(raw: string, options: ParseOptions = {}): ParseR
       // The banner and its blank line, before the first heading.
       orphanLines++;
     }
-
-    if ((i & 0x3ff) === 0) onProgress?.(i / totalLines, messages.length);
   }
 
   flush();
