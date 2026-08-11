@@ -31,6 +31,7 @@ import {
 } from '@/lib/brief';
 import { formatNumber } from '@/lib/format';
 import type { AnalyzerState } from '@/lib/useAnalyzer';
+import { localise, type CopyKey } from '@/lib/copy';
 import { GROUP_SLOT_BACKDROP, photoLayers } from '../cards/photos';
 import { LINE_GREEN, LineMark, WhatsAppMark } from './Sources';
 import { BACKDROPS } from '../cards/Shell';
@@ -96,7 +97,7 @@ const SCAN_SETTLE_MS = 700;
     exactly that stretch, so its own 0→1 is the worker's 0→0.55. */
 const ROSTER_AT = 0.55;
 
-const HINTS = ['Nicknames', "Who's dating who", 'Keep it clean'];
+const HINTS: CopyKey[] = ['ob.notes.hint1', 'ob.notes.hint2', 'ob.notes.hint3'];
 
 /**
  * The design draws these cards with abstract marks — a half-circle, a diamond,
@@ -123,40 +124,16 @@ const KIND_ICONS: Record<KindIcon, LucideIcon> = {
  */
 export type ChatSource = 'whatsapp' | 'line';
 
-const EXPORT_STEPS: Record<ChatSource, { n: string; title: string; note: string }[]> = {
+const EXPORT_STEPS: Record<ChatSource, { n: string; title: CopyKey; note: CopyKey }[]> = {
   whatsapp: [
-    {
-      n: '01',
-      title: 'Open the chat, tap the ⋯ menu',
-      note: 'Top right on iPhone, three dots on Android.',
-    },
-    {
-      n: '02',
-      title: 'Tap Export chat → Without media',
-      note: 'iPhone: More → Export Chat. Android: Menu → More → Export chat.',
-    },
-    {
-      n: '03',
-      title: 'Send it to yourself, then bring it here',
-      note: 'Save to Files, Mail, Drive — anywhere you can grab the file from.',
-    },
+    { n: '01', title: 'ob.upload.wa1', note: 'ob.upload.wa1n' },
+    { n: '02', title: 'ob.upload.wa2', note: 'ob.upload.wa2n' },
+    { n: '03', title: 'ob.upload.wa3', note: 'ob.upload.wa3n' },
   ],
   line: [
-    {
-      n: '01',
-      title: 'Open the chat, tap the ☰ menu',
-      note: 'Top right of the chat, next to the search glass.',
-    },
-    {
-      n: '02',
-      title: 'Settings ⚙ → Export chat history',
-      note: 'LINE saves the whole chat as a .txt. There is no media option to choose.',
-    },
-    {
-      n: '03',
-      title: 'Send it to yourself, then bring it here',
-      note: 'Keep, Mail, Files — anywhere you can get the .txt back from.',
-    },
+    { n: '01', title: 'ob.upload.line1', note: 'ob.upload.line1n' },
+    { n: '02', title: 'ob.upload.line2', note: 'ob.upload.line2n' },
+    { n: '03', title: 'ob.upload.line3', note: 'ob.upload.line3n' },
   ],
 };
 
@@ -180,11 +157,11 @@ const PALETTE: [string, string][] = [
  * promise about what the story will look like, and the grading is imported
  * rather than restated so the promise cannot quietly stop being true.
  */
-const GROUP_SLIDES: { slot: GroupSlot; label: string; caption: string }[] = [
-  { slot: 'opener', label: '01 · Opener', caption: 'The years.' },
-  { slot: 'chaos', label: '08 · Chaos day', caption: 'Peak chaos' },
-  { slot: 'verdict', label: '15 · Verdict', caption: 'The end' },
-  { slot: 'paywall', label: '16 · Paywall', caption: 'Unlock' },
+const GROUP_SLIDES: { slot: GroupSlot; label: string; caption: CopyKey }[] = [
+  { slot: 'opener', label: '01', caption: 'ob.photos.slotOpener' },
+  { slot: 'chaos', label: '08', caption: 'ob.photos.slotChaos' },
+  { slot: 'verdict', label: '15', caption: 'ob.photos.slotVerdict' },
+  { slot: 'paywall', label: '16', caption: 'ob.photos.slotPaywall' },
 ];
 
 const mono = (extra?: CSSProperties): CSSProperties => ({
@@ -245,15 +222,21 @@ function initialsOf(name: string): string {
   );
 }
 
-/** `YYYY-MM-DD` → `Aug 2016`. Built from the string, never from a `Date`. */
-function monthLabel(day: string): string {
-  const months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-  ];
+/**
+ * `YYYY-MM-DD` → `Aug 2016`, in the language the report is being written in.
+ *
+ * Built from the string rather than from a `Date` for the same reason as
+ * everywhere else in this codebase — a date parsed out of a day string picks up
+ * the runtime's timezone and can land in the previous month — but the month
+ * *name* has to come from somewhere, and a hardcoded English array left the one
+ * English word in an otherwise Hebrew row.
+ */
+function monthLabel(day: string, locale: string): string {
   const [year, month] = day.split('-');
   const index = Number(month) - 1;
-  return months[index] ? `${months[index]} ${year}` : (year ?? '');
+  if (!year || Number.isNaN(index) || index < 0 || index > 11) return year ?? '';
+  return new Intl.DateTimeFormat(locale, { month: 'short', year: 'numeric', timeZone: 'UTC' })
+    .format(new Date(Date.UTC(Number(year), index, 1)));
 }
 
 /**
@@ -812,6 +795,12 @@ export function Onboarding({
   stats: ChatStats | null;
   freeCount: number;
 }) {
+  /* Everything after the language card is written in the language the card
+     chose. `localise` is called rather than `useCopy` because this sheet lives
+     outside the deck's provider — the deck does not exist yet. */
+  const copy = useMemo(() => localise(brief.language), [brief.language]);
+  const t = copy.t;
+
   const [step, setStep] = useState<Step>('lang');
   const [dragging, setDragging] = useState(false);
   /* Which app's instructions the export step is showing. It steers the
@@ -843,6 +832,13 @@ export function Onboarding({
   const sheet = useRef<HTMLDivElement>(null);
 
   const index = STEPS.indexOf(step);
+
+  /* `brief.kind` stays the English name — it is sent to the model as context
+     and the prompts are written around those six words. Only the label the
+     reader sees is translated. */
+  const kindLabel = brief.kind
+    ? t(`kind.${CHAT_KINDS.find((k) => k.name === brief.kind)?.icon ?? 'other'}` as CopyKey)
+    : t('kind.friends');
 
   /* ── Derived roster ─────────────────────────────────────────────────────
      A merged row disappears from the list, and its messages are added to the
@@ -1034,12 +1030,12 @@ export function Onboarding({
 
   const nextLabel =
     step === 'upload'
-      ? 'Waiting for your file'
+      ? t('ob.waiting')
       : step === 'people'
-        ? 'Names look right'
+        ? t('ob.namesOk')
         : step === 'photos'
-          ? 'Done — brief Reg'
-          : 'Continue';
+          ? t('ob.photosDone')
+          : t('ob.continue');
 
   const trail =
     step === 'lang'
@@ -1047,13 +1043,19 @@ export function Onboarding({
       : step === 'kind'
         ? (LANGUAGES.find((l) => l.code === brief.language)?.name ?? '')
         : step === 'notes'
-          ? `${brief.kind} · optional`
+          ? t('ob.trail.notes', { kind: kindLabel })
           : step === 'upload'
-            ? 'Nothing is uploaded — Reg reads it in your browser.'
+            ? t('ob.trail.upload')
             : step === 'people'
-              ? `${openMerges.length} possible duplicates · ${unnamed.length} unnamed`
+              ? t('ob.trail.people', {
+                  merges: openMerges.length,
+                  unnamed: unnamed.length,
+                })
               : step === 'photos'
-                ? `${people.length} people · ${Object.keys(faces).length} with a face`
+                ? t('ob.trail.photos', {
+                    people: people.length,
+                    faces: Object.keys(faces).length,
+                  })
                 : '';
 
   const counted =
@@ -1085,12 +1087,16 @@ export function Onboarding({
      what is still to come, and they stay unticked here because they have not
      happened yet. */
   const scanLines: { text: string; value: string; at: number }[] = [
-    { text: 'Opening your export', value: 'read locally', at: 0 },
-    { text: 'Reading your messages', value: formatNumber(scanCount, 'en'), at: 0.05 },
-    { text: 'Sorting out who said what', value: `${rows.length || '—'} people`, at: 0.55 },
-    { text: 'Counting every single emoji', value: '', at: Infinity },
-    { text: 'Looking for the moments you forgot', value: '', at: Infinity },
-    { text: 'Writing your story', value: '', at: Infinity },
+    { text: t('ob.scan.open'), value: t('ob.scan.local'), at: 0 },
+    { text: t('ob.scan.read'), value: formatNumber(scanCount, 'en'), at: 0.05 },
+    {
+      text: t('ob.scan.sort'),
+      value: rows.length ? t('ob.scan.peopleValue', { n: rows.length }) : '—',
+      at: 0.55,
+    },
+    { text: t('ob.scan.emoji'), value: '', at: Infinity },
+    { text: t('ob.scan.moments'), value: '', at: Infinity },
+    { text: t('ob.scan.write'), value: '', at: Infinity },
   ];
   const scanAt = scanLines.reduce((last, line, k) => (scanShown >= line.at ? k : last), 0);
 
@@ -1141,7 +1147,7 @@ export function Onboarding({
               paddingTop: 3,
             })}
           >
-            Setting up your report
+            {t('ob.header')}
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -1160,12 +1166,14 @@ export function Onboarding({
             ))}
           </div>
           <div style={mono({ fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase' })}>
-            {step === 'scan' ? 'Reading' : `Step ${Math.min(index + 1, COUNTED_STEPS)} of 7`}
+            {step === 'scan'
+              ? t('ob.reading')
+              : t('ob.step', { n: Math.min(index + 1, COUNTED_STEPS) })}
           </div>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Leave setup"
+            aria-label={t('ob.leave')}
             style={{
               border: '1px solid #E0D2BB',
               background: '#FFFDF8',
@@ -1269,11 +1277,9 @@ export function Onboarding({
           {/* ── 2 · Kind ─────────────────────────────────────────────────── */}
           {step === 'kind' && (
             <div style={{ animation: 'obPop .35s ease' }}>
-              <div style={eyebrow}>Question 2 of 3</div>
-              <h1 style={question}>What kind of chat is this?</h1>
-              <p style={lede}>
-                It changes what Reg looks for, and how mean he&apos;s allowed to be.
-              </p>
+              <div style={eyebrow}>{t('ob.kind.q')}</div>
+              <h1 style={question}>{t('ob.kind.title')}</h1>
+              <p style={lede}>{t('ob.kind.lede')}</p>
               <div
                 style={{
                   display: 'grid',
@@ -1310,7 +1316,9 @@ export function Onboarding({
                         // the one thing on an unselected card that is not text.
                         color={on ? '#C9F24D' : '#C2571F'}
                       />
-                      <div style={{ fontWeight: 500, fontSize: 16, marginTop: 10 }}>{kind.name}</div>
+                      <div style={{ fontWeight: 500, fontSize: 16, marginTop: 10 }}>
+                        {t(`kind.${kind.icon}` as CopyKey)}
+                      </div>
                       <div
                         style={{
                           fontSize: 12.5,
@@ -1319,7 +1327,7 @@ export function Onboarding({
                           marginTop: 4,
                         }}
                       >
-                        {kind.note}
+                        {t(`kind.${kind.icon}.note` as CopyKey)}
                       </div>
                     </button>
                   );
@@ -1332,14 +1340,11 @@ export function Onboarding({
           {step === 'notes' && (
             <div style={{ animation: 'obPop .35s ease' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <div style={eyebrow}>Question 3 of 3</div>
-                <div style={optionalPill}>Optional</div>
+                <div style={eyebrow}>{t('ob.notes.q')}</div>
+                <div style={optionalPill}>{t('ob.optional')}</div>
               </div>
-              <h1 style={question}>Anything Reg should know?</h1>
-              <p style={{ ...lede, maxWidth: '50ch' }}>
-                Inside jokes, nicknames, who&apos;s dating who, the incident nobody talks about.
-                Skip it and Reg will guess — badly, but confidently.
-              </p>
+              <h1 style={question}>{t('ob.notes.title')}</h1>
+              <p style={{ ...lede, maxWidth: '50ch' }}>{t('ob.notes.lede')}</p>
               <div
                 style={{
                   ...panel,
@@ -1352,8 +1357,8 @@ export function Onboarding({
                   dir="auto"
                   value={brief.notes}
                   onChange={(e) => onBrief({ notes: e.target.value.slice(0, NOTES_LIMIT) })}
-                  placeholder="e.g. Dave never replies because he works nights. Do not mention the camping trip."
-                  aria-label="Anything Reg should know"
+                  placeholder={t('ob.notes.placeholder')}
+                  aria-label={t('ob.notes.title')}
                   style={{
                     width: '100%',
                     minHeight: 150,
@@ -1388,7 +1393,7 @@ export function Onboarding({
                         type="button"
                         onClick={() =>
                           onBrief({
-                            notes: `${brief.notes ? `${brief.notes.replace(/\s*$/, '')} ` : ''}${hint}: `.slice(
+                            notes: `${brief.notes ? `${brief.notes.replace(/\s*$/, '')} ` : ''}${t(hint)}: `.slice(
                               0,
                               NOTES_LIMIT,
                             ),
@@ -1403,24 +1408,21 @@ export function Onboarding({
                           ...mono({ fontSize: 10.5, color: '#5E5344' }),
                         }}
                       >
-                        {hint} →
+                        {t(hint)} →
                       </button>
                     ))}
                   </div>
                 </div>
               </div>
-              <div style={mono({ marginTop: 12, lineHeight: 1.5 })}>
-                Typed here, stays here until you ask for Reg&apos;s lines — and the names in it are
-                swapped for tokens before it is sent, exactly like your messages.
-              </div>
+              <div style={mono({ marginTop: 12, lineHeight: 1.5 })}>{t('ob.notes.privacy')}</div>
             </div>
           )}
 
           {/* ── 4 · Upload ───────────────────────────────────────────────── */}
           {step === 'upload' && (
             <div style={{ animation: 'obPop .35s ease' }}>
-              <div style={eyebrow}>The only fiddly part</div>
-              <h1 style={question}>Export the chat, then drop it here.</h1>
+              <div style={eyebrow}>{t('ob.upload.eyebrow')}</div>
+              <h1 style={question}>{t('ob.upload.title')}</h1>
 
               {/* Which app, asked before the steps rather than after them. Reg
                   reads either file and works out which is which on his own, so
@@ -1428,7 +1430,7 @@ export function Onboarding({
                   set of instructions the reader is looking at. */}
               <div
                 role="group"
-                aria-label="Which app is the chat in?"
+                aria-label={t('ob.upload.which')}
                 style={{ display: 'flex', gap: 8, marginTop: 20, flexWrap: 'wrap' }}
               >
                 {(
@@ -1489,7 +1491,7 @@ export function Onboarding({
                         </div>
                         <div>
                           <div style={{ fontSize: 15.5, fontWeight: 500, lineHeight: 1.35 }}>
-                            {exportStep.title}
+                            {t(exportStep.title)}
                           </div>
                           <div
                             style={{
@@ -1499,7 +1501,7 @@ export function Onboarding({
                               marginTop: 3,
                             }}
                           >
-                            {exportStep.note}
+                            {t(exportStep.note)}
                           </div>
                         </div>
                       </div>
@@ -1547,14 +1549,21 @@ export function Onboarding({
                     }}
                   >
                     <div style={{ fontFamily: 'var(--yap-serif)', fontSize: 25, lineHeight: 1.15 }}>
-                      Drop{' '}
-                      <span style={{ fontFamily: 'var(--yap-mono)', fontSize: 15 }}>
-                        {source === 'line' ? '[LINE] chat.txt' : '_chat.txt'}
-                      </span>{' '}
-                      or the .zip
+                      {(() => {
+                        const [before = '', after = ''] = t('ob.upload.drop').split('{file}');
+                        return (
+                          <>
+                            {before}
+                            <span style={{ fontFamily: 'var(--yap-mono)', fontSize: 15 }}>
+                              {source === 'line' ? '[LINE] chat.txt' : '_chat.txt'}
+                            </span>
+                            {after}
+                          </>
+                        );
+                      })()}
                     </div>
                     <div style={mono({ fontSize: 10.5, marginTop: 7 })}>
-                      or click to browse — nothing is uploaded
+                      {t('ob.upload.browse')}
                     </div>
                   </div>
 
@@ -1579,17 +1588,7 @@ export function Onboarding({
                   <div
                     style={{ fontSize: 12.5, color: '#8A7B63', marginTop: 10, lineHeight: 1.5 }}
                   >
-                    {source === 'line' ? (
-                      <>
-                        LINE exports the text and nothing else, which is all Reg wanted anyway.
-                        Drop the <strong>.txt</strong> exactly as it came.
-                      </>
-                    ) : (
-                      <>
-                        Choose <strong>Without media</strong> — it&apos;s faster and Reg only reads
-                        text anyway.
-                      </>
-                    )}
+                    {t(source === 'line' ? 'ob.upload.lineHint' : 'ob.upload.waHint')}
                   </div>
                 </div>
               </div>
@@ -1611,7 +1610,7 @@ export function Onboarding({
                     animation: 'obSpin .8s linear infinite',
                   }}
                 />
-                <div style={eyebrow}>Reading on your device</div>
+                <div style={eyebrow}>{t('ob.scan.eyebrow')}</div>
               </div>
               <div
                 style={{
@@ -1628,7 +1627,7 @@ export function Onboarding({
               <div
                 style={{ fontFamily: 'var(--yap-serif)', fontSize: 30, lineHeight: 1.1, marginTop: 2 }}
               >
-                {scanShown >= 1 ? 'messages. All of them.' : 'messages and counting…'}
+                {scanShown >= 1 ? t('ob.scan.all') : t('ob.scan.counting')}
               </div>
 
               <div
@@ -1688,16 +1687,15 @@ export function Onboarding({
           {/* ── 6 · People ───────────────────────────────────────────────── */}
           {step === 'people' && (
             <div style={{ animation: 'obPop .35s ease' }}>
-              <div style={eyebrow}>{people.length} people found</div>
-              <h1 style={{ ...question, fontSize: 'clamp(32px, 5.6vw, 48px)' }}>Who is who?</h1>
+              <div style={eyebrow}>{t('ob.people.found', { n: people.length })}</div>
+              <h1 style={{ ...question, fontSize: 'clamp(32px, 5.6vw, 48px)' }}>
+                {t('ob.people.title')}
+              </h1>
               <p style={{ ...lede, maxWidth: '52ch' }}>
                 {/* Named from the file that was actually read, not from the
                     button the reader pressed two steps ago — they can drop a
                     WhatsApp export with LINE selected, and Reg reads it anyway. */}
-                These are the names {readFrom === 'line' ? 'LINE' : 'WhatsApp'} gave Reg.{' '}
-                <strong>Tap any name to edit it</strong> —
-                fix the ones that are wrong, name the phone numbers, and merge anyone who shows up
-                twice.
+                {t(readFrom === 'line' ? 'ob.people.ledeLine' : 'ob.people.ledeWa')}
               </p>
 
               {openMerges.length > 0 && (
@@ -1725,7 +1723,7 @@ export function Onboarding({
                         color: '#9A7A22',
                       })}
                     >
-                      Reg thinks these are the same person
+                      {t('ob.people.mergeTitle')}
                     </div>
                   </div>
                   <div
@@ -1777,7 +1775,7 @@ export function Onboarding({
                               }),
                             }}
                           >
-                            Different
+                            {t('ob.people.different')}
                           </button>
                           <button
                             type="button"
@@ -1796,7 +1794,7 @@ export function Onboarding({
                               }),
                             }}
                           >
-                            Merge
+                            {t('ob.people.merge')}
                           </button>
                         </div>
                       </div>
@@ -1824,9 +1822,7 @@ export function Onboarding({
                     {unnamed.length}
                   </div>
                   <div style={{ fontSize: 14, lineHeight: 1.45, color: '#7A4A2C' }}>
-                    {unnamed.length === 1 ? 'person is' : 'people are'} just a phone number. Name
-                    them, or Reg writes the story around a number. A name you add is also scrubbed
-                    out of your messages before he sees them.
+                    {t(unnamed.length === 1 ? 'ob.people.unnamedOne' : 'ob.people.unnamedMany')}
                   </div>
                 </div>
               )}
@@ -1879,8 +1875,10 @@ export function Onboarding({
                             onChange={(e) =>
                               setRenames((prev) => ({ ...prev, [row.name]: e.target.value }))
                             }
-                            placeholder={row.unsaved ? `${row.name} — who is this?` : 'Name'}
-                            aria-label={`Name for ${row.name}`}
+                            placeholder={
+                              row.unsaved ? t('ob.people.who', { name: row.name }) : t('ob.people.name')
+                            }
+                            aria-label={t('ob.people.nameFor', { name: row.name })}
                             style={{
                               width: '100%',
                               minWidth: 0,
@@ -1897,8 +1895,10 @@ export function Onboarding({
                           <PencilLine size={15} strokeWidth={1.8} aria-hidden="true" />
                         </label>
                         <div style={mono({ fontSize: 10.5, marginTop: 8 })}>
-                          {formatNumber(row.messages, 'en')} messages · since{' '}
-                          {monthLabel(row.firstDay)}
+                          {t('ob.people.count', {
+                            n: formatNumber(row.messages, 'en'),
+                            month: monthLabel(row.firstDay, copy.locale),
+                          })}
                         </div>
                       </div>
                       <div
@@ -1924,12 +1924,12 @@ export function Onboarding({
                         }}
                       >
                         {row.unsaved && !typed.trim()
-                          ? 'Identify'
+                          ? t('ob.people.identify')
                           : edited
-                            ? 'Edited'
+                            ? t('ob.people.edited')
                             : k === 0
-                              ? 'Chief yapper'
-                              : 'OK'}
+                              ? t('ob.people.chief')
+                              : t('ob.people.ok')}
                       </div>
                     </div>
                   );
@@ -1942,19 +1942,19 @@ export function Onboarding({
           {step === 'photos' && (
             <div style={{ animation: 'obPop .35s ease' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <div style={eyebrow}>Last thing</div>
-                <div style={optionalPill}>Optional</div>
+                <div style={eyebrow}>{t('ob.photos.eyebrow')}</div>
+                <div style={optionalPill}>{t('ob.optional')}</div>
               </div>
-              <h1 style={{ ...question, fontSize: 'clamp(32px, 5.6vw, 48px)' }}>Give it faces.</h1>
+              <h1 style={{ ...question, fontSize: 'clamp(32px, 5.6vw, 48px)' }}>
+                {t('ob.photos.title')}
+              </h1>
               <p style={{ ...lede, maxWidth: '52ch' }}>
-                Photos make the slides much funnier. They stay on your device — they are never
-                uploaded and never reach Reg, who works from text only. Skip it and everyone gets
-                initials and flat colour.
+                {t('ob.photos.lede')}
               </p>
 
               <div style={{ ...panel, marginTop: 26 }}>
                 <div style={mono({ fontSize: 10.5, letterSpacing: '.16em', textTransform: 'uppercase' })}>
-                  Group photos → slide backgrounds
+                  {t('ob.photos.group')}
                 </div>
                 <div
                   style={{
@@ -1965,8 +1965,7 @@ export function Onboarding({
                     maxWidth: '56ch',
                   }}
                 >
-                  Four slides get a full-bleed photo, colour-graded into the slide so the type
-                  still wins. Drop one per slide, or fill the first and leave the rest.
+                  {t('ob.photos.groupNote')}
                 </div>
                 <div
                   style={{
@@ -1997,7 +1996,7 @@ export function Onboarding({
                           <input
                             type="file"
                             accept="image/*"
-                            aria-label={`Photo for ${slide.label}`}
+                            aria-label={t(slide.caption)}
                             style={hiddenInput}
                             onChange={(e) => {
                               setGroupPhoto(slide.slot, e.target.files?.[0]);
@@ -2032,7 +2031,7 @@ export function Onboarding({
                                 }),
                               }}
                             >
-                              + Add
+                              {t('ob.photos.add')}
                             </div>
                           )}
                           <div
@@ -2050,7 +2049,7 @@ export function Onboarding({
                               color: ground.fg,
                             }}
                           >
-                            {slide.caption}
+                            {t(slide.caption)}
                           </div>
                         </label>
                         <div
@@ -2077,7 +2076,7 @@ export function Onboarding({
                   marginTop: 26,
                 })}
               >
-                Solo photos → leaderboard, chief yapper, ghost, awards
+                {t('ob.photos.solo')}
               </div>
               <div
                 style={{
@@ -2114,7 +2113,7 @@ export function Onboarding({
                       <input
                         type="file"
                         accept="image/*"
-                        aria-label={`Photo of ${display}`}
+                        aria-label={display}
                         style={hiddenInput}
                         onChange={(e) => {
                           setFace(row.name, e.target.files?.[0]);
@@ -2182,8 +2181,8 @@ export function Onboarding({
 
               <div style={mono({ marginTop: 16 })}>
                 {Object.keys(faces).length > 0
-                  ? `${Object.keys(faces).length} of ${people.length} have a face. Reg approves.`
-                  : 'Tap anyone to add a photo. All optional.'}
+                  ? t('ob.photos.some', { n: Object.keys(faces).length, m: people.length })
+                  : t('ob.photos.none')}
               </div>
             </div>
           )}
@@ -2226,7 +2225,11 @@ export function Onboarding({
                       marginTop: 14,
                     })}
                   >
-                    {failed ? 'Something went wrong' : stats ? 'Brief accepted' : 'Still counting'}
+                    {failed
+                      ? t('ob.done.failed')
+                      : stats
+                        ? t('ob.done.accepted')
+                        : t('ob.done.counting')}
                   </div>
                   <div
                     style={{
@@ -2238,10 +2241,10 @@ export function Onboarding({
                     }}
                   >
                     {failed
-                      ? 'Reg could not finish reading that one.'
+                      ? t('ob.done.error')
                       : stats
-                        ? 'Reg has everything he needs.'
-                        : 'Reg is finishing the last of the counting.'}
+                        ? t('ob.done.ready')
+                        : t('ob.done.finishing')}
                   </div>
                   {/* The counting happens after the naming step, so it can fail
                       on a screen with no progress bar and no footer. Without
@@ -2271,17 +2274,20 @@ export function Onboarding({
                   >
                     {[
                       {
-                        label: 'Language',
+                        label: t('ob.done.language'),
                         value: LANGUAGES.find((l) => l.code === brief.language)?.name ?? 'English',
                       },
-                      { label: 'Chat type', value: brief.kind || 'Friends group' },
+                      { label: t('ob.done.type'), value: kindLabel },
                       {
-                        label: 'Messages',
+                        label: t('ob.done.messages'),
                         value: stats ? formatNumber(stats.totalMessages, 'en') : '…',
                       },
                       {
-                        label: 'People',
-                        value: `${stats?.people.length ?? people.length} · ${Object.keys(faces).length} with photos`,
+                        label: t('ob.done.people'),
+                        value: t('ob.done.peopleValue', {
+                          n: stats?.people.length ?? people.length,
+                          m: Object.keys(faces).length,
+                        }),
                       },
                     ].map((tile) => (
                       <div
@@ -2333,11 +2339,7 @@ export function Onboarding({
                   ['--yap-press-shadow' as string]: '#B98214',
                 }}
               >
-                {failed
-                  ? 'Try another export'
-                  : stats
-                    ? 'Write my story — with sound ♪'
-                    : 'One moment…'}
+                {failed ? t('ob.done.retry') : stats ? t('ob.done.play') : t('ob.done.wait')}
               </button>
               <div
                 style={{
@@ -2348,8 +2350,7 @@ export function Onboarding({
                   textAlign: 'center',
                 }}
               >
-                {freeCount} slides free. The full roast, per-person reports and the shareable pack
-                unlock at the end.
+                {t('ob.done.free', { n: freeCount })}
               </div>
             </div>
           )}
@@ -2399,7 +2400,7 @@ export function Onboarding({
                 }),
               }}
             >
-              ← Back
+              ← {t('ob.back')}
             </button>
             <div
               dir="auto"
@@ -2428,7 +2429,7 @@ export function Onboarding({
                   ...mono({ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase' }),
                 }}
               >
-                Skip
+                {t('ob.skip')}
               </button>
             )}
             <button
