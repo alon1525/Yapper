@@ -103,6 +103,38 @@ describe('a deck that is over budget still ships', () => {
     expect(result.value.dictionary[0]!.quotes).toHaveLength(2);
   });
 
+  it('drops many empty quotes in one pass, not one per round', () => {
+    // One drop per round put a ceiling on how badly the writer could misbehave
+    // before the deck was discarded anyway — six empties used to exhaust it.
+    const empties = Array.from({ length: 4 }, () => quote(''));
+    const result = run({
+      slides: [
+        slide({ quotes: [...empties, quote('kept one')] }),
+        slide({ id: 's2', quotes: [quote(''), quote(''), quote('kept two')] }),
+      ],
+      dictionary: [],
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.slides[0]!.quotes.map((q) => q.text)).toEqual(['kept one']);
+    expect(result.value.slides[1]!.quotes.map((q) => q.text)).toEqual(['kept two']);
+  });
+
+  it('removes the right elements when several go from one array', () => {
+    // Splicing low-to-high would shift the survivors under the later indices and
+    // delete the wrong quotes. This is the assertion that catches that.
+    const result = run(
+      build({
+        quotes: [quote('first'), quote(''), quote('second'), quote('')],
+      }),
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.slides[0]!.quotes.map((q) => q.text)).toEqual(['first', 'second']);
+  });
+
   it('handles every violation from the trace at once, and says it did', () => {
     const result = run({
       slides: [

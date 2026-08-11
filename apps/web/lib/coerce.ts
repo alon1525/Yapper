@@ -29,7 +29,7 @@ import type { z } from 'zod';
  */
 
 /** How many times to re-validate after applying fixes. */
-const MAX_ROUNDS = 4;
+const MAX_ROUNDS = 6;
 
 export type CoerceResult<T> =
   | { ok: true; value: T; coerced: boolean }
@@ -91,26 +91,46 @@ function clamp(root: unknown, issue: z.core.$ZodIssue): boolean {
 /**
  * One round of repair.
  *
- * Clamps are applied together because shortening a value never moves anything
- * else. Dropping an element does move things — every later index in that array
- * shifts by one — so at most one drop happens per round and the reply is
- * re-validated before the next, rather than acting on paths that have gone
- * stale underneath us.
+ * Empty entries go before budgets, and the order is the whole point. An array
+ * that is both too long and full of blanks gets clamped from the front, so
+ * trimming first keeps the four empty quotes and throws away the real one
+ * behind them — the reply survives validation having lost the only part worth
+ * printing. Removing what cannot be rendered first means the budget then falls
+ * on what is left.
+ *
+ * Drops all happen together. Every path in `issues` was measured against the
+ * same unmodified tree, so they are valid simultaneously — but only until the
+ * first splice, which is why the higher index goes first: it leaves the lower
+ * ones pointing where they did. A slide with six empty quotes then costs one
+ * round instead of six, and one-per-round was a limit on how badly the writer
+ * could behave before a paid deck was discarded anyway.
+ *
+ * Clamps run in a later round rather than this one because they *replace* the
+ * array they shorten, and a reference captured before that points at an array
+ * nobody holds any more.
  */
 function repair(root: unknown, issues: readonly z.core.$ZodIssue[]): boolean {
-  let changed = false;
-  for (const issue of issues) changed = clamp(root, issue) || changed;
-  if (changed) return true;
-
+  const drops = new Map<unknown[], Set<number>>();
   for (const issue of issues) {
     if (issue.code !== 'too_small') continue;
     const found = enclosingElement(root, issue.path);
     if (!found) continue;
     const [array, index] = found;
-    array.splice(index, 1);
+    const indices = drops.get(array) ?? new Set<number>();
+    indices.add(index);
+    drops.set(array, indices);
+  }
+
+  if (drops.size > 0) {
+    for (const [array, indices] of drops) {
+      for (const index of [...indices].sort((a, b) => b - a)) array.splice(index, 1);
+    }
     return true;
   }
-  return false;
+
+  let changed = false;
+  for (const issue of issues) changed = clamp(root, issue) || changed;
+  return changed;
 }
 
 /**
