@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { buildPreviewPayload } from '@/lib/aiPayload';
 import type { PreviewState } from '@/lib/useAiPreview';
 import type { Analysis } from '@/lib/useAnalyzer';
+import { useCopy } from '@/lib/copy';
 import { DeckButton, Eyebrow, Panel, RegProse, Slide, type Backdrop } from './Shell';
 
 /** Reg's own voice, so it is the one slide set on paper rather than in colour. */
@@ -33,6 +34,7 @@ export function AiSlide({
   onRun: () => void;
 }) {
   const [showSample, setShowSample] = useState(false);
+  const copy = useCopy();
 
   const sample = () => {
     const { payload } = buildPreviewPayload(analysis);
@@ -47,7 +49,7 @@ export function AiSlide({
         <div className="flex items-center gap-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/reg.png" alt="" className="block h-6 w-6 rounded-full" />
-          <Eyebrow>Reg&apos;s account of that night</Eyebrow>
+          <Eyebrow>{copy.t('ai.headline')}</Eyebrow>
         </div>
 
         {memory && (
@@ -113,7 +115,7 @@ export function AiSlide({
       <div className="flex items-center gap-2">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/reg.png" alt="" className="block h-6 w-6 rounded-full" />
-        <Eyebrow>One more thing</Eyebrow>
+        <Eyebrow>{copy.t('ai.eyebrow')}</Eyebrow>
       </div>
 
       <RegProse>
@@ -145,7 +147,7 @@ export function AiSlide({
         className="mt-4 text-xs underline underline-offset-4"
         style={{ fontFamily: 'var(--yap-mono)', color: 'var(--slide-accent)' }}
       >
-        {showSample ? 'Hide' : 'Show me exactly what gets sent'}
+        {showSample ? copy.t('share.close') : copy.t('ai.inspect')}
       </button>
 
       {showSample && (
@@ -177,7 +179,7 @@ export function AiSlide({
 
       <div className="mt-7">
         <DeckButton onClick={onRun} disabled={state.phase === 'sending'}>
-          {state.phase === 'sending' ? 'Reading your best moments…' : 'Write my story ✦'}
+          {state.phase === 'sending' ? copy.t('ai.running') : copy.t('ai.run')}
         </DeckButton>
       </div>
 

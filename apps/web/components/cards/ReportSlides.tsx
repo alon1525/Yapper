@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { useCopy } from '@/lib/copy';
 import { useState } from 'react';
 import type { DictionaryEntry, Quote, Slide as SlideModel } from '@wrapped/core';
 import { Eyebrow, Headline, Panel, RegProse, Tag, type Backdrop } from './Shell';
@@ -209,13 +210,14 @@ function Body({ children }: { children: string }) {
  * ------------------------------------------------------------------ */
 
 export function ReportSlide({ slide }: { slide: SlideModel }) {
+  const copy = useCopy();
   const quote = slide.quotes[0];
 
   switch (slide.format) {
     case 'court_case':
       return (
         <>
-          <Eyebrow>In the matter of</Eyebrow>
+          <Eyebrow>{copy.t('report.matterOf')}</Eyebrow>
           <Headline>{slide.title}</Headline>
           <LabelledLines body={slide.body} />
           {quote && <PulledQuote quote={quote} />}
@@ -226,7 +228,7 @@ export function ReportSlide({ slide }: { slide: SlideModel }) {
     case 'breaking_news':
       return (
         <>
-          <Eyebrow>Breaking</Eyebrow>
+          <Eyebrow>{copy.t('report.breaking')}</Eyebrow>
           {/* The headline is shouted; the line underneath is not. That contrast
               is the entire joke of this format, so the two must not share a
               weight. */}
@@ -245,7 +247,7 @@ export function ReportSlide({ slide }: { slide: SlideModel }) {
     case 'scientific_report':
       return (
         <>
-          <Eyebrow>Findings</Eyebrow>
+          <Eyebrow>{copy.t('report.findings')}</Eyebrow>
           <Headline>{slide.title}</Headline>
           {slide.subtitle && (
             <p dir="auto" className="mt-1 text-[12px] italic opacity-60">
@@ -269,7 +271,7 @@ export function ReportSlide({ slide }: { slide: SlideModel }) {
     case 'company_structure':
       return (
         <>
-          <Eyebrow>Org chart</Eyebrow>
+          <Eyebrow>{copy.t('report.orgChart')}</Eyebrow>
           <Headline>{slide.title}</Headline>
           <LabelledLines body={slide.body} />
           <Receipts quotes={slide.quotes} />
@@ -289,7 +291,7 @@ export function ReportSlide({ slide }: { slide: SlideModel }) {
     case 'documentary':
       return (
         <>
-          <Eyebrow>Field notes</Eyebrow>
+          <Eyebrow>{copy.t('report.fieldNotes')}</Eyebrow>
           {/* Narration, so it gets the serif Reg's prose uses elsewhere. */}
           <RegProse>{slide.title}</RegProse>
           <Body>{slide.body}</Body>
@@ -301,7 +303,7 @@ export function ReportSlide({ slide }: { slide: SlideModel }) {
     case 'eulogy':
       return (
         <>
-          <Eyebrow>In loving memory</Eyebrow>
+          <Eyebrow>{copy.t('report.memoriam')}</Eyebrow>
           <RegProse>{slide.title}</RegProse>
           <Body>{slide.body}</Body>
           <Receipts quotes={slide.quotes} />
@@ -311,7 +313,7 @@ export function ReportSlide({ slide }: { slide: SlideModel }) {
     case 'dictionary_entry':
       return (
         <>
-          <Eyebrow>Glossary</Eyebrow>
+          <Eyebrow>{copy.t('report.glossary')}</Eyebrow>
           <Headline>{slide.title}</Headline>
           {slide.subtitle && (
             <p dir="auto" className="mt-1 text-[13px] italic opacity-60">
@@ -327,7 +329,7 @@ export function ReportSlide({ slide }: { slide: SlideModel }) {
     case 'leaderboard':
       return (
         <>
-          <Eyebrow>The standings</Eyebrow>
+          <Eyebrow>{copy.t('report.standings')}</Eyebrow>
           <Headline>{slide.title}</Headline>
           <div className="mt-4 flex flex-col gap-2">
             {slide.stats.map((stat, i) => (
@@ -359,7 +361,7 @@ export function ReportSlide({ slide }: { slide: SlideModel }) {
     case 'timeline':
       return (
         <>
-          <Eyebrow>{slide.subtitle || 'How it went'}</Eyebrow>
+          <Eyebrow>{slide.subtitle || copy.t('report.howItWent')}</Eyebrow>
           <Headline>{slide.title}</Headline>
           <LabelledLines body={slide.body} mono />
           <Receipts quotes={slide.quotes} />
@@ -369,7 +371,7 @@ export function ReportSlide({ slide }: { slide: SlideModel }) {
     case 'receipt':
       return (
         <>
-          <Eyebrow>Itemised</Eyebrow>
+          <Eyebrow>{copy.t('report.itemised')}</Eyebrow>
           <Headline>{slide.title}</Headline>
           <div style={{ fontFamily: 'var(--yap-mono)' }}>
             <BulletLines body={slide.body} />
@@ -394,9 +396,10 @@ export function ReportSlide({ slide }: { slide: SlideModel }) {
 
 /** The inside-joke dictionary, which is a list rather than one big idea. */
 export function DictionarySlide({ entries }: { entries: DictionaryEntry[] }) {
+  const copy = useCopy();
   return (
     <>
-      <Eyebrow>Words that mean nothing outside this chat</Eyebrow>
+      <Eyebrow>{copy.t('report.insideWords')}</Eyebrow>
       <div className="mt-4 flex flex-col gap-4">
         {entries.map((entry, i) => (
           <motion.div

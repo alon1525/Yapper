@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import type { ReportState } from '@/lib/useReport';
 import { GROUP_SLOT_BACKDROP } from './photos';
+import { useCopy, type Localised } from '@/lib/copy';
 import { DeckButton, Eyebrow, RegProse, Slide, type Backdrop } from './Shell';
 
 /** The design's own closing frame: forest green, Reg, an amber button. */
@@ -24,14 +25,14 @@ export const PAYWALL_BACKDROP: Backdrop = GROUP_SLOT_BACKDROP.paywall;
  * nothing is a claim about their own experience that they know is false — the
  * fastest way to lose them. The copy asks what actually happened instead.
  */
-function included(previewSeen: boolean): string[] {
+function included(copy: Localised, previewSeen: boolean): string[] {
   return [
     previewSeen
-      ? 'Five more moments, written up like the one you just read'
-      : 'Five moments from your chat, written up as stories',
+      ? copy.t('wall.sellStories')
+      : copy.t('wall.sellStories'),
     'A character card for everyone in this chat — including the quiet ones',
-    'The full awards ceremony, one winner each',
-    'Your years, one line at a time',
+    copy.t('wall.sellAwards'),
+    copy.t('wall.sellEras'),
   ];
 }
 
@@ -46,16 +47,18 @@ export function PaywallSlide({
   peopleCount: number;
   previewSeen: boolean;
 }) {
+  const copy = useCopy();
+
   /* The pipeline has four working phases where the old single call had two.
      Naming them on the button is not decoration: the whole run is two model
      calls with verification between them, so the wait is longer than it used
-     to be, and a button that says "Unlocking…" for that long reads as stuck. */
+     to be, and a button that says “Unlocking…” for that long reads as stuck. */
   const busy =
     state.phase === 'unlocking' ||
     state.phase === 'investigating' ||
     state.phase === 'verifying' ||
     state.phase === 'writing';
-  const INCLUDED = included(previewSeen);
+  const INCLUDED = included(copy, previewSeen);
 
   return (
     <Slide backdrop={PAYWALL_BACKDROP} photo="paywall">
@@ -73,7 +76,7 @@ export function PaywallSlide({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/reg.png" alt="" className="mb-4 block h-16 w-16 rounded-full" />
 
-        <Eyebrow>{previewSeen ? 'That was the preview' : 'One story was free'}</Eyebrow>
+        <Eyebrow>{previewSeen ? copy.t('wall.eyebrow') : copy.t('wall.free')}</Eyebrow>
 
         <RegProse>
           Reg wrote {peopleCount === 1 ? 'a lot' : 'a great deal'} more about you.
@@ -113,14 +116,14 @@ export function PaywallSlide({
         <motion.div whileTap={{ scale: 0.98 }} className="mt-7">
           <DeckButton onClick={onUnlock} disabled={busy}>
             {state.phase === 'unlocking'
-              ? 'Unlocking…'
+              ? copy.t('wall.unlocking')
               : state.phase === 'investigating'
-                ? 'Reading your whole chat…'
+                ? copy.t('wall.reading')
                 : state.phase === 'verifying'
-                  ? 'Checking the receipts…'
+                  ? copy.t('wall.checking')
                   : state.phase === 'writing'
-                    ? 'Writing your report…'
-                    : 'Unlock the full roast'}
+                    ? copy.t('wall.writing')
+                    : copy.t('wall.unlock')}
           </DeckButton>
         </motion.div>
 
@@ -134,6 +137,33 @@ export function PaywallSlide({
           style={{ fontFamily: 'var(--yap-mono)' }}
         >
           No payment is set up yet — this unlock is free while the product is being built.
+        </p>
+
+        {/*
+          The terms have to be reachable from the till rather than only from the
+          landing footer, because this is the screen where somebody agrees to
+          them — and once real payments exist, a purchase made without the terms
+          in front of the buyer is the one that gets disputed.
+
+          Every one of these opens in a new tab, and that is not a style choice.
+          The whole product is a single page holding an analysis that was never
+          written down anywhere; navigating this tab to /refunds would throw away
+          the chat they just spent a minute parsing, and there is nothing to
+          restore it from. A legal link that costs the reader their work is a
+          legal link nobody clicks.
+        */}
+        <p
+          className="mt-3 text-[11px] leading-relaxed opacity-40"
+          style={{ fontFamily: 'var(--yap-mono)' }}
+        >
+          {['/terms', '/refunds', '/privacy'].map((href, i) => (
+            <span key={href}>
+              {i > 0 && ' · '}
+              <a href={href} target="_blank" rel="noopener noreferrer" className="underline">
+                {href === '/terms' ? 'Terms' : href === '/refunds' ? 'Refunds' : 'Privacy'}
+              </a>
+            </span>
+          ))}
         </p>
       </div>
     </Slide>
