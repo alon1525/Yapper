@@ -1,10 +1,9 @@
 'use client';
 
 import { animate, motion, useMotionValue, useTransform } from 'framer-motion';
-import { useEffect, type CSSProperties, type ReactNode } from 'react';
-import type { ChatLanguage } from '@wrapped/core';
+import { type CSSProperties, type ReactNode, useEffect, useMemo } from 'react';
 import type { GroupSlot } from '@/lib/brief';
-import { formatNumber, percent } from '@/lib/format';
+import { percent } from '@/lib/format';
 import { Portrait, SlidePhoto } from './photos';
 
 /**
@@ -324,15 +323,17 @@ export function Panel({ children }: { children: ReactNode }) {
  */
 export function AnimatedNumber({
   value,
-  language = 'en',
+  locale = 'en-GB',
   className = '',
 }: {
   value: number;
-  language?: ChatLanguage;
+  /** The report's locale, not the chat's — this number is the report talking. */
+  locale?: string;
   className?: string;
 }) {
   const count = useMotionValue(0);
-  const text = useTransform(count, (v) => formatNumber(v, language));
+  const format = useMemo(() => new Intl.NumberFormat(locale), [locale]);
+  const text = useTransform(count, (v) => format.format(Math.round(v)));
 
   useEffect(() => {
     const prefersReduced =
@@ -371,10 +372,10 @@ export function AnimatedNumber({
  */
 export function Ranking({
   rows,
-  language = 'en',
+  locale = 'en-GB',
 }: {
   rows: { label: string; value: number; share?: number }[];
-  language?: ChatLanguage;
+  locale?: string;
 }) {
   // Bars are scaled to the leader, not to 100%: one person with 18% of a
   // sixteen-person chat is the top of this board, and a bar filling a fifth of
@@ -420,7 +421,7 @@ export function Ranking({
               className="shrink-0 text-xs tabular-nums opacity-75"
               style={{ fontFamily: 'var(--yap-mono)' }}
             >
-              {formatNumber(row.value, language)}
+              {new Intl.NumberFormat(locale).format(row.value)}
             </span>
           </div>
           {row.share !== undefined && (

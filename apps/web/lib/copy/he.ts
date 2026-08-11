@@ -1,0 +1,123 @@
+import type { Copy } from './en';
+
+/** עברית. RTL — the deck flips itself; this file only supplies the words. */
+export const HE: Partial<Copy> = {
+  'deck.next': 'השקופית הבאה',
+  'deck.prev': 'השקופית הקודמת',
+  'deck.restart': 'חזרה לשקופית הראשונה',
+  'deck.mute': 'להשתיק את הפסקול',
+  'deck.unmute': 'להפעיל את הפסקול',
+
+  'welcome.fallbackName': 'הצ׳אט שלכם',
+  'welcome.poster': 'Yapped.',
+  'welcome.punchline':
+    'רג קרא את כל {messages} ההודעות כדי שלא תצטרכו. {days} של זה. תלחצו הלאה. תגבירו.',
+
+  'total.eyebrow': 'סך הנזק',
+  'total.unit': 'הודעות · {people} אנשים',
+  'total.punchline':
+    'זה {perDay} ביום, כל יום, במשך {days}. כולל השנים שבהן טענתם שאתם ״עסוקים״.',
+  'total.words': 'מילים',
+  'total.emoji': 'אימוג׳י',
+  'total.media': 'מדיה',
+
+  'talker.eyebrow': 'טבלת הפטפוט',
+  'talker.punchline': '{share} מכל הודעה בצ׳אט הזה יצאה מאדם אחד.',
+  'talker.punchlineRunnerUp': 'זה פי {times} מ{name}, שאפילו לא בתמונה.',
+
+  'hours.eyebrow': 'מתי אתם מפטפטים',
+  'hours.peak': 'שעת השיא: {hour}',
+  'hours.punchline':
+    '{count} הודעות נשלחו בין חצות לחמש לפנות בוקר. אף אחד לא ביקש אותן. הן הגיעו בכל זאת.',
+  'hours.tag': 'משמרת לילה: {name} · {count} אחרי חצות',
+
+  'fastest.eyebrow': 'האצבע הכי מהירה',
+  'fastest.punchline': 'לאורך {count} תגובות, הם הספיקו לענות לפני שמישהו סיים לקרוא.',
+  'fastest.fastest': 'הכי מהיר',
+  'fastest.slowest': 'הכי איטי · {name}',
+
+  'ghost.eyebrow': 'רוח רפאים מוסמכת',
+  'ghost.punchline': 'נעלמו כל כך הרבה זמן בלי הודעה אחת.',
+  'ghost.stillGone': 'ולא חזרו. הקבוצה המשיכה בלעדיהם.',
+  'ghost.returned': 'ואז חזרו כאילו כלום לא קרה.',
+  'ghost.lastSeen': 'נראו לאחרונה',
+  'ghost.stillGoneLabel': 'עדיין נעדרים',
+  'ghost.resurfaced': 'צצו מחדש',
+
+  'emoji.eyebrow': 'פודיום האימוג׳י',
+  'emoji.punchline':
+    '{emoji} שימש {count} פעמים. שום שיחה רצינית כאן לא שרדה מספיק זמן כדי להצדיק שני.',
+  'emoji.punchlineRunnerUp':
+    '{emoji} שימש {count} פעמים — פי {times} מ{other}. שום שיחה רצינית כאן לא שרדה מספיק זמן כדי להצדיק שני.',
+
+  'chaos.eyebrow': 'שיא הכאוס',
+  'chaos.unit': '{count} הודעות ביום אחד',
+  'chaos.punchline': 'פי {times} מיום רגיל כאן. משהו קרה. כולם זוכרים מה.',
+
+  'streak.eyebrow': 'הרצף הארוך ביותר',
+  'streak.days': 'ימים',
+  'streak.punchline': 'אף יום שקט אחד בין {from} ל{to}.',
+  'streak.silence': 'הקצה השני: {days} של שתיקה מוחלטת, שנשברה סוף סוף עם ״{quote}״.',
+  'streak.tag': 'אף אחד כאן מעולם לא השאיר צ׳אט לא נקרא',
+
+  'final.eyebrow': 'פסק הדין',
+  'final.headline': 'שלחו לקבוצה',
+  'final.punchline': '{messages} הודעות, {span}, ואיכשהו אף אחד עוד לא עזב. זו אהבה, טכנית.',
+  'final.privacy': 'הצ׳אט שלכם מעולם לא הועלה. תסגרו את הלשונית והוא נעלם.',
+  'final.restart': 'לנסות צ׳אט אחר',
+
+  'share.open': 'ליצור כרטיס שיתוף',
+  'share.title': 'בחרו מה לפרסם',
+  'share.lede':
+    'כל אחד הוא כרטיס 9:16 שנבנה במכשיר שלכם. שום דבר לא מועלה — התמונה נוצרת כאן ועוברת ישירות לאפליקציה שתבחרו.',
+  'share.count': '{n} נבחרו',
+  'share.none': 'בחרו לפחות אחד',
+  'share.share': 'שיתוף',
+  'share.sharing': 'פותח…',
+  'share.save': 'לשמור לתמונות',
+  'share.saveDesktop': 'הורדה',
+  'share.saving': 'שומר…',
+  'share.copyCaption': 'להעתיק כיתוב',
+  'share.captionCopied': 'הכיתוב הועתק',
+  'share.caption': '{messages} הודעות שלנו. Yapped קרא את כולן.',
+  'share.hint':
+    'תפריט השיתוף הוא המקום שבו יושבים וואטסאפ, אינסטגרם וטיקטוק. באינסטגרם ובטיקטוק בחרו את הכרטיס מהתמונות ופרסמו אותו כסטורי.',
+  'share.hintDesktop':
+    'דפדפני מחשב לא יכולים לפתוח את תפריט השיתוף, אז הכרטיסים פשוט יורדים. שלחו אותם לטלפון, או פרסמו מכאן.',
+  'share.failed': 'זה לא עבד. הכרטיסים עדיין שמורים במכשיר שלכם.',
+  'share.close': 'סגירה',
+  'share.watermark': 'yapped',
+
+  'card.total.label': 'הודעות',
+  'card.total.caption': '{days} של פטפוט. אף אחד עוד לא עזב.',
+  'card.talker.label': 'אלוף הפטפוט',
+  'card.talker.caption': '{share} מכל מה שנאמר כאן',
+  'card.leaderboard.label': 'טבלת המובילים',
+  'card.hours.label': 'שעת השיא',
+  'card.hours.caption': '{count} הודעות אחרי חצות',
+  'card.ghost.label': 'רוח רפאים מוסמכת',
+  'card.ghost.caption': 'נעלמו {days} בלי מילה',
+  'card.emoji.label': 'הכי בשימוש',
+  'card.emoji.caption': 'שימש {count} פעמים',
+  'card.chaos.label': 'שיא הכאוס',
+  'card.chaos.caption': '{count} הודעות ביום אחד',
+  'card.fastest.label': 'התגובה המהירה',
+  'card.fastest.caption': 'חציון על פני {count} תגובות',
+  'card.verdict.label': 'פסק הדין',
+  'card.verdict.caption': '{people} אנשים · {span}',
+
+  'time.midnight': 'חצות',
+  'time.noon': 'צהריים',
+  'time.am': '{h} בבוקר',
+  'time.pm': '{h} בערב',
+  'duration.underMinute': 'פחות מדקה',
+  'duration.underSecond': 'פחות משנייה',
+  'duration.seconds': '{n} שנ׳',
+  'duration.minutes': '{n} דק׳',
+  'duration.hours': '{n} שע׳',
+  'duration.hoursMinutes': '{n} שע׳ {m} דק׳',
+  'span.hours': '{n} שעות',
+  'span.days': '{n} ימים',
+  'span.months': '{n} חודשים',
+  'span.years': '{n} שנים',
+};

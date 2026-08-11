@@ -3,6 +3,7 @@
 import { AnimatePresence } from 'framer-motion';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Brief } from '@/lib/brief';
+import { CopyContext, localise } from '@/lib/copy';
 import type { Analysis } from '@/lib/useAnalyzer';
 import { useAiPreview } from '@/lib/useAiPreview';
 import { useReport } from '@/lib/useReport';
@@ -29,6 +30,11 @@ export function Deck({
   startWithSound?: boolean;
 }) {
   const { stats } = analysis;
+  /* The report's language, chosen on the first question of the onboarding.
+     Every slide reads it from context rather than being handed it, because a
+     slide that forgets to accept the prop renders in English and nothing in
+     the types says so. */
+  const copy = useMemo(() => localise(brief.language), [brief.language]);
   const free = useMemo(() => slidesFor(stats), [stats]);
   const preview = useAiPreview(analysis, brief);
   const report = useReport(analysis, brief);
@@ -124,6 +130,7 @@ export function Deck({
   );
 
   return (
+    <CopyContext.Provider value={copy}>
     <PhotoProvider brief={brief}>
     <main
       onClick={onTap}
@@ -149,7 +156,7 @@ export function Deck({
       <AnimatePresence initial={false}>
         {current ? (
           <Slide key={current.id} backdrop={current.backdrop} photo={current.photo}>
-            {current.render(stats)}
+            {current.render(stats, copy)}
           </Slide>
         ) : index === aiIndex ? (
           <AiSlide key="ai" analysis={analysis} state={preview.state} onRun={() => void preview.run()} />
@@ -213,7 +220,7 @@ export function Deck({
           <button
             type="button"
             onClick={sound.toggle}
-            aria-label={sound.enabled ? 'Mute the soundtrack' : 'Play the soundtrack'}
+            aria-label={copy.t(sound.enabled ? 'deck.mute' : 'deck.unmute')}
             className={chromeButton}
             style={{
               background: 'color-mix(in srgb, currentColor 16%, transparent)',
@@ -225,7 +232,7 @@ export function Deck({
           <button
             type="button"
             onClick={() => setIndex(0)}
-            aria-label="Back to the first slide"
+            aria-label={copy.t('deck.restart')}
             className={chromeButton}
             style={{
               background: 'color-mix(in srgb, currentColor 16%, transparent)',
@@ -252,14 +259,14 @@ export function Deck({
       */}
       <button
         type="button"
-        aria-label="Previous slide"
+        aria-label={copy.t('deck.prev')}
         onClick={() => go(-1)}
         disabled={index === 0}
         className="pointer-events-none absolute top-20 bottom-16 left-0 z-10 w-1/3"
       />
       <button
         type="button"
-        aria-label="Next slide"
+        aria-label={copy.t('deck.next')}
         onClick={() => go(1)}
         disabled={index === total - 1}
         className="pointer-events-none absolute top-20 right-0 bottom-16 z-10 w-2/3"
@@ -279,5 +286,6 @@ export function Deck({
       </div>
     </main>
     </PhotoProvider>
+    </CopyContext.Provider>
   );
 }
