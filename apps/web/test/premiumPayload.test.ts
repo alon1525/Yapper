@@ -4,6 +4,7 @@ import type { Brief } from '@/lib/brief';
 import { excerptChars } from '@/lib/guard';
 import { buildPremiumPayload } from '@/lib/premiumPayload';
 import { premiumPrompt, premiumSystem } from '@/lib/premiumPrompt';
+import { RequestSchema } from '@/lib/premiumRequest';
 
 /**
  * What the paid report is built from.
@@ -18,11 +19,19 @@ function build(rows: [string, string, string, string][]): string {
   return rows.map(([d, t, s, b]) => `${d}, ${t} - ${s}: ${b}`).join('\n');
 }
 
-/* Three years, real conversation in each, so the year-coverage pass has
-   something to cover and the quiet years are genuinely quieter. */
+/*
+  Three years, real conversation in each, so the year-coverage pass has
+  something to cover and the quiet years are genuinely quieter.
+
+  Deliberately more bursts than the payload will keep. An earlier version of
+  this fixture produced 39 windows against a limit of 120, which meant the
+  round-trip test below passed just as happily against the *old* `.max(48)` —
+  a test for a cap that the fixture never reached. The day/month arithmetic has
+  period 84, so each year's days stay distinct.
+*/
 function chat(): string {
   const rows: [string, string, string, string][] = [];
-  const volume: Record<string, number> = { '2021': 3, '2022': 30, '2023': 6 };
+  const volume: Record<string, number> = { '2021': 30, '2022': 84, '2023': 40 };
   for (const [year, days] of Object.entries(volume)) {
     for (let d = 1; d <= days; d++) {
       const day = `${String((d % 28) + 1).padStart(2, '0')}/${String((d % 12) + 1).padStart(2, '0')}/${year}`;
@@ -123,6 +132,43 @@ describe('the excerpt ceiling covers what the payload actually sends', () => {
 
   it('stays under the route’s ceiling on an ordinary chat', () => {
     expect(excerptChars(payload)).toBeLessThan(600_000);
+  });
+});
+
+describe('the route accepts what the client builds', () => {
+  /*
+    Every bound in `premiumRequest.ts` is a number written twice — once there
+    and once in `premiumPayload.ts`. When they disagree the failure is a 400
+    "Malformed request." on a request that has already been paid for, so it is
+    the one mismatch in this product that must never reach a person. This is
+    that assertion, and it is why the schema does not live inside the route.
+  */
+  it('parses a real payload against the real schema', () => {
+    const result = RequestSchema.safeParse({
+      ...buildPremiumPayload(analysisOf(chat()), brief),
+      token: 'test-token',
+    });
+    expect(result.error?.issues ?? []).toEqual([]);
+    expect(result.success).toBe(true);
+  });
+
+  it('cuts a message too long for the schema rather than letting it 400', () => {
+    // WhatsApp allows 65,536 characters in one message and the schema rejects
+    // over 4,000. Nothing upstream truncates, so one pasted essay inside one
+    // selected burst used to be enough.
+    const rows: [string, string, string, string][] = [];
+    for (let i = 0; i < 8; i++) {
+      rows.push(['12/01/2023', `10:0${i}`, i % 2 ? 'Sarah' : 'Alon', `line ${i} of the conversation`]);
+    }
+    rows.push(['12/01/2023', '10:08', 'Alon', 'x'.repeat(9000)]);
+    rows.push(['12/01/2023', '10:09', 'Sarah', 'what on earth was that']);
+
+    const payload = buildPremiumPayload(analysisOf(build(rows)), brief);
+    const texts = payload.moments.flatMap((m) => m.messages.map((x) => x.text));
+    expect(texts.some((t) => t.endsWith('…[cut]'))).toBe(true);
+    for (const text of texts) expect(text.length).toBeLessThanOrEqual(4000);
+
+    expect(RequestSchema.safeParse({ ...payload, token: 'test-token' }).success).toBe(true);
   });
 });
 

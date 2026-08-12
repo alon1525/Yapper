@@ -8,6 +8,7 @@ import { failureBody, generateStructured } from '@/lib/generate';
 import { modelConfigured, modelFor, modelMissingMessage } from '@/lib/providers';
 import { crossSite, excerptChars, forbiddenCrossSite, payloadTooLarge } from '@/lib/guard';
 import { PremiumSchema, premiumPrompt, premiumSystem } from '@/lib/premiumPrompt';
+import { RequestSchema } from '@/lib/premiumRequest';
 import { checkRate, tooManyRequests } from '@/lib/rateLimit';
 
 /**
@@ -57,115 +58,6 @@ export const maxDuration = 300;
  * premium prompt size for a real export; re-run it before moving this.
  */
 const MAX_EXCERPT_CHARS = 600_000;
-
-const RequestSchema = z.object({
-  token: z.string().max(500),
-  language: z.enum(['en', 'he', 'other']),
-  participantCount: z.number().int().min(1).max(500),
-  /* Optional, and bounded: the notes field is free text the reader typed, and
-     an unbounded one forwarded to a paid model is somebody else's bill. */
-  brief: z
-    .object({
-      /* Built from the language table rather than written out again — a
-         language on the cards but not in this enum is one the reader can pick
-         and the route then rejects. */
-      language: z.enum(REPORT_LANGUAGE_CODES),
-      kind: z.string().max(40),
-      /* The register control. Absent on a client that predates it, and the
-         fallback is the default rather than the timid one — see `brief.ts`. */
-      tone: z.enum(['roast', 'gentle']).default('roast'),
-      notes: z.string().max(600),
-    })
-    .optional(),
-  fingerprint: z.object({
-    totalMessages: z.number().int().min(1),
-    spanLabel: z.string().max(120),
-    participantCount: z.number().int().min(1).max(500),
-  }),
-  digest: z.object({
-    totalMessages: z.number(),
-    spanLabel: z.string().max(120),
-    perDay: z.number(),
-    activeDays: z.number(),
-    topEmoji: z.array(z.object({ value: z.string(), count: z.number() })).max(10),
-    busiestDay: z.object({ day: z.string().max(20), count: z.number() }).nullable(),
-    longestStreakDays: z.number(),
-    longestSilenceDays: z.number(),
-  }),
-  people: z
-    .array(
-      z.object({
-        sender: z.string().max(80),
-        share: z.number(),
-        messages: z.number(),
-        nightShare: z.number(),
-        medianResponseMinutes: z.number().nullable(),
-        longestSilenceDays: z.number(),
-        stillGone: z.boolean(),
-        consistency: z.number(),
-        laughsPerMessage: z.number(),
-        topEmoji: z.array(z.string().max(20)).max(5),
-        distinctiveWords: z.array(z.string().max(60)).max(10),
-        meanLength: z.number(),
-        questionShare: z.number(),
-        oneWordShare: z.number(),
-        /* Their own messages. This replaced a single `longestMessage`, which
-           on real exports was usually a forwarded chain letter rather than
-           anything the person wrote — see `premiumPayload.ts`. */
-        samples: z
-          .array(
-            z.object({
-              id: z.number().int().min(0),
-              sender: z.string().max(80),
-              time: z.string().max(10),
-              date: z.string().max(12),
-              text: z.string().max(1000),
-              edited: z.boolean().optional(),
-            }),
-          )
-          .max(40)
-          .default([]),
-      }),
-    )
-    .max(60),
-  eras: z
-    .array(
-      z.object({
-        year: z.number().int(),
-        messages: z.number(),
-        busiestMonth: z.string().max(20).nullable(),
-      }),
-    )
-    .max(30),
-  moments: z
-    .array(
-      z.object({
-        id: z.string().max(40),
-        reasons: z.array(z.string().max(200)).max(10),
-        participants: z.number(),
-        messages: z
-          .array(
-            z.object({
-              /* An index into the reader's own message array. It is the anchor
-                 for every citation the model makes, and it is meaningless to
-                 anyone who does not hold that array — so it is the one new
-                 field here that carries no identity. */
-              id: z.number().int().min(0),
-              /* Real display names now, not `Person A`. Widened because a
-                 WhatsApp display name is whatever somebody typed into their
-                 own phone, emoji and all. */
-              sender: z.string().max(80),
-              time: z.string().max(10),
-              date: z.string().max(12),
-              text: z.string().max(4000),
-              edited: z.boolean().optional(),
-            }),
-          )
-          .max(60),
-      }),
-    )
-    .max(160),
-});
 
 export async function POST(request: Request) {
   if (crossSite(request)) return forbiddenCrossSite();

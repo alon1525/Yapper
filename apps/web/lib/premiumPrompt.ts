@@ -191,12 +191,6 @@ export function premiumSystem(tone: ReportTone = 'roast'): string {
   ].join('\n');
 }
 
-/**
- * Kept as a binding for the tests and scripts that import it by name. The route
- * calls `premiumSystem(tone)`, because tone is a per-request decision.
- */
-export const PREMIUM_SYSTEM = premiumSystem('roast');
-
 function pct(n: number): number {
   return Math.round(n * 100);
 }

@@ -126,6 +126,40 @@ const MOMENT_CHAR_BUDGET = 400_000;
 const SAMPLE_CHAR_BUDGET = 80_000;
 
 /**
+ * Longest single message body sent from a burst.
+ *
+ * WhatsApp permits 65,536 characters in one message, and the request schema
+ * rejects anything over 4,000 — so one forwarded essay in one selected window
+ * turns an entitled, already-charged request into "Malformed request." Nothing
+ * upstream truncates: `identifyMessages` copies the body verbatim, the way
+ * `anonymizeMessages` always has, and the per-person spread avoids the problem
+ * only because it filters on length before selecting.
+ *
+ * On the export this was measured against the longest body in 3,168 selected
+ * messages was 2,170 characters, so this changes nothing there. It exists for
+ * the export where it isn't, which is the one nobody will be watching.
+ *
+ * Two thousand rather than the schema's four: past a couple of thousand
+ * characters a message is a document somebody pasted, the first paragraph is
+ * enough to tell what it was, and the rest is bought at the paid model's input
+ * rate.
+ */
+const MESSAGE_CHAR_CAP = 2_000;
+
+/** Message text as it goes out: whole, or clearly cut. */
+function capped(messages: AnonymizedMessage[]): AnonymizedMessage[] {
+  return messages.map((m) =>
+    m.text.length <= MESSAGE_CHAR_CAP
+      ? m
+      : // Marked rather than silently shortened. A model that quotes this can
+        // only produce a quote the browser's verifier would reject, and an
+        // ellipsis is the difference between it copying the visible part and it
+        // completing a sentence nobody finished.
+        { ...m, text: `${m.text.slice(0, MESSAGE_CHAR_CAP)}…[cut]` },
+  );
+}
+
+/**
  * How much of a burst has to be readable text before it is a candidate.
  *
  * Half. Below that the window is people reacting to something rather than
@@ -304,7 +338,7 @@ export function buildPremiumPayload(analysis: Analysis, brief?: Brief): PremiumP
       id: w.id,
       reasons: w.reasons,
       participants: w.participants.length,
-      messages: identifyMessages(getWindowMessages(parsed, w, MESSAGES_PER_MOMENT)),
+      messages: capped(identifyMessages(getWindowMessages(parsed, w, MESSAGES_PER_MOMENT))),
     })),
   };
 }
