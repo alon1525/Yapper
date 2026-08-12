@@ -25,7 +25,14 @@ import type { Brief } from '../apps/web/lib/brief';
 const exportPath = process.argv[2]!;
 const parsed = parseChat(readFileSync(exportPath, 'utf8'));
 const stats = computeStats(parsed, { fileName: exportPath });
-const brief: Brief = { language: 'he', kind: 'Friends group', notes: '', photos: {}, groupPhotos: {} };
+const brief: Brief = {
+  language: 'he',
+  kind: 'Friends group',
+  tone: 'roast',
+  notes: '',
+  photos: {},
+  groupPhotos: {},
+};
 const { pseudonymizer } = buildDetectivePayload(
   { parsed, stats, moments: findCandidateMoments(parsed), fileName: exportPath },
   brief,

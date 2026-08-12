@@ -25,11 +25,29 @@ import type { ReportLanguage } from './languages';
 export const GROUP_SLOTS = ['opener', 'chaos', 'verdict', 'paywall'] as const;
 export type GroupSlot = (typeof GROUP_SLOTS)[number];
 
+/**
+ * How hard the report is allowed to go.
+ *
+ * `roast` is the default, and it is the product. A report that hedges reads as
+ * a horoscope with statistics in it, which is the one thing nobody screenshots
+ * back into their group. `gentle` exists because some chats genuinely are the
+ * wrong place for it — a family group where somebody is going to take it badly,
+ * a work chat — and because a reader who cannot turn it down will not turn it
+ * on at all.
+ *
+ * This is the register control. `kind` describes the subject matter; this
+ * decides the voice. See `premiumPrompt.ts`, which is the only place the
+ * distinction is spent.
+ */
+export type ReportTone = 'roast' | 'gentle';
+
 export interface Brief {
   /** The language Reg writes in — independent of the language the chat is in. */
   language: ReportLanguage;
   /** One of `CHAT_KINDS`, or whatever the reader picked. */
   kind: string;
+  /** How sharp the paid report is allowed to be. Defaults to `roast`. */
+  tone: ReportTone;
   /** Free text, capped by the textarea. Scrubbed before it can reach a model. */
   notes: string;
   /** Person's display name → object URL. */
@@ -57,7 +75,7 @@ export const CHAT_KINDS: { name: string; icon: KindIcon; note: string }[] = [
 ];
 
 export function emptyBrief(): Brief {
-  return { language: 'en', kind: '', notes: '', photos: {}, groupPhotos: {} };
+  return { language: 'en', kind: '', tone: 'roast', notes: '', photos: {}, groupPhotos: {} };
 }
 
 /**
@@ -89,6 +107,13 @@ export function releasePhotos(brief: Brief): void {
 export interface BriefDigest {
   language: ReportLanguage;
   kind: string;
+  /**
+   * Optional because only the paid report spends it, and the three free routes
+   * validate their own request bodies against schemas that do not carry the
+   * field. `briefDigest` always sets it; a payload arriving without one is a
+   * client that predates the control, and the reader there gets the default.
+   */
+  tone?: ReportTone;
   notes: string;
 }
 
@@ -101,6 +126,10 @@ export function briefDigest(
   return {
     language: brief.language,
     kind: brief.kind,
+    // Absent on a brief built before this field existed, and the fallback is
+    // the default rather than the safe-looking one: a report that silently
+    // softens itself is the bug this whole change is fixing.
+    tone: brief.tone ?? 'roast',
     notes: notes ? scrub(notes).slice(0, NOTES_LIMIT) : '',
   };
 }

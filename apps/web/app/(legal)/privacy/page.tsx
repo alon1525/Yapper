@@ -14,10 +14,12 @@ import { CONTACT_EMAIL, SERVICE_NAME } from '@/lib/legal';
  * Three things a generic policy would get wrong here, all of them checked
  * against the routes rather than assumed:
  *
- *  1. `/api/share-card` is the one carve-out. It takes real display names —
- *     the group name, the top talker, the night owl — because those are the
- *     names printed on a card made for sharing. Every other route is fed the
- *     pseudonymised copy. That exception is stated in §4 rather than buried.
+ *  1. Two routes take real names, and both are stated rather than buried.
+ *     `/api/share-card` takes the handful printed on a card made for sharing.
+ *     `/api/premium` takes the whole cast, because the paid report is written
+ *     about named people and the anonymised version of it read like a
+ *     horoscope. The three free AI routes are still fed the pseudonymised copy,
+ *     and still refuse a payload that is not.
  *  2. The rate limiter keys on the caller's IP (`lib/rateLimit.ts`). A per-IP
  *     counter with a TTL is still personal data, so it is named, with its
  *     purpose and its expiry.
@@ -60,9 +62,10 @@ export default function PrivacyPage() {
       standfirst={
         <>
           Your chat is read on your own device, by code running in your own browser. Nothing about
-          it is sent anywhere unless you press a button that says it will be, and even then what
-          goes is an anonymised extract, not your chat. We run no database, set no cookies and keep
-          no profile of you.
+          it is sent anywhere unless you press a button that says it will be. For the free parts,
+          what goes is an anonymised extract, not your chat; for the report you pay for, it is a
+          few thousand messages with your group’s real names on them, which section 3(b) sets out
+          in full. We run no database, set no cookies and keep no profile of you.
         </>
       }
     >
@@ -115,14 +118,15 @@ export default function PrivacyPage() {
 
       <h2 id="sent">3. What is sent, and only when you ask for it</h2>
       <p>
-        Three actions send something to a server. Each is something you press, none of them happens
+        Four actions send something to a server. Each is something you press, none of them happens
         on page load, and you can use {SERVICE_NAME} end to end without triggering any of them.
       </p>
 
-      <h3>a. Reg’s writing (optional, and anonymised)</h3>
+      <h3>a. Reg’s free writing (optional, and anonymised)</h3>
       <p>
-        If you ask for the AI-written parts of your story, an extract is sent to our server and on
-        to our AI provider. Before it leaves your browser it is put through a pseudonymiser:
+        If you ask for the AI-written parts of your free story, an extract is sent to our server
+        and on to our AI provider. Before it leaves your browser it is put through a
+        pseudonymiser:
       </p>
       <ul>
         <li>
@@ -149,7 +153,47 @@ export default function PrivacyPage() {
         appears nowhere as a participant name cannot be detected, and we do not claim to catch it.
       </p>
 
-      <h3>b. The share card</h3>
+      <h3>b. The full report you pay for (real names, and much more of the chat)</h3>
+      <p>
+        This one is different from everything above, and it is different on purpose. When you
+        unlock the full report, what is sent to our server and on to our AI provider is:
+      </p>
+      <ul>
+        <li>
+          <strong>Your group’s real names</strong>, as senders and inside the message text. They
+          are not replaced with tokens, and nothing is scrubbed out of the message bodies.
+        </li>
+        <li>
+          <strong>A few thousand messages</strong> — the conversations that scored highest, at
+          least one from every year of the chat, and a spread of each person’s own messages so
+          that their part of the report is written from how they actually talk.
+        </li>
+        <li>The same statistics and the same optional notes box as above.</li>
+      </ul>
+      <p>
+        Why it is not anonymised like the rest: we tried it that way first. A model that only ever
+        sees <strong>Person E</strong> cannot repeat the joke your group makes about somebody’s
+        name, cannot tell that two nicknames belong to one person, and writes a report that would
+        fit any group chat — which is not worth paying for. The report is about named people, so it
+        is written from named people.
+      </p>
+      <Note tone="warn">
+        <p>
+          <strong>This is the only request in {SERVICE_NAME} that carries the whole cast.</strong>{' '}
+          It happens once, when you press unlock, and never on page load or during the free part of
+          the story. The screen you press it on says so before you press it. If you would rather
+          this never happened, do not unlock the full report — everything before the paywall runs
+          under the rules in section (a).
+        </p>
+      </Note>
+      <p>
+        It is still not stored. The report is generated, returned to your browser, and neither the
+        request nor the reply is written to any database of ours — there isn’t one. Our AI provider
+        holds the request for its own abuse-monitoring period; see{' '}
+        <Link href="#processors">who else is involved</Link>.
+      </p>
+
+      <h3>c. The share card</h3>
       <p>
         The 9:16 image is drawn on our server, so making one sends the handful of values printed on
         it: the group name, the top talker’s name and share, the night owl’s name, the top emoji,
@@ -158,7 +202,7 @@ export default function PrivacyPage() {
         back to you, and not stored.
       </p>
 
-      <h3>c. Buying a report</h3>
+      <h3>d. Buying a report</h3>
       <p>
         Starting a purchase sends three numbers — the message count, the date-range label and the
         number of participants — which are used to issue a signed token tying your purchase to that
@@ -355,16 +399,24 @@ export default function PrivacyPage() {
         anything. We take that seriously, and so should you.
       </p>
       <p>
-        What the product does about it: their messages are never uploaded; the anonymised extract
-        replaces their names with tokens and strips names, phone numbers and email addresses from
-        message bodies; and their photos never leave your browser.
+        What the product does about it: their export is never uploaded; their photos never leave
+        your browser; and for the free parts of the story the extract replaces their names with
+        tokens and strips names, phone numbers and email addresses from message bodies.
+      </p>
+      <p>
+        What it does not do: the full report you pay for is sent with their real names and several
+        thousand of their messages, exactly as section 3(b) describes. That is a decision you make
+        on their behalf, and they are not there to be asked. It is the reason the unlock screen
+        states it before you press it, and the reason it is worth thinking about for a second
+        before you do.
       </p>
       <p>
         What you should do about it: only upload a chat you were genuinely part of, think about
-        whether the people in it would mind, and use the share card and the report as the joke they
-        are meant to be rather than as a way to embarrass someone. Where your local law requires the
-        others’ consent to process their messages, obtaining it is your responsibility — see the{' '}
-        <Link href="/terms">Terms</Link>.
+        whether the people in it would mind — and if the answer is that one of them would, the free
+        story is anonymised end to end and is still a real report. Use the share card and the
+        report as the joke they are meant to be rather than as a way to embarrass someone. Where
+        your local law requires the others’ consent to process their messages, obtaining it is your
+        responsibility — see the <Link href="/terms">Terms</Link>.
       </p>
       <p>
         If you are in someone’s exported chat and want to raise something with us, write to{' '}

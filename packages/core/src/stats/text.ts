@@ -145,6 +145,18 @@ export function countLaughter(text: string): number {
   return text.match(LAUGH_RE)?.length ?? 0;
 }
 
+/**
+ * The same text with every laugh removed.
+ *
+ * Laughter is the one token that is simultaneously the strongest signal a
+ * moment was funny and the weakest signal a *message* said anything. Scoring
+ * wants to count it; anything asking "is there content here" wants it gone
+ * first, or `חחחחח` reads as a five-character contribution.
+ */
+export function stripLaughter(text: string): string {
+  return text.replace(LAUGH_RE, ' ');
+}
+
 /** Top-N by count, ties broken alphabetically so results are deterministic. */
 export function topEntries<T extends string>(
   counts: Map<T, number>,

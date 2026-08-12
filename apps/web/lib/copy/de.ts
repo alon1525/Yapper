@@ -131,6 +131,7 @@ export const DE: Partial<Copy> = {
   'ai.run': 'Schreib mir die Geschichte \u2726',
   'ai.running': 'Eure besten Momente werden gelesen\u2026',
   'ai.inspect': 'Zeig mir genau, was gesendet wird',
+  'wall.names': 'Der vollständige Report ist die einzige Anfrage, die mit den echten Namen eurer Gruppe rausgeht. Ohne sie bleibt er beliebig. Was genau gesendet wird, steht im Datenschutz.',
   'wall.eyebrow': 'Das war die Vorschau',
   'wall.free': 'Eine Geschichte gab es gratis',
   'wall.unlock': 'Den ganzen Bericht freischalten',
@@ -173,7 +174,7 @@ export const DE: Partial<Copy> = {
 
   'ob.kind.q': 'Frage 2 von 3',
   'ob.kind.title': 'Was für ein Chat ist das?',
-  'ob.kind.lede': 'Das ändert, wonach Reg sucht und wie gemein er sein darf.',
+  'ob.kind.lede': 'Das sagt Reg, was er liest. Wie hart er wird, ist die nächste Frage.',
   'kind.partner': 'Partner',
   'kind.partner.note': 'Romantik, Streit, wer zuerst gute Nacht sagt',
   'kind.bestFriend': 'Beste Freundin, bester Freund',
@@ -187,6 +188,12 @@ export const DE: Partial<Copy> = {
   'kind.other': 'Anderes',
   'kind.other.note': 'Reg kriegt das schon raus',
 
+  'ob.tone.q': 'Und wie hart darf er werden?',
+  'ob.tone.roast': 'Zerlegt sie',
+  'ob.tone.roast.note': 'Keine weiche Landung, am Ende kommt niemand davon.',
+  'ob.tone.gentle': 'Bleib milde',
+  'ob.tone.gentle.note': 'Immer noch witzig, immer noch konkret. Niemand wird verletzt.',
+
   'ob.notes.q': 'Frage 3 von 3',
   'ob.notes.title': 'Sollte Reg etwas wissen?',
   'ob.notes.lede':
@@ -197,7 +204,7 @@ export const DE: Partial<Copy> = {
   'ob.notes.hint2': 'Wer mit wem',
   'ob.notes.hint3': 'Jugendfrei bleiben',
   'ob.notes.privacy':
-    'Was hier steht, bleibt hier, bis ihr Regs Zeilen anfordert — und die Namen darin werden vorher durch Platzhalter ersetzt, genau wie in euren Nachrichten.',
+    'Was hier steht, bleibt hier, bis ihr Reg ums Schreiben bittet. Die kostenlosen Zeilen gehen mit Platzhaltern statt Namen raus; der bezahlte Report ist die einzige Ausnahme — er geht mit den echten Namen eurer Gruppe raus, und genau das macht ihn zu einem Report über euch.',
 
   'ob.upload.eyebrow': 'Der einzige fummelige Teil',
   'ob.upload.title': 'Chat exportieren, dann hier ablegen.',

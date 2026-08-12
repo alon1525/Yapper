@@ -601,7 +601,11 @@ export function Landing({
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={privacyLine}>Every number is calculated in your browser.</div>
             <div style={privacyLine}>
-              Reg&apos;s lines are optional, and he only ever sees an anonymised copy.
+              Reg&apos;s free lines are optional, and he only ever sees an anonymised copy.
+            </div>
+            <div style={privacyLine}>
+              The paid report is the exception: it goes with your real names, and it says so
+              before you buy.
             </div>
             <div style={privacyLine}>Nothing is stored. Close the tab and it&apos;s gone.</div>
             {/* Three lines is the pitch; the policy is where the same three

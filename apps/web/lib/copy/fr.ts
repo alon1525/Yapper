@@ -130,6 +130,7 @@ export const FR: Partial<Copy> = {
   'ai.run': '\u00c9cris-moi l\u2019histoire \u2726',
   'ai.running': 'Lecture de vos meilleurs moments\u2026',
   'ai.inspect': 'Montrez-moi exactement ce qui est envoy\u00e9',
+  'wall.names': 'Le rapport complet est la seule requête envoyée avec les vrais noms de votre groupe. Sans eux, il reste générique. La page Confidentialité dit exactement ce qui part.',
   'wall.eyebrow': 'C\u2019\u00e9tait l\u2019aper\u00e7u',
   'wall.free': 'Une histoire \u00e9tait offerte',
   'wall.unlock': 'D\u00e9bloquer le rapport complet',
@@ -172,7 +173,7 @@ export const FR: Partial<Copy> = {
 
   'ob.kind.q': 'Question 2 sur 3',
   'ob.kind.title': 'C’est quel genre de conversation ?',
-  'ob.kind.lede': 'Ça change ce que Reg cherche, et jusqu’où il a le droit d’aller.',
+  'ob.kind.lede': 'Ça dit à Reg ce qu’il lit. Jusqu’où il va, c’est la question suivante.',
   'kind.partner': 'Partenaire',
   'kind.partner.note': 'Romance, disputes, qui dit bonne nuit en premier',
   'kind.bestFriend': 'Meilleur ami',
@@ -186,6 +187,12 @@ export const FR: Partial<Copy> = {
   'kind.other': 'Autre',
   'kind.other.note': 'Reg s’en arrangera',
 
+  'ob.tone.q': 'Et jusqu’où il va ?',
+  'ob.tone.roast': 'Qu’il les démonte',
+  'ob.tone.roast.note': 'Pas d’atterrissage en douceur, personne n’est épargné à la fin.',
+  'ob.tone.gentle': 'Qu’il y aille doucement',
+  'ob.tone.gentle.note': 'Toujours drôle, toujours précis. Personne n’est blessé.',
+
   'ob.notes.q': 'Question 3 sur 3',
   'ob.notes.title': 'Quelque chose que Reg devrait savoir ?',
   'ob.notes.lede':
@@ -196,7 +203,7 @@ export const FR: Partial<Copy> = {
   'ob.notes.hint2': 'Qui sort avec qui',
   'ob.notes.hint3': 'Rester correct',
   'ob.notes.privacy':
-    'Ce qui est écrit ici y reste jusqu’à ce que vous demandiez les lignes de Reg — et les noms sont remplacés par des jetons avant l’envoi, exactement comme vos messages.',
+    'Ce qui est écrit ici y reste jusqu’à ce que vous demandiez à Reg d’écrire. Les lignes gratuites partent avec chaque nom remplacé par un jeton ; le rapport payant est la seule exception — il part avec les vrais noms de votre groupe, et c’est ce qui fait qu’il parle de vous.',
 
   'ob.upload.eyebrow': 'La seule partie pénible',
   'ob.upload.title': 'Exportez la conversation, puis déposez-la ici.',

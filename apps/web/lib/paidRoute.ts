@@ -37,10 +37,12 @@ export interface PaidRequest {
   moments?: { messages: { text: string }[] }[];
   conversations?: { messages: { text: string }[] }[];
   evidence?: Record<string, { text: string }[]>;
-  /* Only the premium payload carries a quoted longest message; the other
-     routes' person rows are a different shape entirely. The index signature
-     is what lets one ceiling function accept all of them. */
-  people?: { longestMessage?: string | null; [field: string]: unknown }[];
+  /* Every route's person row carries a sender and differs after that. The two
+     quoted fields belong to the premium payload alone — a spread of each
+     person's own lines, and historically a single longest message — and are
+     optional here so the same gate accepts every shape. Kept in step with
+     `excerptChars` in `guard.ts`, which is what actually measures them. */
+  people?: { sender: string; longestMessage?: string | null; samples?: { text: string }[] }[];
 }
 
 export interface GateOptions {

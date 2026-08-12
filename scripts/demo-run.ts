@@ -51,6 +51,7 @@ mkdirSync(outDir, { recursive: true });
 const brief: Brief = {
   language: 'he',
   kind: 'Friends group',
+  tone: 'roast',
   notes: '',
   photos: {},
   groupPhotos: {},

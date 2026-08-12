@@ -150,6 +150,8 @@ export const EN = {
   'ai.run': 'Write my story \u2726',
   'ai.running': 'Reading your best moments\u2026',
   'ai.inspect': 'Show me exactly what gets sent',
+  'wall.names':
+    'The full report is the one request that goes out with your group’s real names — without them it stays generic. Privacy says exactly what is sent.',
   'wall.eyebrow': 'That was the preview',
   'wall.free': 'One story was free',
   'wall.unlock': 'Unlock the full roast',
@@ -195,7 +197,7 @@ export const EN = {
 
   'ob.kind.q': 'Question 2 of 3',
   'ob.kind.title': 'What kind of chat is this?',
-  'ob.kind.lede': 'It changes what Reg looks for, and how mean he is allowed to be.',
+  'ob.kind.lede': 'It tells Reg what he is reading. How hard he goes is the next question.',
   'kind.partner': 'Partner',
   'kind.partner.note': 'Romance, fights, who says goodnight first',
   'kind.bestFriend': 'Best friend',
@@ -209,6 +211,12 @@ export const EN = {
   'kind.other': 'Other',
   'kind.other.note': 'Reg will figure it out',
 
+  'ob.tone.q': 'And how hard should he go?',
+  'ob.tone.roast': 'Roast them',
+  'ob.tone.roast.note': 'No soft landing, no letting anyone off at the end.',
+  'ob.tone.gentle': 'Go easy',
+  'ob.tone.gentle.note': 'Still funny, still specific. Nobody gets hurt.',
+
   'ob.notes.q': 'Question 3 of 3',
   'ob.notes.title': 'Anything Reg should know?',
   'ob.notes.lede':
@@ -219,7 +227,7 @@ export const EN = {
   'ob.notes.hint2': 'Who is dating who',
   'ob.notes.hint3': 'Keep it clean',
   'ob.notes.privacy':
-    'Typed here, stays here until you ask for Reg’s lines — and the names in it are swapped for tokens before it is sent, exactly like your messages.',
+    'Typed here, stays here until you ask Reg to write. The free lines go out with every name swapped for a token; the paid report is the one exception — it goes with your group’s real names, which is what makes it about them.',
 
   'ob.upload.eyebrow': 'The only fiddly part',
   'ob.upload.title': 'Export the chat, then drop it here.',

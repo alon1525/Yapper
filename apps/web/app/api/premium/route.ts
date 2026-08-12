@@ -7,7 +7,7 @@ import { loadFixture } from '@/lib/fixture';
 import { failureBody, generateStructured } from '@/lib/generate';
 import { modelConfigured, modelFor, modelMissingMessage } from '@/lib/providers';
 import { crossSite, excerptChars, forbiddenCrossSite, payloadTooLarge } from '@/lib/guard';
-import { PREMIUM_SYSTEM, PremiumSchema, premiumPrompt } from '@/lib/premiumPrompt';
+import { PremiumSchema, premiumPrompt, premiumSystem } from '@/lib/premiumPrompt';
 import { checkRate, tooManyRequests } from '@/lib/rateLimit';
 
 /**
@@ -21,18 +21,42 @@ import { checkRate, tooManyRequests } from '@/lib/rateLimit';
  */
 
 export const runtime = 'nodejs';
-export const maxDuration = 120;
-
-
-const SENDER_TOKEN = /^Person [A-Z]+$/;
 
 /**
- * Ceiling on excerpt text per request. `buildPremiumPayload` sends twelve
- * moments of thirty messages plus one long message per person — well under
- * this. The array bounds alone would allow more than a million tokens through,
- * which no valid client would ever send and no bill should ever have to cover.
+ * Five minutes, raised from two when the payload grew.
+ *
+ * This request now sends roughly 3,400 messages rather than 360, and can still
+ * ask for up to 24,000 output tokens — a report with a card for every member of
+ * an eighteen-person group is not short. `generateStructured` also takes a
+ * second turn when the first reply fails validation, which doubles the worst
+ * case rather than adding to it.
+ *
+ * A timeout here is the most expensive failure in the product: the model has
+ * been paid for, the work is done, and the reader sees an error. The host may
+ * clamp this to whatever the plan allows, which is the correct behaviour — it
+ * cannot be lower than the old value, so asking is free.
  */
-const MAX_EXCERPT_CHARS = 250_000;
+export const maxDuration = 300;
+
+/**
+ * Ceiling on excerpt text per request.
+ *
+ * The paid payload is the one request in this product that carries real names
+ * and a substantial slice of the chat: up to 120 bursts of fifty messages, plus
+ * thirty of each person's own lines. On a real 25,812-message export that is
+ * 3,400 messages and about 75,000 characters of excerpt.
+ *
+ * This ceiling is a backstop against a hostile client, not a budget — the
+ * honest client counts its own characters and sends less material rather than
+ * risk this (`MOMENT_CHAR_BUDGET` in `premiumPayload.ts`, currently 400k plus
+ * 80k of per-person lines). It sits above that and far below what the per-field
+ * bounds alone would permit, which is 160 windows of sixty 4,000-character
+ * messages: thirty-eight megabytes, from a payload that validates.
+ *
+ * Measured, not guessed. `npx vite-node scripts/ai-dry-run.ts` prints the
+ * premium prompt size for a real export; re-run it before moving this.
+ */
+const MAX_EXCERPT_CHARS = 600_000;
 
 const RequestSchema = z.object({
   token: z.string().max(500),
@@ -47,6 +71,9 @@ const RequestSchema = z.object({
          and the route then rejects. */
       language: z.enum(REPORT_LANGUAGE_CODES),
       kind: z.string().max(40),
+      /* The register control. Absent on a client that predates it, and the
+         fallback is the default rather than the timid one — see `brief.ts`. */
+      tone: z.enum(['roast', 'gentle']).default('roast'),
       notes: z.string().max(600),
     })
     .optional(),
@@ -68,7 +95,7 @@ const RequestSchema = z.object({
   people: z
     .array(
       z.object({
-        sender: z.string().max(40),
+        sender: z.string().max(80),
         share: z.number(),
         messages: z.number(),
         nightShare: z.number(),
@@ -82,7 +109,22 @@ const RequestSchema = z.object({
         meanLength: z.number(),
         questionShare: z.number(),
         oneWordShare: z.number(),
-        longestMessage: z.string().max(600).nullable(),
+        /* Their own messages. This replaced a single `longestMessage`, which
+           on real exports was usually a forwarded chain letter rather than
+           anything the person wrote — see `premiumPayload.ts`. */
+        samples: z
+          .array(
+            z.object({
+              id: z.number().int().min(0),
+              sender: z.string().max(80),
+              time: z.string().max(10),
+              date: z.string().max(12),
+              text: z.string().max(1000),
+              edited: z.boolean().optional(),
+            }),
+          )
+          .max(40)
+          .default([]),
       }),
     )
     .max(60),
@@ -109,17 +151,20 @@ const RequestSchema = z.object({
                  anyone who does not hold that array — so it is the one new
                  field here that carries no identity. */
               id: z.number().int().min(0),
-              sender: z.string().max(40),
+              /* Real display names now, not `Person A`. Widened because a
+                 WhatsApp display name is whatever somebody typed into their
+                 own phone, emoji and all. */
+              sender: z.string().max(80),
               time: z.string().max(10),
               date: z.string().max(12),
               text: z.string().max(4000),
               edited: z.boolean().optional(),
             }),
           )
-          .max(40),
+          .max(60),
       }),
     )
-    .max(14),
+    .max(160),
 });
 
 export async function POST(request: Request) {
@@ -215,27 +260,25 @@ export async function POST(request: Request) {
     });
   }
 
-  // Defence in depth, extended to cover the per-person section — which the
-  // preview route never had, and which carries names in more places than the
-  // moment excerpts do.
-  for (const person of payload.people) {
-    if (!SENDER_TOKEN.test(person.sender)) {
-      return NextResponse.json(
-        { error: 'Request rejected: people must be anonymised before sending.' },
-        { status: 400 },
-      );
-    }
-  }
-  for (const moment of payload.moments) {
-    for (const message of moment.messages) {
-      if (!SENDER_TOKEN.test(message.sender)) {
-        return NextResponse.json(
-          { error: 'Request rejected: senders must be anonymised before sending.' },
-          { status: 400 },
-        );
-      }
-    }
-  }
+  /*
+    This route used to refuse any sender that was not `Person A`, and that check
+    is deliberately gone rather than accidentally missing.
+
+    The paid report is now written from real names. It is the only route in the
+    product that is — the preview, the detective and the writer all still
+    pseudonymise, and all three still enforce it — because a model that has only
+    ever seen `Person E` cannot repeat the joke this group makes about somebody's
+    name, cannot tell that two nicknames belong to one person, and writes the
+    could-be-anyone prose the paid deck was being refunded for.
+
+    What still stands between a chat and this endpoint: the entitlement, which is
+    minted per-chat and checked first; the fingerprint agreement check, so a
+    token cannot be replayed against different content; the rate limiter; the
+    cross-site check; and the excerpt ceiling. `/privacy` §3 states plainly that
+    this one request carries names, and the onboarding says so before the reader
+    unlocks. If you are adding a *second* route that sends real names, that
+    paragraph is the thing to update first.
+  */
 
   const model = modelFor('premium');
   if (!model) {
@@ -245,7 +288,7 @@ export async function POST(request: Request) {
 
   const report = await generateStructured({
     model,
-    system: PREMIUM_SYSTEM,
+    system: premiumSystem(payload.brief?.tone ?? 'roast'),
     prompt: premiumPrompt(payload),
     schema: PremiumSchema,
     maxTokens: 24000,

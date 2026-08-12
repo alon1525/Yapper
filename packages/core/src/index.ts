@@ -33,6 +33,9 @@ export {
 export { computeVoiceProfiles } from './stats/voice';
 export type { VoiceProfile } from './stats/voice';
 
+export { isSubstantive, looksPasted, pickVoiceSamples, substanceOf } from './stats/samples';
+export type { VoiceSampleOptions } from './stats/samples';
+
 export {
   conversationMessages,
   scoreRecall,
@@ -101,6 +104,7 @@ export {
   anonymizeMessages,
   createPseudonymizer,
   evidenceId,
+  identifyMessages,
   parseEvidenceId,
   restoreDeep,
   transcriptLine,

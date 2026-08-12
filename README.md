@@ -4,9 +4,10 @@ Drop in a WhatsApp export and get your group chat back as a story: the top
 yapper, the certified ghost, the night it all went sideways, and awards nobody
 asked for.
 
-Every statistic is computed **in your browser**. AI is optional, consent-gated,
-and only ever sees an anonymised copy. Nothing is stored — close the tab and it
-is gone.
+Every statistic is computed **in your browser**. AI is optional and
+consent-gated. The free writing only ever sees an anonymised copy; the paid
+report is the one exception, and it says so at the till. Nothing is stored —
+close the tab and it is gone.
 
 ```
 packages/core   Pure TypeScript engine — parse, stats, sessions, patterns,
@@ -368,7 +369,7 @@ than a promise:
 |---|---|
 | Free | Nothing. Parse, stats and moment detection all run in a Web Worker. |
 | AI preview | Opt-in only. An anonymised digest, the top few conversation windows, and the brief. |
-| Premium | Opt-in, entitlement-gated. The same anonymised copy, plus a per-person digest, the deterministic pattern report, and the top conversations. |
+| Premium | Opt-in, entitlement-gated, and **the one tier that sends real names**. A few thousand messages: the top conversations, at least one window per year, and a spread of each person's own lines, plus a per-person digest. |
 
 **The detective payload is the widest surface in the product**, and nearly every
 field on it is *derived from* message bodies rather than quoted from them —
@@ -407,7 +408,19 @@ participant in the export and fails the same gate as everything else. Notes are
 also fenced in the prompt and framed as untrusted: it is a box marked "anything
 Reg should know", and people type instructions into those.
 
-Anonymisation replaces senders with `Person A`, then sweeps message bodies for
+**The paid report is deliberately outside all of this.** `/api/premium` sends
+real display names, as senders and inside message bodies, and sends roughly ten
+times the material the free tier does. That is not an oversight in the scrubber;
+it is the fix for a paid deck that read like a horoscope. A model shown only
+`Person E` cannot repeat the joke a group makes about somebody's name, cannot
+tell that two nicknames are one person, and writes copy that would fit any group
+chat. `scripts/ai-dry-run.ts` asserts the *presence* of names on that payload for
+the same reason it asserts their absence everywhere else — a premium payload that
+comes back anonymised means the pseudonymiser has crept back in, and that failure
+is silent. Privacy §3(b) and the unlock screen both state it before anyone pays.
+
+Anonymisation, for the three free AI routes, replaces senders with `Person A`,
+then sweeps message bodies for
 those same display names, phone numbers and emails — because people address each
 other by name constantly, and redacting only the sender column would leak every
 name anyway. Hebrew glues prepositions onto names (`לנדב`, `ונדב`), so those are

@@ -187,6 +187,37 @@ export function anonymizeMessages(
 }
 
 /**
+ * The same transcript shape with nothing taken out: real senders, real bodies.
+ *
+ * Deliberately adjacent to `anonymizeMessages` rather than off in the route
+ * that uses it, because the failure mode is silent. These two must produce the
+ * same fields forever — `transcriptLine` renders both, and a field added to one
+ * and forgotten in the other is a prompt that quietly loses a column on one
+ * path only.
+ *
+ * Exactly one caller is allowed to reach for this: the paid report, which the
+ * reader unlocks knowing their group's names go with it. Every free path —
+ * the preview, the detective, the writer — goes through the pseudonymiser, and
+ * the privacy policy says so per-route. If you are adding a second caller, the
+ * question to answer first is which paragraph of `/privacy` covers it.
+ */
+export function identifyMessages(messages: readonly Message[]): AnonymizedMessage[] {
+  return messages.map((m) => ({
+    id: m.id,
+    sender: m.sender ?? 'system',
+    time: `${String(m.localHour).padStart(2, '0')}:${String(m.localMinute).padStart(2, '0')}`,
+    date: `${m.localYear}-${String(m.localMonth).padStart(2, '0')}-${String(m.localDay).padStart(2, '0')}`,
+    text:
+      m.kind === 'attachment'
+        ? `<${m.attachmentType ?? 'media'}>`
+        : m.kind === 'deleted'
+          ? '<deleted>'
+          : m.body,
+    ...(m.edited ? { edited: true } : {}),
+  }));
+}
+
+/**
  * How a message is addressed in a prompt and cited back in a model's reply.
  *
  * One shared helper rather than a format string in each prompt: the writer's

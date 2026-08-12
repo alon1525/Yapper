@@ -113,6 +113,20 @@ export function PaywallSlide({
           </p>
         )}
 
+        {/*
+          Said before the button, not after it, and not only in the policy.
+          This is the single place in the product where a reader chooses to
+          send their group's real names, and the two other people it concerns
+          are not here to be asked. A disclosure that arrives after the unlock
+          is not a disclosure, it is an apology.
+        */}
+        <p
+          className="mt-5 text-[11px] leading-relaxed opacity-55"
+          style={{ fontFamily: 'var(--yap-mono)' }}
+        >
+          {copy.t('wall.names')}
+        </p>
+
         <motion.div whileTap={{ scale: 0.98 }} className="mt-7">
           <DeckButton onClick={onUnlock} disabled={busy}>
             {state.phase === 'unlocking'

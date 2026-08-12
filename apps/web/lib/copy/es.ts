@@ -128,6 +128,7 @@ export const ES: Partial<Copy> = {
   'ai.run': 'Escr\u00edbeme la historia \u2726',
   'ai.running': 'Leyendo vuestros mejores momentos\u2026',
   'ai.inspect': 'Ens\u00e9\u00f1ame exactamente qu\u00e9 se env\u00eda',
+  'wall.names': 'El informe completo es la única petición que se envía con los nombres reales de tu grupo. Sin ellos se queda en genérico. En Privacidad está exactamente qué se envía.',
   'wall.eyebrow': 'Eso era la muestra',
   'wall.free': 'Una historia sali\u00f3 gratis',
   'wall.unlock': 'Desbloquear el repaso completo',
@@ -170,7 +171,7 @@ export const ES: Partial<Copy> = {
 
   'ob.kind.q': 'Pregunta 2 de 3',
   'ob.kind.title': '¿Qué tipo de chat es este?',
-  'ob.kind.lede': 'Cambia lo que Reg busca, y lo cruel que se le permite ser.',
+  'ob.kind.lede': 'Le dice a Reg qué está leyendo. Lo duro que va es la siguiente pregunta.',
   'kind.partner': 'Pareja',
   'kind.partner.note': 'Romance, broncas, quién da las buenas noches primero',
   'kind.bestFriend': 'Mejor amigo',
@@ -184,6 +185,12 @@ export const ES: Partial<Copy> = {
   'kind.other': 'Otro',
   'kind.other.note': 'Reg ya lo averiguará',
 
+  'ob.tone.q': '¿Y con cuánta dureza?',
+  'ob.tone.roast': 'Que los destroce',
+  'ob.tone.roast.note': 'Sin aterrizaje suave, sin perdonar a nadie al final.',
+  'ob.tone.gentle': 'Que se contenga',
+  'ob.tone.gentle.note': 'Igual de gracioso y concreto. Nadie sale herido.',
+
   'ob.notes.q': 'Pregunta 3 de 3',
   'ob.notes.title': '¿Algo que Reg deba saber?',
   'ob.notes.lede':
@@ -194,7 +201,7 @@ export const ES: Partial<Copy> = {
   'ob.notes.hint2': 'Quién sale con quién',
   'ob.notes.hint3': 'Que no se pase',
   'ob.notes.privacy':
-    'Lo que escribas aquí se queda aquí hasta que pidas las líneas de Reg, y los nombres se cambian por fichas antes de enviarlo, igual que vuestros mensajes.',
+    'Lo que escribas aquí se queda aquí hasta que le pidas a Reg que escriba. Las líneas gratuitas se envían con cada nombre cambiado por una ficha; el informe de pago es la única excepción: va con los nombres reales de tu grupo, que es lo que hace que trate de vosotros.',
 
   'ob.upload.eyebrow': 'La única parte incómoda',
   'ob.upload.title': 'Exporta el chat y suéltalo aquí.',

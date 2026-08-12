@@ -132,6 +132,7 @@ export const JA: Partial<Copy> = {
   'ai.run': '物語を書いてもらう ✦',
   'ai.running': 'いちばんいい瞬間を読んでいます…',
   'ai.inspect': '何が送られるのか正確に見せて',
+  'wall.names': 'フルレポートは、グループの実名のまま送られる唯一のリクエストです。そうしないと当たり障りのない内容になります。詳細はプライバシーに記載しています。',
   'wall.eyebrow': 'ここまでが試し読み',
   'wall.free': '一つ目の話は無料だった',
   'wall.unlock': '全部の解説を解放する',
@@ -174,7 +175,7 @@ export const JA: Partial<Copy> = {
 
   'ob.kind.q': '質問 2 / 3',
   'ob.kind.title': 'どんなチャット?',
-  'ob.kind.lede': 'レグが何を探すか、どこまで容赦しないかが変わります。',
+  'ob.kind.lede': 'レグが何を読んでいるかが決まります。どこまで踏み込むかは次の質問です。',
   'kind.partner': 'パートナー',
   'kind.partner.note': '恋愛、けんか、先におやすみを言うのは誰か',
   'kind.bestFriend': '親友',
@@ -188,6 +189,12 @@ export const JA: Partial<Copy> = {
   'kind.other': 'その他',
   'kind.other.note': 'レグが勝手に判断します',
 
+  'ob.tone.q': 'どこまで踏み込みますか?',
+  'ob.tone.roast': '容赦なく',
+  'ob.tone.roast.note': '柔らかい着地なし。最後に誰も逃がしません。',
+  'ob.tone.gentle': '手加減する',
+  'ob.tone.gentle.note': '面白さも具体性もそのまま。誰も傷つきません。',
+
   'ob.notes.q': '質問 3 / 3',
   'ob.notes.title': 'レグに伝えておくことは?',
   'ob.notes.lede':
@@ -197,7 +204,7 @@ export const JA: Partial<Copy> = {
   'ob.notes.hint2': '誰と誰が付き合っているか',
   'ob.notes.hint3': '下品にしない',
   'ob.notes.privacy':
-    'ここに書いたことはレグの原稿を頼むまでここに留まります。送るときは、メッセージと同じように名前がトークンに置き換わります。',
+    'ここに書いたことはレグに書いてもらうまでここに留まります。無料の原稿は名前をトークンに置き換えて送りますが、有料レポートだけは例外で、グループの実名のまま送られます。それがあなたたちの話になる理由です。',
 
   'ob.upload.eyebrow': '面倒なのはここだけ',
   'ob.upload.title': 'チャットを書き出して、ここに置く。',

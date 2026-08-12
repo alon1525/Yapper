@@ -28,7 +28,7 @@ function person(i: number, over: Partial<PersonDigest> = {}): PersonDigest {
     meanLength: 25,
     questionShare: 0.1,
     oneWordShare: 0.1,
-    longestMessage: null,
+    samples: [],
     ...over,
   };
 }

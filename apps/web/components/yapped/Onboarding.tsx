@@ -1322,6 +1322,68 @@ export function Onboarding({
                   );
                 })}
               </div>
+
+              {/*
+                The register control, deliberately on this step rather than a
+                step of its own. It is the same question the cards are already
+                circling — a work chat and a best friend are not read the same
+                way — and the two used to disagree, because `kind` carried the
+                meanness ("Family: gentler roast") while the prompt had its own
+                idea. Now the cards say what the chat is and this says how hard
+                to go, which is the only arrangement where both can be true.
+
+                Defaults to the roast, and says so plainly, because the softened
+                report is the one that reads like a horoscope.
+              */}
+              <div style={{ marginTop: 26 }}>
+                <div style={eyebrow}>{t('ob.tone.q')}</div>
+                <div
+                  role="group"
+                  aria-label={t('ob.tone.q')}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))',
+                    gap: 12,
+                    marginTop: 10,
+                  }}
+                >
+                  {(['roast', 'gentle'] as const).map((tone) => {
+                    const on = (brief.tone ?? 'roast') === tone;
+                    return (
+                      <button
+                        key={tone}
+                        type="button"
+                        onClick={() => onBrief({ tone })}
+                        aria-pressed={on}
+                        style={{
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          border: `1.5px solid ${on ? '#C2571F' : '#E3D5BE'}`,
+                          background: on ? '#C2571F' : '#FFFDF8',
+                          color: on ? '#FFF6EA' : '#15251C',
+                          borderRadius: 18,
+                          padding: 16,
+                          transition: 'all .18s ease',
+                        }}
+                      >
+                        <div style={{ fontWeight: 500, fontSize: 16 }}>
+                          {t(`ob.tone.${tone}` as CopyKey)}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 12.5,
+                            lineHeight: 1.4,
+                            color: on ? '#F3D9C4' : '#5E5344',
+                            marginTop: 4,
+                          }}
+                        >
+                          {t(`ob.tone.${tone}.note` as CopyKey)}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
 

@@ -128,6 +128,7 @@ export const PT: Partial<Copy> = {
   'ai.run': 'Escreve a minha hist\u00f3ria \u2726',
   'ai.running': 'Lendo os melhores momentos de voc\u00eas\u2026',
   'ai.inspect': 'Me mostra exatamente o que \u00e9 enviado',
+  'wall.names': 'O relatório completo é o único pedido enviado com os nomes reais do grupo. Sem eles, ele fica genérico. A Privacidade diz exatamente o que é enviado.',
   'wall.eyebrow': 'Isso era a pr\u00e9via',
   'wall.free': 'Uma hist\u00f3ria saiu de gra\u00e7a',
   'wall.unlock': 'Liberar o relat\u00f3rio completo',
@@ -170,7 +171,7 @@ export const PT: Partial<Copy> = {
 
   'ob.kind.q': 'Pergunta 2 de 3',
   'ob.kind.title': 'Que tipo de chat é esse?',
-  'ob.kind.lede': 'Muda o que o Reg procura, e o quanto ele pode ser cruel.',
+  'ob.kind.lede': 'Isso diz ao Reg o que ele está lendo. O quanto ele pega pesado é a próxima pergunta.',
   'kind.partner': 'Namorado(a)',
   'kind.partner.note': 'Romance, brigas, quem dá boa noite primeiro',
   'kind.bestFriend': 'Melhor amigo',
@@ -184,6 +185,12 @@ export const PT: Partial<Copy> = {
   'kind.other': 'Outro',
   'kind.other.note': 'O Reg descobre sozinho',
 
+  'ob.tone.q': 'E o quanto ele pega pesado?',
+  'ob.tone.roast': 'Detona eles',
+  'ob.tone.roast.note': 'Sem pouso suave, sem passar pano pra ninguém no fim.',
+  'ob.tone.gentle': 'Vai com calma',
+  'ob.tone.gentle.note': 'Continua engraçado e específico. Ninguém se magoa.',
+
   'ob.notes.q': 'Pergunta 3 de 3',
   'ob.notes.title': 'Algo que o Reg precise saber?',
   'ob.notes.lede':
@@ -194,7 +201,7 @@ export const PT: Partial<Copy> = {
   'ob.notes.hint2': 'Quem está com quem',
   'ob.notes.hint3': 'Manter limpo',
   'ob.notes.privacy':
-    'O que você escrever aqui fica aqui até você pedir as linhas do Reg — e os nomes viram fichas antes do envio, igual às suas mensagens.',
+    'O que você escrever aqui fica aqui até você pedir para o Reg escrever. As linhas gratuitas vão com cada nome trocado por uma ficha; o relatório pago é a única exceção — ele vai com os nomes reais do grupo, que é o que faz ele ser sobre vocês.',
 
   'ob.upload.eyebrow': 'A única parte chata',
   'ob.upload.title': 'Exporte o chat e solte aqui.',

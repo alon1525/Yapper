@@ -22,7 +22,7 @@ import { buildPreviewPayload } from '../apps/web/lib/aiPayload';
 import { SYSTEM, userPrompt } from '../apps/web/lib/aiPrompt';
 import type { Brief } from '../apps/web/lib/brief';
 import { buildPremiumPayload } from '../apps/web/lib/premiumPayload';
-import { PREMIUM_SYSTEM, premiumPrompt } from '../apps/web/lib/premiumPrompt';
+import { premiumPrompt, premiumSystem } from '../apps/web/lib/premiumPrompt';
 import { buildDetectivePayload } from '../apps/web/lib/detectivePayload';
 import { DETECTIVE_SYSTEM, detectivePrompt } from '../apps/web/lib/detectivePrompt';
 
@@ -48,6 +48,7 @@ const moments = findCandidateMoments(parsed);
 const brief: Brief = {
   language: 'en',
   kind: 'Friends group',
+  tone: 'roast',
   notes: parsed.participants
     .slice(0, 6)
     .map((name) => `${name} never replies.`)
@@ -63,16 +64,23 @@ const { payload, pseudonymizer } = buildPreviewPayload(
 
 const prompt = userPrompt(payload);
 
-// The paid payload is a different shape with strictly more surface: eighteen
-// per-person digests, each carrying a vocabulary list and a quoted message.
-// Distinctive words are the likeliest leak in the product — a nickname used by
-// exactly one person is precisely what "words this person uses more than
-// anyone else" is built to find — so it is gated by the same check.
+/*
+  The paid payload is the one request in the product that carries real names,
+  and it is checked in the opposite direction from every other payload here.
+
+  It used to be gated by the same leak scan as the free ones. It no longer can
+  be: the reader unlocks this report for their own group knowing the names go
+  with it, because a model that only ever sees `Person E` writes the generic
+  paid deck that made this change necessary. So the assertion inverts. A premium
+  payload with *no* names in it means the pseudonymiser has crept back into this
+  path, and the failure that produces is silent — a report that still generates,
+  still validates, and is quietly worthless again.
+*/
 const premium = buildPremiumPayload(
   { parsed, stats, moments, fileName: exportPath },
   brief,
 );
-const premiumText = premiumPrompt(premium.payload);
+const premiumText = premiumPrompt(premium);
 
 /*
   The detective payload is the widest surface in the product by a distance, and
@@ -127,21 +135,24 @@ function scan(haystack: string): { leaks: string[]; embedded: string[] } {
 }
 
 const free = scan(`${prompt}\n${JSON.stringify(payload)}`);
-const paid = scan(`${premiumText}\n${JSON.stringify(premium.payload)}`);
-const leaks = [...free.leaks, ...paid.leaks];
-const embedded = [...free.embedded, ...paid.embedded];
+const paid = scan(`${premiumText}\n${JSON.stringify(premium)}`);
+// Only the free payloads are held to "no names". The paid one is scanned too,
+// but its result is reported rather than enforced — and the direction is
+// reversed, because there it is an absence that means something is broken.
+const leaks = free.leaks;
+const embedded = free.embedded;
 
 mkdirSync(outDir, { recursive: true });
 writeFileSync(join(outDir, 'payload.json'), JSON.stringify(payload, null, 2), 'utf8');
 writeFileSync(join(outDir, 'prompt.txt'), `${SYSTEM}\n\n===== USER =====\n\n${prompt}`, 'utf8');
 writeFileSync(
   join(outDir, 'premium-payload.json'),
-  JSON.stringify(premium.payload, null, 2),
+  JSON.stringify(premium, null, 2),
   'utf8',
 );
 writeFileSync(
   join(outDir, 'premium-prompt.txt'),
-  `${PREMIUM_SYSTEM}\n\n===== USER =====\n\n${premiumText}`,
+  `${premiumSystem(brief.tone)}\n\n===== USER =====\n\n${premiumText}`,
   'utf8',
 );
 writeFileSync(
@@ -165,7 +176,7 @@ writeFileSync(
 );
 
 const promptChars = SYSTEM.length + prompt.length;
-const premiumChars = PREMIUM_SYSTEM.length + premiumText.length;
+const premiumChars = premiumSystem(brief.tone).length + premiumText.length;
 console.log(`participants        ${parsed.participants.length}`);
 console.log(`messages            ${stats.totalMessages}`);
 console.log(`language            ${payload.language}`);
@@ -174,9 +185,15 @@ console.log(`brief notes         ${payload.brief?.notes ?? '(none)'}`);
 console.log(`moments in payload  ${payload.moments.length}`);
 console.log(`excerpt messages    ${payload.moments.reduce((n, m) => n + m.messages.length, 0)}`);
 console.log(`prompt characters   ${promptChars} (free) · ${premiumChars} (premium)`);
-console.log(`premium people      ${premium.payload.people.length}`);
-console.log(`premium moments     ${premium.payload.moments.length}`);
-console.log(`premium eras        ${premium.payload.eras.length}`);
+console.log(`premium people      ${premium.people.length}`);
+console.log(`premium moments     ${premium.moments.length}`);
+console.log(`premium eras        ${premium.eras.length}`);
+console.log(
+  `premium excerpt     ${premium.moments.reduce((n, m) => n + m.messages.length, 0)} burst messages + ${premium.people.reduce((n, p) => n + p.samples.length, 0)} own-voice lines`,
+);
+console.log(
+  `premium names       ${paid.leaks.length === 0 ? 'NONE — the paid path has been re-anonymised, which is a bug' : `${new Set(paid.leaks).size} of ${parsed.participants.length} participants, as intended`}`,
+);
 console.log(`detective chars     ${DETECTIVE_SYSTEM.length + detectiveText.length}`);
 console.log(`detective convos    ${detective.payload.conversations.length}`);
 console.log(`detective phrases   ${detective.payload.phrases.length}`);

@@ -64,12 +64,19 @@ export function excerptChars(payload: {
   evidence?: Record<string, { text: string }[]>;
   /** …and a spread of each person's own messages, so it can hear them talk. */
   voiceSamples?: Record<string, { text: string }[]>;
-  /* Optional because each route's `people` rows differ — only the premium
-     payload carries a quoted longest message. */
-  /* Only the premium payload carries a quoted longest message; the other
-     routes' person rows are a different shape entirely. The index signature
-     is what lets one ceiling function accept all of them. */
-  people?: { longestMessage?: string | null; [field: string]: unknown }[];
+  /* Optional because each route's `people` rows differ. The premium payload is
+     the one that carries quoted message text per person — a spread of their own
+     lines, and historically a single longest message.
+
+     `sender` is required and unread, which is deliberate on both counts. It is
+     the one field every route's person row genuinely shares, and without a
+     required property this is a weak type: an argument whose properties are all
+     optional and none of which match is rejected outright, so the detective's
+     rows — which carry neither quoted field — stopped compiling. An index
+     signature would also solve it, and did, until it turned out to demand one
+     on the *argument* too, which an `interface` never has implicitly; that left
+     `PremiumPayload` unable to be passed to the function measuring it. */
+  people?: { sender: string; longestMessage?: string | null; samples?: { text: string }[] }[];
 }): number {
   let total = payload.brief?.notes.length ?? 0;
 
@@ -89,6 +96,11 @@ export function excerptChars(payload: {
   }
   for (const person of payload.people ?? []) {
     total += person.longestMessage?.length ?? 0;
+    // The per-person spread is the section the paid payload deliberately grew.
+    // Leaving it uncounted would mean the aggregate ceiling stopped covering
+    // the largest thing under it, which is the exact failure this function
+    // exists to prevent.
+    for (const sample of person.samples ?? []) total += sample.text.length;
   }
   return total;
 }
