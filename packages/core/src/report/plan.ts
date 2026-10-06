@@ -621,7 +621,7 @@ function personaSlides(input: PlanInput, limit: number): Candidate[] {
         id: `persona-${tokenOf(person.name).replace(/\s+/g, '-').toLowerCase()}`,
         type: 'persona' as SlideType,
         format: 'profile' as SlideFormat,
-        angle: `What ${tokenOf(person.name)} is actually like in this chat, argued from their own habits.`,
+        angle: `What ${tokenOf(person.name)} is actually like in this chat, argued from their own habits and their own words.`,
         stats: stat,
         scoreAxes: axesOf.get(person.name) ?? [],
         people: [tokenOf(person.name)],
@@ -634,12 +634,13 @@ function personaSlides(input: PlanInput, limit: number): Candidate[] {
           0.5 + (signature ? 0.2 : 0) + (commitment ? 0.1 : 0) + Math.min(0.2, person.share * 2),
         ),
         /*
-          The official title and nothing else — this is the shortest brief in the
-          deck. It has to sit under `BODY_BUDGET.profile`, or the prompt asks for
-          copy the verifier then flags `too-long` on every single card and the
-          audit fills with noise about a rule the writer was told to break.
+          Three or four beats about this one person, under `BODY_BUDGET.profile`
+          with room to spare — ask for more than the budget and the verifier
+          flags `too-long` on every card for a rule the writer was told to
+          break. The official title is no longer counted here: it has its own
+          field, `closer`.
         */
-        targetLength: 120,
+        targetLength: 420,
       },
       suppressed: null,
     };
@@ -696,6 +697,87 @@ function customSlides(input: PlanInput, floor: number): Candidate[] {
 }
 
 /* ------------------------------------------------------------------ *
+ * Folding findings into dossiers
+ * ------------------------------------------------------------------ */
+
+/** The write route caps a brief's angle; stay under it however many findings land. */
+const MAX_ANGLE_CHARS = 1200;
+
+const SENSITIVITY_RANK: Record<Sensitivity, number> = { low: 0, medium: 1, high: 2 };
+
+function maxSensitivity(a: Sensitivity, b: Sensitivity): Sensitivity {
+  return SENSITIVITY_RANK[b] > SENSITIVITY_RANK[a] ? b : a;
+}
+
+/**
+ * Hands every verified finding about exactly one person to that person's
+ * dossier.
+ *
+ * The dossier used to be written from statistics alone — a message count, an
+ * average length, a signature phrase if one was measured — while the
+ * detective's findings about the same person became separate slides. So the
+ * one card with somebody's name on it was the one slide the investigation
+ * never reached, and it read like it: true of them, and true of anyone with
+ * similar numbers.
+ *
+ * A `member_persona` finding *is* dossier material and goes nowhere else: the
+ * standalone slide is dropped, with a reason, rather than telling the same joke
+ * twice. Every other kind — a contradiction, a prediction that aged badly, a
+ * legendary moment — keeps its own slide, and the dossier is told it exists so
+ * the writer can allude to it rather than retell it. Only the folded findings
+ * lend the dossier their evidence; lending the others' would put the same
+ * quote on two slides.
+ */
+function foldFindingsIntoDossiers(
+  personas: Candidate[],
+  customs: Candidate[],
+  findings: PlanInput['findings'],
+): void {
+  const dossierOf = new Map<string, Candidate>();
+  for (const persona of personas) {
+    const subject = persona.brief.people[0];
+    if (subject && !persona.suppressed) dossierOf.set(subject, persona);
+  }
+  if (dossierOf.size === 0) return;
+
+  const findingOf = new Map(findings.map((f) => [`custom-${f.finding.id}`, f.finding]));
+
+  for (const custom of customs) {
+    if (custom.suppressed) continue;
+    const finding = findingOf.get(custom.brief.id);
+    if (!finding || finding.people.length !== 1) continue;
+    const subject = finding.people[0]!;
+    const dossier = dossierOf.get(subject);
+    if (!dossier) continue;
+
+    const owned = finding.kind === 'member_persona';
+    const note = owned
+      ? `
+The investigation found, with evidence: ${finding.claim}${finding.detail ? ` — ${finding.detail}` : ''}`
+      : `
+Also on the record, told on its own slide (${custom.brief.id}) — allude to it, do not retell it: ${finding.claim}`;
+    if (dossier.brief.angle.length + note.length > MAX_ANGLE_CHARS) continue;
+
+    dossier.brief.angle += note;
+    dossier.brief.findingIds = [...dossier.brief.findingIds, finding.id];
+    dossier.brief.sensitivity = maxSensitivity(dossier.brief.sensitivity, finding.sensitivity);
+
+    if (!owned) continue;
+
+    // The detective's quotes lead: they were chosen for being quotable, and the
+    // writer can only quote what reaches it as evidence.
+    const ids = new Set([
+      ...finding.quotes.map((q) => q.messageId),
+      ...finding.evidenceMessageIds,
+      ...dossier.brief.evidenceMessageIds,
+    ]);
+    dossier.brief.evidenceMessageIds = [...ids].slice(0, 40);
+    dossier.brief.strength = Math.min(1, dossier.brief.strength + 0.1);
+    custom.suppressed = `folded into the dossier of ${subject}`;
+  }
+}
+
+/* ------------------------------------------------------------------ *
  * The plan
  * ------------------------------------------------------------------ */
 
@@ -734,9 +816,16 @@ export function planDeck(input: PlanInput, options: PlanOptions = {}): DeckPlan 
     return surviving.slice(0, limit);
   };
 
+  // Folded before the caps are applied, so a persona finding reaches its
+  // dossier even when the discovered pool is over the limit — the dossier is
+  // never past the cap, and it is where that finding was always going.
+  const personaCandidates = personaSlides(input, maxPersonaSlides);
+  const customCandidates = customSlides(input, floor);
+  foldFindingsIntoDossiers(personaCandidates, customCandidates, input.findings);
+
   const stats = keep(statSlides(input), maxStatSlides);
-  const personas = keep(personaSlides(input, maxPersonaSlides), maxPersonaSlides);
-  const customs = keep(customSlides(input, floor), maxCustomSlides);
+  const personas = keep(personaCandidates, maxPersonaSlides);
+  const customs = keep(customCandidates, maxCustomSlides);
 
   /*
     Order is the deck's pacing, not a ranking. Statistics open because they are

@@ -9,7 +9,11 @@ import {
   scoreRecall,
   segmentConversations,
   type AnonymizedMessage,
+  type CommitmentReport,
+  type InteractionReport,
+  type PhraseReport,
   type Pseudonymizer,
+  type StalledPlan,
 } from '@wrapped/core';
 import { briefDigest, type Brief, type BriefDigest } from './brief';
 import type { Analysis } from './useAnalyzer';
@@ -123,11 +127,64 @@ export interface DetectiveOptions {
   messagesPerConversation?: number;
 }
 
+/**
+ * The route's own array bounds, applied here so an honest payload can never
+ * fail them.
+ *
+ * `lib/detectiveRequest.ts` is the schema `/api/detective` parses with, and
+ * every array in it has a ceiling. Until these existed the builder applied
+ * only some of them — a reader whose friend announced an arrival twenty-one
+ * times in one evening got "Malformed request." after paying, because
+ * `repeatedArrivals[].messageIds` is capped at twenty and the list was not.
+ * Each constant below is the same number as its `.max()` in the schema; the
+ * pipeline test parses a real payload with the real schema so the two cannot
+ * drift apart silently.
+ */
+const BOUNDS = {
+  people: 60,
+  exampleIds: 8,
+  adopters: 60,
+  arrivalIds: 20,
+  questions: 10,
+  stalledPlans: 10,
+  planTopics: 8,
+  planMonths: 120,
+  planIds: 10,
+  participants: 60,
+  keywords: 12,
+  summaryChars: 400,
+  signatureChars: 120,
+  /** WhatsApp allows 65,536 characters in one message; the route allows 4,000. */
+  messageChars: 4000,
+} as const;
+
+/** Cuts one forwarded essay down to what the route accepts, and says so. */
+function clip(m: AnonymizedMessage): AnonymizedMessage {
+  if (m.text.length <= BOUNDS.messageChars) return m;
+  return { ...m, text: `${m.text.slice(0, BOUNDS.messageChars - 6)} […]` };
+}
+
+/**
+ * The four pattern passes, handed back alongside the payload.
+ *
+ * The planner needs exactly these four, on exactly this chat, two stages
+ * later. Recomputing them there cost a second or more of main-thread time on
+ * a large export — spent, as it happened, right after the detective replied,
+ * so the deck froze between “reading” and “checking” with nothing to show for
+ * it. Computed once here, read twice.
+ */
+export interface DerivedPatterns {
+  phrases: PhraseReport;
+  interactions: InteractionReport;
+  commitments: CommitmentReport;
+  stalledPlans: StalledPlan[];
+}
+
 export function buildDetectivePayload(
   analysis: Analysis,
   brief?: Brief,
   options: DetectiveOptions = {},
-): { payload: DetectivePayload; pseudonymizer: Pseudonymizer } {
+): { payload: DetectivePayload; pseudonymizer: Pseudonymizer; derived: DerivedPatterns } {
   const { conversations = CONVERSATIONS, messagesPerConversation = MESSAGES_PER_CONVERSATION } =
     options;
   const { parsed, stats } = analysis;
@@ -137,7 +194,9 @@ export function buildDetectivePayload(
   const token = (name: string) => p.tokenFor(name);
   const clean = (text: string) => p.scrub(text);
 
-  const phrases = analyzePhrases(parsed, language, { limit: PHRASES });
+  // Default limits, so the planner can reuse the same report; the payload
+  // trims its own lists to `PHRASES` below.
+  const phrases = analyzePhrases(parsed, language);
   const interactions = analyzeInteractions(parsed);
   const commitments = analyzeCommitments(parsed, language);
   const stalled = findStalledPlans(parsed, language);
@@ -178,7 +237,7 @@ export function buildDetectivePayload(
       firstDay: stats.span.first,
       lastDay: stats.span.last,
     },
-    people: stats.people.map((person) => ({
+    people: stats.people.slice(0, BOUNDS.people).map((person) => ({
       sender: token(person.name),
       messages: person.messages,
       share: person.share,
@@ -190,28 +249,28 @@ export function buildDetectivePayload(
       // Derived from message bodies, so it carries whatever people call each
       // other. Scrubbed exactly like a quoted line.
       signature: signatureOf.has(person.name)
-        ? clean(signatureOf.get(person.name)!.phrase)
+        ? clean(signatureOf.get(person.name)!.phrase).slice(0, BOUNDS.signatureChars)
         : null,
       arrivalClaims: commitmentOf.get(person.name)?.counts.arriving ?? 0,
     })),
-    phrases: phrases.repeated.map((r) => ({
+    phrases: phrases.repeated.slice(0, PHRASES).map((r) => ({
       phrase: clean(r.phrase),
       count: r.count,
       speakers: r.speakers.length,
       firstSpeaker: token(r.firstUse.sender),
       firstDay: r.firstUse.day,
-      exampleMessageIds: r.examples.map((e) => e.messageId),
+      exampleMessageIds: r.examples.slice(0, BOUNDS.exampleIds).map((e) => e.messageId),
     })),
-    contagions: phrases.contagions.map((c) => ({
+    contagions: phrases.contagions.slice(0, PHRASES).map((c) => ({
       phrase: clean(c.phrase),
       patientZero: token(c.patientZero),
-      adopters: c.adopters.map((a) => ({
+      adopters: c.adopters.slice(0, BOUNDS.adopters).map((a) => ({
         sender: token(a.sender),
         day: a.day,
         messageId: a.messageId,
       })),
       incubationDays: c.incubationDays,
-      exampleMessageIds: c.examples.map((e) => e.messageId),
+      exampleMessageIds: c.examples.slice(0, BOUNDS.exampleIds).map((e) => e.messageId),
     })),
     interactions: {
       pingPong: interactions.pingPong
@@ -226,7 +285,7 @@ export function buildDetectivePayload(
         sender: token(k.sender),
         kills: k.kills,
         index: Number(k.index.toFixed(2)),
-        exampleMessageIds: k.examples.map((e) => e.messageId),
+        exampleMessageIds: k.examples.slice(0, BOUNDS.exampleIds).map((e) => e.messageId),
       })),
       monologues: interactions.monologues.slice(0, 5).map((m) => ({
         sender: token(m.sender),
@@ -244,31 +303,31 @@ export function buildDetectivePayload(
         sender: token(r.sender),
         day: r.day,
         claims: r.claims,
-        messageIds: r.messageIds,
+        messageIds: r.messageIds.slice(0, BOUNDS.arrivalIds),
       })),
-      questions: commitments.questions.map((q) => ({
+      questions: commitments.questions.slice(0, BOUNDS.questions).map((q) => ({
         kind: q.kind,
         count: q.count,
         topAsker: q.topAsker ? token(q.topAsker) : null,
       })),
     },
-    stalledPlans: stalled.map((s) => ({
+    stalledPlans: stalled.slice(0, BOUNDS.stalledPlans).map((s) => ({
       category: s.category,
       // Plan topics are matched words from message bodies — a place name, a
       // venue, sometimes a person's nickname. Scrubbed like everything else.
-      topics: s.topics.map(clean),
-      months: s.months,
+      topics: s.topics.slice(0, BOUNDS.planTopics).map(clean),
+      months: s.months.slice(0, BOUNDS.planMonths),
       mentions: s.mentions,
-      participants: s.participants.map(token),
-      exampleMessageIds: s.exampleMessageIds,
+      participants: s.participants.slice(0, BOUNDS.participants).map(token),
+      exampleMessageIds: s.exampleMessageIds.slice(0, BOUNDS.planIds),
     })),
     conversations: sessions.map((c) => ({
       id: c.id,
       day: c.startDay,
       messageCount: c.messageCount,
-      participants: c.participants.map(token),
-      keywords: c.keywords.map(clean),
-      summary: clean(c.summary),
+      participants: c.participants.slice(0, BOUNDS.participants).map(token),
+      keywords: c.keywords.slice(0, BOUNDS.keywords).map(clean),
+      summary: clean(c.summary).slice(0, BOUNDS.summaryChars),
       scores: {
         comedy: Number(c.comedy.toFixed(2)),
         conflict: Number(c.conflict.toFixed(2)),
@@ -278,9 +337,13 @@ export function buildDetectivePayload(
       messages: anonymizeMessages(
         conversationMessages(parsed, c, messagesPerConversation),
         p,
-      ),
+      ).map(clip),
     })),
   };
 
-  return { payload, pseudonymizer: p };
+  return {
+    payload,
+    pseudonymizer: p,
+    derived: { phrases, interactions, commitments, stalledPlans: stalled },
+  };
 }

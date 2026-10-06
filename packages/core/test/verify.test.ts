@@ -320,6 +320,7 @@ const slide = (over: Partial<Slide> = {}): Slide => ({
   scores: [],
   jokeScores: [],
   evidenceMessageIds: [0, 4],
+  closer: '',
   confidence: 0.9,
   sensitivity: 'low',
   visualDirection: '',

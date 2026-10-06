@@ -284,6 +284,15 @@ export const SlideSchema = z.object({
    */
   jokeScores: z.array(JokeScoreSchema).max(10).default([]),
   evidenceMessageIds: z.array(z.number().int().min(0)).max(40).default([]),
+  /**
+   * The last line on the card, set apart from the body.
+   *
+   * On a dossier it is the official title — "Most likely to …" — which used to
+   * be the whole body when the body was one line. The body is now the roast,
+   * three or four beats long, and the title it closes on needs its own slot or
+   * it is just the fourth beat in the same type. Optional everywhere else.
+   */
+  closer: z.string().max(160).default(''),
   confidence: z.number().min(0).max(1).default(1),
   sensitivity: Sensitivity.default('low'),
   /** One line for a future illustrator. Never rendered as text. */

@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { emptyBrief, releasePhotos, type Brief } from '@/lib/brief';
+import { briefFromSaved, useSavedReports, type SavedReport } from '@/lib/savedReports';
 import { useAnalyzer } from '@/lib/useAnalyzer';
 import { slidesFor } from './cards/slides';
 import { Deck } from './Deck';
@@ -23,6 +24,15 @@ export function Experience() {
   const [brief, setBrief] = useState<Brief>(emptyBrief);
   const [playing, setPlaying] = useState(false);
 
+  /*
+    Reports the reader chose to keep, read from this browser's own storage —
+    the one exception to "nothing is stored", and it is theirs rather than
+    ours. `opened` is the one being replayed; it has no parsed chat behind it,
+    so the deck gets its statistics and nothing to send.
+  */
+  const saved = useSavedReports();
+  const [opened, setOpened] = useState<SavedReport | null>(null);
+
   const stats = state.phase === 'done' ? state.analysis.stats : null;
 
   /* What the "ready" panel counts. A slide that cannot be filled honestly is
@@ -41,6 +51,7 @@ export function Experience() {
 
   const restart = useCallback(() => {
     setPlaying(false);
+    setOpened(null);
     // Object URLs outlive the component that made them. Starting over without
     // handing them back leaks every photo for the lifetime of the document.
     setBrief((prev) => {
@@ -48,14 +59,44 @@ export function Experience() {
       return emptyBrief();
     });
     reset();
-  }, [reset]);
+    // The deck may have saved itself on the way out.
+    void saved.refresh();
+  }, [reset, saved]);
+
+  const openSaved = useCallback(
+    async (id: string) => {
+      const report = await saved.open(id);
+      if (report) setOpened(report);
+      // A record that failed to load is one the list should no longer offer.
+      else void saved.refresh();
+    },
+    [saved],
+  );
+
+  if (opened) {
+    return (
+      <Deck
+        stats={opened.stats}
+        analysis={null}
+        brief={briefFromSaved(opened)}
+        saved={opened}
+        onRestart={restart}
+      />
+    );
+  }
 
   if (playing && state.phase === 'done') {
     // The button that got us here says "with sound", and that click is the user
     // gesture every browser wants before it will let an AudioContext run — so
     // the deck opens unmuted rather than making the reader ask twice.
     return (
-      <Deck analysis={state.analysis} brief={brief} onRestart={restart} startWithSound />
+      <Deck
+        stats={state.analysis.stats}
+        analysis={state.analysis}
+        brief={brief}
+        onRestart={restart}
+        startWithSound
+      />
     );
   }
 
@@ -70,6 +111,9 @@ export function Experience() {
       onCancel={restart}
       stats={stats}
       freeCount={freeSlides + 1}
+      saved={saved.reports}
+      onOpenSaved={(id) => void openSaved(id)}
+      onDeleteSaved={(id) => void saved.remove(id)}
     />
   );
 }

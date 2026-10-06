@@ -6,8 +6,9 @@ asked for.
 
 Every statistic is computed **in your browser**. AI is optional and
 consent-gated. The free writing only ever sees an anonymised copy; the paid
-report is the one exception, and it says so at the till. Nothing is stored —
-close the tab and it is gone.
+report is the one exception, and it says so at the till. Nothing is stored on
+the server — close the tab and it is gone — unless the reader chooses, on the
+last slide, to keep a finished report in their own browser.
 
 ```
 packages/core   Pure TypeScript engine — parse, stats, sessions, patterns,
@@ -320,6 +321,27 @@ detection is only the fallback when there is no brief.
 | Free | Every statistic slide, plus **one** AI memory — the hook. |
 | Premium | 4–6 memories, a character card for **every** member, an awards list, a line per year, a closing paragraph. |
 
+Both are offered from **one slide**, the wall (`cards/WallSlide.tsx`). There
+used to be two in a row — the free story behind one gate, the report behind
+the next — each with Reg's face, a serif question and an amber button, each
+followed by a wait. Read in sequence they were the same slide twice. Now the
+report is the primary action, the free pseudonymised story is the smaller one
+under it, and once that story is written it is shown on the wall in place of
+the pitch: a story the reader just laughed at sells the rest better than a
+bulleted list does.
+
+While the report is written the wall shows the work: the same film of the chat
+scrolling under a scanner that the onboarding used while the file was read, a
+bar that creeps rather than fills (the server reports nothing back until it is
+done), and a caption that changes every few seconds in Reg's voice. None of
+those captions is tied to a real sub-step. They exist because a two-minute wait
+with a changing caption is a wait with somebody in it, and a screen where
+nothing moves is a screen that has crashed. The report hook also yields to the
+browser before each stretch of synchronous work (`yieldToPaint`), because
+`setState` schedules a paint and does not perform one — building the payload
+used to start in the same tick as the state change announcing it, so the
+announcement painted after the work.
+
 Premium is gated on **generation, not display**. `/api/premium` writes nothing
 without a valid entitlement, so the paid slides do not exist anywhere the
 browser could reach them — a blurred overlay would be one devtools click from
@@ -341,6 +363,43 @@ purchase is the kind of thing people screenshot for the wrong reasons.
 far more than the rest of the group, by share not by count. Plain "top words"
 produces the same list for everyone in a group and therefore the same card;
 the ratio is what makes a card impossible to swap with someone else's.
+
+**The dossier is beats, not bars.** The staged pipeline's case file used to
+show five measured axes with a renamed label beside each — `Explanation
+addiction ——— 97` — which were honest and which nobody reading the card could
+parse: a number out of a hundred, of what, against whom. The axes still exist
+(`scores.ts`) and still reach the writer, but as *material*: "writes much
+longer messages than anyone else here: 97/100", from which it is asked for
+three or four beats about specific things this person does or says, quoting
+their own lines, and an official title in its own `closer` field. The
+detective's findings about one person are folded into that person's dossier by
+the planner (`foldFindingsIntoDossiers`) rather than becoming a separate slide,
+so the card is written from the investigation and not from a message count.
+A court case, for the same reason, is titled by the charge — "Ended 61
+conversations single-handedly" — with the defendant named on the eyebrow,
+because "The Group v. Person E" told the reader there was a case and nothing
+about what it was for.
+
+## My reports
+
+The one thing that outlives the tab, and it is the reader's choice. The last
+slide offers to keep the report on this device; pressing it writes the finished
+slides (names already restored), the statistics, the free story if it was
+written, and the brief minus its photos into IndexedDB (`lib/savedReports.ts`).
+Not the export, and not a message beyond those quoted on a slide. The front
+page lists what is kept, read from the browser rather than from any server,
+and opens one as a deck with no chat behind it: the slides play as they were,
+and the wall says plainly that writing more needs the export again. Photos
+are object URLs the browser has long since released, so a reopened report
+draws the animals. Saving twice updates the same record — the common case
+being a reader who kept the statistics, then unlocked, and wants the saved
+copy to have the report too.
+
+This was deliberately kept local rather than becoming a database. A table of
+finished reports on a server would hold real names and jokes about real people,
+which is the thing the privacy page says is never kept. If share links are ever
+built, they should store the report encrypted in the browser with the key in
+the URL fragment, so the server cannot read what it hosts.
 
 ## Testing the AI without paying for it
 

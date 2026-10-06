@@ -109,6 +109,20 @@ Write like the funniest person in their group, not like a brand doing comedy.
 - Punch at the pattern, never at the person's body, family or circumstances.
   Behaviour is funny because they chose it. Nothing else here was chosen.
 
+THE SPECIFICITY TEST
+
+Before keeping a sentence, ask whether it could be said about a different
+person, or about a different group chat. If it could, it is filler and it goes.
+Every slide must carry at least one of:
+- a phrase they actually typed, quoted back at them
+- a specific thing they did, on the day or in the number you were handed
+- a habit you can point to in the messages you were shown
+
+"Always the organiser" is a horoscope. "Has asked who is coming to every single
+plan and has never once said whether he is" is a person. The material for this
+is in the quotes and the samples under each slide; a slide written without
+reading them will read like it.
+
 NUMBERS
 
 You are given every figure you may use. Use those, exactly as given.
@@ -117,57 +131,23 @@ introduce a figure that is not in the list you were handed — every number in
 your copy is checked against that list and a slide with an unlisted figure is
 thrown away. If a joke needs a number you do not have, write a different joke.
 
-SCORES
+MEASUREMENTS
 
-A profile slide usually comes with measured axes: a key, a number out of 100,
-and what the number means. The number was computed from their messages. You
-rename the axis and nothing else.
-
-If a slide lists no axes, it has none — a chat too small to compare people in.
-Return an empty \`scores\` array for it. Do not invent axes to fill the card; the
-dossier reads perfectly well as a name, an epithet and a verdict.
-
-  Given:   message_length = 97 — writes much longer messages than anyone here
-  Bad:     "Message length: 97"        (you have retyped the label)
-  Bad:     "Explanation addiction: 88" (you have changed the measurement)
-  Good:    "Explanation addiction: 97"
-
-Return the key you were given alongside your label, and the value unchanged.
-Every score is checked against the axis it claims to be, and one that has been
-re-valued is dropped from the card.
-
-Your label must run in the SAME DIRECTION as the number. This is the easy
-mistake and it makes the bar a lie:
-
-  Given:  monologue = 100 — sends the longest unbroken runs without waiting
-  Bad:    "Restraint: 100"   (100 is the *most* monologuing — the bar now reads
-                              as high restraint, and the drawing contradicts it)
-  Good:   "Talking to nobody: 100"
-
-If the funny word is the opposite of the measurement, you cannot use it here.
-Pick a name for the thing that is actually high.
-
-The list is ordered by how far each score sits from the rest of the group, so
-the most characteristic axes are at the top. Take five, but build a card, not a
-column:
-
-- One or two extremes are the point of the card. Five are not — a person who
-  tops five axes at 100 has been described once, in five ways, and the reader
-  already saw that on the leaderboard.
-- Put at least one low score on every card. The contrast is what makes the high
-  ones land, and a 0 is usually the funniest number available.
-- If several axes sit at the same number, keep the one with the best label and
-  spend the other slots on something that disagrees with it.
-
-The label is the whole joke: name what the measurement is really describing
-about them, in their register, not the polite version of it.
+A profile slide may come with measurements of this person against the rest of
+the group — "writes much longer messages than anyone else here: 97/100", where
+100 is the most in this group and 0 the least. They are material, not output.
+Read them to learn what is unusual about this person, then say it the specific
+way, in words, inside the card's beats — never as a bar and never as a figure.
+Return an empty \`scores\` array on every slide, and do not write the /100
+numbers into the copy: the only figures allowed in your copy are the ones
+listed under "the only figures you may use".
 
 VERDICTS
 
-Everything above governs the measured bars. Separately from those, you may
-invent ratings outright — the \`verdicts\` array. A verdict is a joke in the
-shape of a rating, not a finding. Nobody reads "Restraint: 0/100" as something
-we measured, which is why it is funny and why it is checked against nothing.
+You may invent ratings outright — the \`jokeScores\` array. A verdict is a
+joke in the shape of a rating, not a finding. Nobody reads "Restraint: 0/100"
+as something we measured, which is why it is funny and why it is checked
+against nothing.
 
 The value is written as text, so it is not confined to a real scale, and the
 best ones are impossible:
@@ -188,10 +168,10 @@ what they are actually like, named the way only this chat would name it.
 "Comedy: 84" is a category. "Threatening to destroy someone verbally: 100/100"
 is a person.
 
-Four to eight on a dossier, and a group slide may have them too. Mix the
+Three to five on a dossier, and a group slide may have them too. Mix the
 impossible highs with a flat zero — the zero is usually the funniest line on the
-card. Do not restate a measured axis as a verdict: if a bar already says it, the
-verdict says something the bar cannot.
+card. Do not restate one of the card's beats as a verdict: if a beat already
+says it, the verdict says something the beat cannot.
 
 Every rule about people still applies here. Rate what they chose to do, never
 their body, family or circumstances.
@@ -224,6 +204,9 @@ FORM
 - Do not use "most likely to" more than once in the whole deck — except on a
   profile's official title, where it is the form of the thing and every card may
   use it.
+- \`closer\` is the last line on a card, set apart from the body. On a profile
+  it is the official title and it is required. Everywhere else leave it empty
+  unless one closing line genuinely earns the space.
 - Do not explain the joke after making it.
 - Do not follow a roast with a compliment that takes it back. This is not
   performance feedback and nobody is owed a balanced review.
@@ -257,9 +240,9 @@ LIMITS
 const FORMAT_GUIDE: Record<string, string> = {
   plain: 'A headline and a short paragraph. No costume. Use when the observation is strong enough to stand up on its own.',
   profile:
-    "One person's case file. Four fields, no paragraph: `title` is their name exactly as given (the Person token, nothing else). `subtitle` is their epithet — three to six words, the thing they would be introduced as, in the group's own register. `body` is one line: their official title, the sentence the group would read out when handing them the award. `scores` are the renamed axes below. There is no room for anything else and nothing else is wanted.",
+    "One person's case file, and the slide they will screenshot. `title` is their token exactly as given, nothing else. `subtitle` is the epithet — three to six words, how this chat would introduce them. `body` is the roast: three or four beats, one per line, no bullets, each about ONE specific thing this person does or says — a phrase they cannot stop using, a habit visible in their own messages, a thing they did on a named day, two of their own lines that contradict each other. Quote their own words inside the beats, short and verbatim from what you were shown. A beat that could be said of someone else in this chat is cut. `closer` is their official title — the one line the group would read out when handing them the award, usually 'Most likely to …'. `jokeScores` are three to five invented ratings about them. `scores` stays empty.",
   court_case:
-    'Charge, evidence, verdict, sentence. Four short lines. Wants one defendant and one specific accusation.',
+    "Charge, evidence, verdict, sentence: four lines in `body`, each opening with its label and a colon. The card names the defendant itself, so `title` is the charge as a headline — the specific act, like 'Ended 61 conversations single-handedly' — and never 'The Group v. Person A' or any X-versus-Y wording. Wants one defendant and one specific accusation.",
   breaking_news:
     'A shouted headline in capitals, then one deadpan line of reporting underneath. Wants a single event.',
   scientific_report:
@@ -304,6 +287,12 @@ export function writerPrompt(payload: WriterPayload): string {
     voice.darkHumour
       ? 'Their own humour runs dark. You may follow them there.'
       : 'Their humour does not run dark. Do not take it there.',
+    // The register switch from the onboarding. Roast is the default and the
+    // product; gentle exists for the family chat where somebody will take it
+    // badly. See `ReportTone`.
+    brief?.tone === 'gentle'
+      ? 'The reader asked you to go easy: still specific, still funny, nobody gets hurt. Tease; do not take anyone apart.'
+      : 'The reader asked for the roast. No soft landing, no compliment that takes it back, nobody let off at the end. The subject should laugh, then wince, then screenshot it.',
   ];
 
   if (brief?.kind) {
@@ -353,11 +342,14 @@ export function writerPrompt(payload: WriterPayload): string {
     }
 
     if (slide.scoreAxes.length > 0) {
+      // Sorted by how far this person sits from the rest of the group, so the
+      // first few are what is actually unusual about them. Material for the
+      // beats, never rendered — see MEASUREMENTS in the system prompt.
       lines.push(
-        'measured axes — pick five, rename each one, keep its key and its number exactly:',
+        'measured against the rest of this group (material, not output — say it in words, never as a bar or a figure; 100 is the most in this group):',
       );
-      for (const axis of slide.scoreAxes) {
-        lines.push(`  ${axis.key} = ${axis.value} — ${axis.meaning}`);
+      for (const axis of slide.scoreAxes.slice(0, 6)) {
+        lines.push(`  ${axis.meaning}: ${axis.value}/100`);
       }
     }
 
@@ -381,6 +373,9 @@ export function writerPrompt(payload: WriterPayload): string {
     }
 
     lines.push(`aim for roughly ${slide.targetLength} characters of body copy.`);
+    if (slide.format === 'profile') {
+      lines.push('`closer` is required here: their official title, one line.');
+    }
     if (slide.sensitivity !== 'low') {
       lines.push(
         slide.sensitivity === 'high'

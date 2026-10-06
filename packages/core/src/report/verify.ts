@@ -502,9 +502,10 @@ const BODY_BUDGET: Record<string, number> = {
     five-paragraph insult are the same man — and that does not fit in a line.
 
     Still bounded, because the card is tapped rather than scrolled. This is the
-    room for three or four short beats, not an essay.
+    room for three or four short beats, not an essay — and the official title
+    no longer competes with them for it, because it has its own field.
   */
-  profile: 600,
+  profile: 700,
   court_case: 420,
   breaking_news: 300,
   scientific_report: 380,
@@ -600,7 +601,7 @@ export function verifySlideCopy(
     scores.push(score);
   }
 
-  const prose = [slide.title, slide.subtitle, slide.body].join('\n');
+  const prose = [slide.title, slide.subtitle, slide.body, slide.closer ?? ''].join('\n');
 
   /*
     Everything the reader sees, which is not the same set as everything checked

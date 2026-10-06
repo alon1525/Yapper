@@ -44,6 +44,22 @@ fill in:
   the one who always says no, the one nobody replies to
 - Anything strange that fits none of these
 
+THE PEOPLE
+
+Every person under THE PEOPLE who carries a real share of this chat should get
+at least one \`member_persona\` finding of their own: the single most
+characteristic thing they do or say, repeatedly, with ids from at least two
+different days. Not a personality type — a habit you can point to. The word
+they open every message with. The question they ask every week. The thing they
+promise and never do. How they announce themselves. The two lines of theirs
+that contradict each other. The dossier written about them later is built from
+this finding and from nothing else you cannot cite, so a person with no finding
+gets a card written from their message count.
+
+Fill \`quotes\` on these with their own lines, copied exactly. The writer can
+only quote what you cite, and a card about somebody with none of their own
+words on it reads like a horoscope.
+
 EVIDENCE
 
 Every finding must list the message ids that prove it, using the ids given to

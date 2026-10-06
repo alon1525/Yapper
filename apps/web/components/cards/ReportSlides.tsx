@@ -126,6 +126,11 @@ function lines(body: string): string[] {
     .filter(Boolean);
 }
 
+/** A line without the bullet a writer sometimes puts in front of it anyway. */
+function unbullet(line: string): string {
+  return line.replace(/^[-•*·]\s*/, '');
+}
+
 /** `Label: value` when a line has one, otherwise the whole line as the value. */
 function splitLabel(line: string): { label: string | null; value: string } {
   const idx = line.indexOf(':');
@@ -137,8 +142,10 @@ function splitLabel(line: string): { label: string | null; value: string } {
 }
 
 function LabelledLines({ body, mono = false }: { body: string; mono?: boolean }) {
+  // A two-line headline at poster leading sits almost on top of the first
+  // label at the old margin; the charge needs air under the name of the crime.
   return (
-    <div className="mt-4 flex flex-col gap-2.5">
+    <div className="mt-6 flex flex-col gap-2.5">
       {lines(body).map((line, i) => {
         const { label, value } = splitLabel(line);
         return (
@@ -254,10 +261,15 @@ function Plate({ name, accent }: { name: string; accent: string }) {
 /**
  * One person's case file.
  *
- * Four model-written fields and five measured bars. The bars are the reason this
- * slide exists: `scores.ts` computes every value and the writer only renames the
- * axis, so a card can be savage about somebody without a single number on it
- * having been made up. `verifySlideCopy` drops any bar whose number moved.
+ * A name, an epithet, three measured facts, three or four beats of roast, a
+ * few invented ratings, and the official title at the foot. The beats are the
+ * card now. They used to be five measured bars with a renamed axis beside each
+ * — "Explanation addiction ——— 97" — which were honest and which nobody
+ * reading the card could parse: a number out of a hundred, of what, against
+ * whom. The measurements still exist and still reach the writer, as material
+ * for what is unusual about this person; what the card shows is the sentence
+ * that material produced, in words, with the person's own lines quoted back at
+ * them.
  *
  * The whole sheet is laid out top-to-bottom with the official title pushed to
  * the foot by `mt-auto`, exactly as the design has it — the verdict sits at the
@@ -271,15 +283,15 @@ function DossierSlide({
   /** Position among the deck's dossiers, for the "Exhibit 02 of 05" line. */
   exhibit?: { n: number; of: number };
 }) {
+  const copy = useCopy();
   const name = slide.people[0] ?? slide.title;
   const accent = DOSSIER.accents[((exhibit?.n ?? 1) - 1) % DOSSIER.accents.length]!;
   // The first three, in the order the planner set: how much they said, how they
   // say it, how often they turn up. The rest were prose material.
   const facts = slide.stats.slice(0, 3);
-  const scores = slide.scores.slice(0, 5);
-  // Measured bars first, then the invented ones. Five and six is a column, not
-  // a card, so the honest ones keep their places and the jokes take what's left.
-  const verdicts = (slide.jokeScores ?? []).slice(0, Math.max(0, 8 - scores.length));
+  // The roast, one beat per line. Four is the most the card holds.
+  const beats = lines(slide.body).map(unbullet).slice(0, 4);
+  const verdicts = (slide.jokeScores ?? []).slice(0, 5);
 
   const pad = (n: number) => String(n).padStart(2, '0');
   const hebrew = HEBREW.test(slide.title);
@@ -375,44 +387,30 @@ function DossierSlide({
         </div>
       )}
 
-      {scores.length > 0 && (
-        <div className="mt-3 flex flex-col">
-          {scores.map((score, i) => (
+      {beats.length > 0 && (
+        <div className="mt-4 flex flex-col gap-2.5">
+          {beats.map((beat, i) => (
             <motion.div
-              key={score.key}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.25 + i * 0.08, duration: 0.3 }}
-              className="flex items-baseline gap-1.5 py-1.5"
-              style={{ borderBottom: `1px dotted ${DOSSIER.leader}` }}
+              key={i}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.25 + i * 0.1, duration: 0.35 }}
+              className="flex gap-2.5"
             >
-              <span dir="auto" className="text-[12.5px] leading-tight" style={{ color: DOSSIER.body }}>
-                {score.label}
-              </span>
-              <span className="flex-1" />
-              {/* Forced LTR: the bar fills from the low end to the high end, and
-                  a Hebrew card must not mirror that into filling backwards. */}
+              {/* The exhibit's one coloured mark, repeated: the same square
+                  that stamps the plate and underlines the name. */}
               <span
-                dir="ltr"
                 aria-hidden="true"
-                className="block h-[3px] w-[44px] shrink-0 self-center"
-                style={{ background: DOSSIER.track }}
+                className="mt-[8px] h-[6px] w-[6px] shrink-0"
+                style={{ background: accent }}
+              />
+              <p
+                dir="auto"
+                className="text-[15px] leading-[1.42]"
+                style={{ fontFamily: 'var(--yap-serif)', textWrap: 'pretty' }}
               >
-                <motion.span
-                  initial={{ width: 0 }}
-                  animate={{ width: `${Math.max(score.value, 2)}%` }}
-                  transition={{ delay: 0.3 + i * 0.08, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                  className="block h-full"
-                  style={{ background: accent }}
-                />
-              </span>
-              <span
-                dir="ltr"
-                className="min-w-[26px] text-right text-[12px] font-medium tabular-nums"
-                style={{ fontFamily: 'var(--yap-mono)' }}
-              >
-                {score.value}
-              </span>
+                {beat}
+              </p>
             </motion.div>
           ))}
         </div>
@@ -429,7 +427,7 @@ function DossierSlide({
               key={`${verdict.label}-${i}`}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.25 + (scores.length + i) * 0.08, duration: 0.3 }}
+              transition={{ delay: 0.3 + (beats.length + i) * 0.08, duration: 0.3 }}
               className="flex items-baseline gap-1.5 py-1.5"
               style={{ borderBottom: `1px dotted ${DOSSIER.leader}` }}
             >
@@ -449,20 +447,21 @@ function DossierSlide({
         </div>
       )}
 
-      {slide.body && (
+      {slide.closer && (
         <div className="mt-auto pt-3">
           <p
+            dir="auto"
             className="text-[8.5px] tracking-[0.16em] uppercase"
             style={{ fontFamily: 'var(--yap-mono)', color: DOSSIER.muted }}
           >
-            Official title
+            {copy.t('report.officialTitle')}
           </p>
           <p
             dir="auto"
             className="mt-[5px] text-[19px] leading-[1.14]"
             style={{ fontFamily: 'var(--yap-serif)', textWrap: 'pretty' }}
           >
-            {slide.body}
+            {slide.closer}
           </p>
         </div>
       )}
@@ -488,16 +487,26 @@ export function ReportSlide({
     case 'profile':
       return <DossierSlide slide={slide} exhibit={exhibit} />;
 
-    case 'court_case':
+    case 'court_case': {
+      // The defendant is named on the eyebrow so the headline can be the
+      // charge itself. "The Group v. Person E" told the reader there was a case
+      // and nothing about what it was for — the writer is now told to put the
+      // act in the title and this line puts the name above it.
+      const defendant = slide.people.length === 1 ? slide.people[0]! : null;
       return (
         <>
-          <Eyebrow>{copy.t('report.matterOf')}</Eyebrow>
+          <Eyebrow>
+            {defendant
+              ? copy.t('report.caseAgainst', { name: defendant })
+              : copy.t('report.matterOf')}
+          </Eyebrow>
           <Headline>{slide.title}</Headline>
           <LabelledLines body={slide.body} />
           {quote && <PulledQuote quote={quote} />}
           <Receipts quotes={slide.quotes} />
         </>
       );
+    }
 
     case 'breaking_news':
       return (

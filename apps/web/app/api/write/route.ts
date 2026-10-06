@@ -44,6 +44,10 @@ const RequestSchema = z.object({
          and the route then rejects. */
       language: z.enum(REPORT_LANGUAGE_CODES),
       kind: z.string().max(40),
+      /* The register switch. Optional for the same reason it is on the brief
+         digest: a client that predates it still sends a valid request, and the
+         writer then gets the default, which is the roast. */
+      tone: z.enum(['roast', 'gentle']).optional(),
       notes: z.string().max(600),
     })
     .optional(),
@@ -68,7 +72,10 @@ const RequestSchema = z.object({
         id: z.string().max(80),
         type: z.string().max(30),
         format: z.string().max(30),
-        angle: z.string().max(600),
+        /* A dossier's angle now carries what the investigation found about
+           that person, one line per finding. See `foldFindingsIntoDossiers`,
+           which keeps under this. */
+        angle: z.string().max(1200),
         stats: z.array(StatSchema).max(12),
         /* Whitelisted like everything else on a brief. Left out, the writer is
            asked to rename axes it was never shown and invents the lot. */
@@ -128,7 +135,7 @@ const RequestSchema = z.object({
             edited: z.boolean().optional(),
           }),
         )
-        .max(16),
+        .max(32),
     )
     .default({}),
 });

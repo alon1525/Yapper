@@ -178,6 +178,79 @@ describe('discovered slides', () => {
   });
 });
 
+/**
+ * The dossier is the one slide with somebody's name on it, and it used to be
+ * the one slide the investigation never reached. These check that a finding
+ * about exactly one person lands on that person's card — and that the card is
+ * not then followed by a second slide telling the same joke.
+ */
+describe('folding findings into dossiers', () => {
+  const persona = (id: string, person: string, kind: Finding['kind'] = 'member_persona'): Finding => ({
+    id,
+    kind,
+    claim: `${person} announces an arrival time and then announces a later one`,
+    detail: 'Four evenings, never fewer than three announcements.',
+    people: [person],
+    evidenceMessageIds: [0, 4, 6],
+    quotes: [
+      { messageId: 4, speaker: person, text: 'five minutes away', date: '2023-01-01' },
+    ],
+    confidence: 0.9,
+    comedy: 0.9,
+    recognition: 0.9,
+    uniqueness: 0.9,
+    sensitivity: 'medium',
+    suggestedTitle: '',
+  });
+
+  /** Somebody who holds a card in this chat. */
+  const cardHolder = (input: PlanInput) =>
+    planDeck(input).briefs.find((b) => b.type === 'persona')!.people[0]!;
+
+  it('folds a persona finding into the dossier and drops the standalone slide', () => {
+    const base = build(PING_PONG_GROUP);
+    const subject = cardHolder(base);
+    const plan = planDeck({ ...base, findings: [{ finding: persona('habit', subject), strength: 0.8 }] });
+
+    const dossier = plan.briefs.find((b) => b.type === 'persona' && b.people[0] === subject)!;
+    expect(dossier.angle).toContain('The investigation found');
+    expect(dossier.angle).toContain('announces an arrival time');
+    expect(dossier.findingIds).toEqual(['habit']);
+    // The detective's quote leads the evidence, so the writer is handed it.
+    expect(dossier.evidenceMessageIds[0]).toBe(4);
+    expect(dossier.evidenceMessageIds).toEqual(expect.arrayContaining([0, 4, 6]));
+    expect(dossier.sensitivity).toBe('medium');
+
+    expect(has(plan, 'custom-habit')).toBe(false);
+    expect(reason(plan, 'custom-habit')).toMatch(/folded into the dossier/);
+  });
+
+  it('keeps another kind of finding on its own slide, and tells the dossier it exists', () => {
+    const base = build(PING_PONG_GROUP);
+    const subject = cardHolder(base);
+    const plan = planDeck({
+      ...base,
+      findings: [{ finding: persona('liar', subject, 'contradiction'), strength: 0.8 }],
+    });
+
+    expect(has(plan, 'custom-liar')).toBe(true);
+    const dossier = plan.briefs.find((b) => b.type === 'persona' && b.people[0] === subject)!;
+    expect(dossier.angle).toContain('custom-liar');
+    expect(dossier.angle).toMatch(/allude to it/);
+    // Not its evidence, though: the same quote on two slides is the same joke twice.
+    expect(dossier.evidenceMessageIds).not.toContain(4);
+  });
+
+  it('leaves a persona finding about somebody without a card on its own slide', () => {
+    // QUIET_GROUP has nobody over the message floor, so nobody holds a card —
+    // and a persona *finding* is typed `persona` too, so the check is on the
+    // dossier format rather than on the type.
+    const plan = planDeck(build(QUIET_GROUP, [{ finding: persona('ghost', 'Person A'), strength: 0.8 }]));
+    expect(plan.briefs.filter((b) => b.format === 'profile')).toHaveLength(0);
+    expect(has(plan, 'custom-ghost')).toBe(true);
+  });
+});
+
 describe('deck shape', () => {
   it('opens on the opener and ends on the personas', () => {
     const plan = planDeck(

@@ -4,13 +4,10 @@ import { useCallback, useRef, useState } from 'react';
 import {
   DiscoverySchema,
   WrittenDeckSchema,
-  analyzeCommitments,
-  analyzeInteractions,
-  analyzePhrases,
   anonymizeMessages,
   createVerificationContext,
-  findStalledPlans,
   isDuplicate,
+  pickVoiceSamples,
   planDeck,
   restoreDeep,
   verifyDictionary,
@@ -97,26 +94,68 @@ async function post(url: string, body: unknown): Promise<unknown> {
 
 /** Quotes offered to the writer for one slide, drawn from its own evidence. */
 const QUOTES_PER_SLIDE = 4;
+/**
+ * A dossier gets twice that. Its evidence is now the detective's findings
+ * about one person, and quoting those lines back at them is most of the card.
+ */
+const QUOTES_PER_DOSSIER = 8;
 /** Lines of their own the writer gets per person, to hear how they talk. */
-const SAMPLE_PER_PERSON = 14;
-/** Below this a message is a reaction, not a sample of how somebody writes. */
-const MIN_SAMPLE_CHARS = 12;
+const SAMPLE_PER_PERSON = 24;
 
-export function useReport(analysis: Analysis, brief?: Brief) {
-  const [state, setState] = useState<ReportState>({ phase: 'idle' });
+/**
+ * Lets the slide repaint before the next stretch of synchronous work.
+ *
+ * `setState` schedules a render; it does not perform one. Building the
+ * detective payload, verifying findings and planning the deck are each a
+ * noticeable stretch of main-thread time on a large export, and every one of
+ * them used to start in the same tick as the state change that announced it —
+ * so the announcement was painted after the work, and the reader watched a
+ * button do nothing. A frame and a macrotask is the shortest wait that
+ * guarantees the paint happened.
+ */
+function yieldToPaint(): Promise<void> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      resolve();
+    };
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => setTimeout(finish, 0));
+    }
+    // A hidden or occluded tab is never painted, so its frame never comes —
+    // and a pipeline waiting for one stalls until the reader looks at it
+    // again. There is nothing to paint for in that case, so the fallback
+    // simply moves on.
+    setTimeout(finish, 120);
+  });
+}
+
+export function useReport(
+  /** Null when the deck was opened from this device's storage: the chat is not here. */
+  analysis: Analysis | null,
+  brief?: Brief,
+  /** A report saved on this device opens already written. */
+  initial?: ReportState,
+) {
+  const [state, setState] = useState<ReportState>(initial ?? { phase: 'idle' });
   // A ref, not the phase: setState lands on the next render, so three taps in
   // one tick all pass a state-based check and all reach the paid route.
   const inFlight = useRef(false);
 
   const run = useCallback(async () => {
-    if (inFlight.current) return;
+    if (inFlight.current || !analysis) return;
     inFlight.current = true;
 
     try {
       const { parsed, stats } = analysis;
-      const { payload, pseudonymizer } = buildDetectivePayload(analysis, brief);
 
+      // Announced first, built second. See `yieldToPaint`.
       setState({ phase: 'unlocking' });
+      await yieldToPaint();
+      const { payload, pseudonymizer, derived } = buildDetectivePayload(analysis, brief);
+
       const checkout = (await post('/api/checkout', payload.fingerprint)) as { token: string };
       const token = checkout.token;
 
@@ -128,6 +167,7 @@ export function useReport(analysis: Analysis, brief?: Brief) {
 
       /* --- stage 5: verify against the real messages ----------------- */
       setState({ phase: 'verifying' });
+      await yieldToPaint();
       const ctx = createVerificationContext(parsed, pseudonymizer);
 
       const verified: { finding: Finding; strength: number }[] = [];
@@ -148,12 +188,14 @@ export function useReport(analysis: Analysis, brief?: Brief) {
 
       /* --- stage 6: plan --------------------------------------------- */
       const language = stats.language;
+      // The four pattern passes were run once already, to build the payload,
+      // and the planner reads the same four — see `DerivedPatterns`.
       const plan = planDeck({
         stats,
-        interactions: analyzeInteractions(parsed),
-        commitments: analyzeCommitments(parsed, language),
-        phrases: analyzePhrases(parsed, language),
-        stalledPlans: findStalledPlans(parsed, language),
+        interactions: derived.interactions,
+        commitments: derived.commitments,
+        phrases: derived.phrases,
+        stalledPlans: derived.stalledPlans,
         findings: verified,
         tokenOf: (name) => pseudonymizer.tokenFor(name),
       });
@@ -167,7 +209,7 @@ export function useReport(analysis: Analysis, brief?: Brief) {
         const messages = slideBrief.evidenceMessageIds
           .map((id) => byId.get(id))
           .filter((m): m is NonNullable<typeof m> => m !== undefined && m.kind === 'text')
-          .slice(0, QUOTES_PER_SLIDE);
+          .slice(0, slideBrief.format === 'profile' ? QUOTES_PER_DOSSIER : QUOTES_PER_SLIDE);
         if (messages.length > 0) {
           evidence[slideBrief.id] = anonymizeMessages(messages, pseudonymizer);
         }
@@ -183,30 +225,24 @@ export function useReport(analysis: Analysis, brief?: Brief) {
         type rather than the content of any one line — the four-word replies,
         the essay that arrives at two in the morning.
 
-        Spread evenly across everything they ever sent rather than picked for
-        being good, so the sample shows their ordinary register instead of their
-        highlights. Real ids throughout: anything the writer lifts from here is
-        checked in the browser like any other quote.
+        Mostly an even spread across everything they ever sent, so the sample
+        shows their ordinary register rather than a highlight reel — plus the
+        few lines that actually made other people laugh, because a writer that
+        never sees anybody's best material cannot mention it. `pickVoiceSamples`
+        is the same picker the paid payload uses, and it also throws out the
+        forwarded chain letters that "longest message" used to select for. Real
+        ids throughout: anything the writer lifts from here is checked in the
+        browser like any other quote.
       */
       const subjects = new Set(
         plan.briefs.filter((b) => b.people.length === 1).map((b) => b.people[0]!),
       );
       const voiceSamples: Record<string, AnonymizedMessage[]> = {};
       if (subjects.size > 0) {
-        const bySpeaker = new Map<string, typeof parsed.messages>();
-        for (const m of parsed.messages) {
-          if (m.kind !== 'text' || m.body.trim().length < MIN_SAMPLE_CHARS) continue;
-          const token = pseudonymizer.tokenFor(m.sender);
+        for (const [sender, messages] of pickVoiceSamples(parsed, { perPerson: SAMPLE_PER_PERSON })) {
+          const token = pseudonymizer.tokenFor(sender);
           if (!subjects.has(token)) continue;
-          const bucket = bySpeaker.get(token) ?? [];
-          bucket.push(m);
-          bySpeaker.set(token, bucket);
-        }
-
-        for (const [token, messages] of bySpeaker) {
-          const step = Math.max(1, Math.floor(messages.length / SAMPLE_PER_PERSON));
-          const spread = messages.filter((_, i) => i % step === 0).slice(0, SAMPLE_PER_PERSON);
-          voiceSamples[token] = anonymizeMessages(spread, pseudonymizer);
+          voiceSamples[token] = anonymizeMessages(messages, pseudonymizer);
         }
       }
 
@@ -229,6 +265,7 @@ export function useReport(analysis: Analysis, brief?: Brief) {
       ) as WrittenDeck;
 
       /* --- stage 8: check the copy ------------------------------------- */
+      await yieldToPaint();
       const slides: Slide[] = [];
       const rejectedSlides: ReportDeck['audit']['rejectedSlides'] = [];
 

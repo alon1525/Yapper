@@ -22,6 +22,7 @@ import {
 } from '@wrapped/core';
 import { buildDetectivePayload } from '@/lib/detectivePayload';
 import { detectivePrompt } from '@/lib/detectivePrompt';
+import { RequestSchema as DetectiveRequestSchema } from '@/lib/detectiveRequest';
 import { excerptChars } from '@/lib/guard';
 import { writerPrompt } from '@/lib/writerPrompt';
 
@@ -134,6 +135,29 @@ describe('the detective payload', () => {
     const prompt = detectivePrompt(payload);
 
     expect(prompt).toMatch(/^m\d+ \[\d{4}-\d{2}-\d{2} \d{2}:\d{2}\] Person [A-Z]+:/m);
+  });
+
+  it('always fits the schema the route parses it with', () => {
+    // The route's array bounds are applied in the builder, and this is the
+    // check that they stay applied. The chat is built to overflow one of them:
+    // twenty-five arrival announcements in one evening, against a ceiling of
+    // twenty ids per repeated arrival. Before the bound was applied this was
+    // "Malformed request." to a reader who had already paid.
+    const evening = Array.from({ length: 25 }, (_, i) => {
+      const minute = String(i * 2).padStart(2, '0');
+      return `20/05/2023, 19:${minute} - Daniel: 5 min away`;
+    });
+    const parsed = parseChat([CHAT, ...evening].join('\n'));
+    const stats = computeStats(parsed);
+    const analysis = { parsed, stats, moments: findCandidateMoments(parsed), fileName: 'chat.txt' };
+    const { payload } = buildDetectivePayload(analysis);
+
+    const arrival = payload.commitments.repeatedArrivals[0];
+    expect(arrival).toBeDefined();
+    expect(arrival!.claims).toBeGreaterThan(20);
+
+    const result = DetectiveRequestSchema.safeParse({ ...payload, token: 'x' });
+    expect(result.success, JSON.stringify(result.success ? null : result.error.issues)).toBe(true);
   });
 
   it('is counted by the request-size ceiling', () => {
@@ -261,6 +285,68 @@ describe('the writer is boxed in', () => {
     ).toContain('no figures for this slide — do not introduce any.');
   });
 
+  it('is handed the measurements as material, and the register it was asked for', () => {
+    const { parsed, stats, p } = setup();
+    const plan = planDeck({
+      stats,
+      interactions: analyzeInteractions(parsed),
+      commitments: analyzeCommitments(parsed, stats.language),
+      phrases: analyzePhrases(parsed, stats.language),
+      stalledPlans: findStalledPlans(parsed, stats.language),
+      findings: [],
+      tokenOf: (name) => p.tokenFor(name),
+    });
+    const voice = { register: 'blunt', roastTolerance: 0.8, darkHumour: false };
+
+    const roast = writerPrompt({
+      language: 'en',
+      brief: { language: 'en', kind: 'Friends group', tone: 'roast', notes: '' },
+      voice,
+      groupSummary: 'x',
+      briefs: plan.briefs,
+      evidence: {},
+    });
+    expect(roast).toContain('asked for the roast');
+    // The axes are never asked for as bars any more.
+    expect(roast).not.toContain('rename each one');
+
+    const gentle = writerPrompt({
+      language: 'en',
+      brief: { language: 'en', kind: 'Family', tone: 'gentle', notes: '' },
+      voice,
+      groupSummary: 'x',
+      briefs: plan.briefs,
+      evidence: {},
+    });
+    expect(gentle).toContain('go easy');
+
+    // A dossier asks for its official title in the field the card reads it from.
+    const dossier = writerPrompt({
+      language: 'en',
+      voice,
+      groupSummary: 'x',
+      briefs: [
+        {
+          id: 'persona-person-a',
+          type: 'persona',
+          format: 'profile',
+          angle: 'x',
+          stats: [],
+          scoreAxes: [{ key: 'volume', value: 97, meaning: 'sends far more than anyone' }],
+          people: ['Person A'],
+          evidenceMessageIds: [],
+          findingIds: [],
+          sensitivity: 'low',
+          strength: 0.7,
+          targetLength: 420,
+        },
+      ],
+      evidence: {},
+    });
+    expect(dossier).toContain('`closer` is required here');
+    expect(dossier).toContain('sends far more than anyone: 97/100');
+  });
+
   it('rejects written copy that invented a statistic', () => {
     const { ctx } = setup();
     const written = WrittenDeckSchema.parse({
@@ -346,6 +432,7 @@ describe('the writer is boxed in', () => {
       scores: [],
       jokeScores: [],
       evidenceMessageIds: [0, 4],
+      closer: '',
       confidence: 0.9,
       sensitivity: 'low' as const,
       visualDirection: '',

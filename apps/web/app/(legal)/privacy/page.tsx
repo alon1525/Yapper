@@ -115,6 +115,15 @@ export default function PrivacyPage() {
           anyone who compels us.
         </p>
       </Note>
+      <p>
+        <strong>The one exception is yours, not ours.</strong> On the last slide you can choose to
+        keep a report on this device. That writes the finished slides and the statistics — not the
+        export, and not your messages beyond the handful quoted on a slide — into your browser’s
+        own storage (IndexedDB) on that device. It never reaches us. The “My reports” list on the
+        front page is read from your browser, not from a server, which is why it is empty on any
+        other device. Remove a report there, or by clearing this site’s data in your browser.
+        Nothing is kept unless you press that button.
+      </p>
 
       <h2 id="sent">3. What is sent, and only when you ask for it</h2>
       <p>
@@ -267,8 +276,9 @@ export default function PrivacyPage() {
         <p>
           <strong>{SERVICE_NAME} sets no cookies.</strong> There is no analytics, no advertising
           pixel, no session identifier, no fingerprinting and nothing stored in your browser between
-          visits. That is why you have not been shown a cookie banner — there is nothing to consent
-          to.
+          visits — except a report you have chosen to keep on this device (see{' '}
+          <Link href="#device">section 2</Link>), which is yours and is never sent to us. That is
+          why you have not been shown a cookie banner — there is nothing to consent to.
         </p>
       </Note>
       <p>

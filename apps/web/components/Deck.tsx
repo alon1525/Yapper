@@ -2,8 +2,16 @@
 
 import { AnimatePresence } from 'framer-motion';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { ChatStats } from '@wrapped/core';
+import { buildPreviewPayload } from '@/lib/aiPayload';
 import type { Brief } from '@/lib/brief';
 import { CopyContext, localise } from '@/lib/copy';
+import {
+  buildSavedReport,
+  saveReport,
+  storageAvailable,
+  type SavedReport,
+} from '@/lib/savedReports';
 import type { Analysis } from '@/lib/useAnalyzer';
 import { useAiPreview } from '@/lib/useAiPreview';
 import { useReport } from '@/lib/useReport';
@@ -11,40 +19,108 @@ import { useStorySound } from '@/lib/useStorySound';
 import { PhotoProvider } from './cards/photos';
 import { slidesFor } from './cards/slides';
 import { BACKDROPS, Slide, type Backdrop } from './cards/Shell';
-import { AiSlide, AI_BACKDROP } from './cards/AiSlide';
-import { PaywallSlide, PAYWALL_BACKDROP } from './cards/PaywallSlide';
+import { WallSlide, WALL_BACKDROP } from './cards/WallSlide';
 import { reportSlidesFor } from './cards/ReportSlides';
-import { FinalSlide, FINAL_BACKDROP } from './cards/FinalSlide';
+import { FinalSlide, FINAL_BACKDROP, type SaveStatus } from './cards/FinalSlide';
 
 export function Deck({
+  stats,
   analysis,
   brief,
+  saved = null,
   onRestart,
   startWithSound = false,
 }: {
-  analysis: Analysis;
+  stats: ChatStats;
+  /**
+   * The parsed chat, while it is in memory. Null for a report opened from this
+   * device's storage: those slides are already written, and the only things
+   * that need the chat itself — the two model calls and the inspect panel —
+   * are not offered.
+   */
+  analysis: Analysis | null;
   /** What the reader told Reg on the way in: language, kind, notes, photos. */
   brief: Brief;
+  /** The stored report this deck was opened from, if it was. */
+  saved?: SavedReport | null;
   onRestart: () => void;
   /** The reader arrived via a button that promised sound, which is the gesture. */
   startWithSound?: boolean;
 }) {
-  const { stats } = analysis;
   /* The report's language, chosen on the first question of the onboarding.
      Every slide reads it from context rather than being handed it, because a
      slide that forgets to accept the prop renders in English and nothing in
      the types says so. */
   const copy = useMemo(() => localise(brief.language), [brief.language]);
   const free = useMemo(() => slidesFor(stats), [stats]);
-  const preview = useAiPreview(analysis, brief);
-  const report = useReport(analysis, brief);
+  // A saved report opens with whatever had been written when it was kept.
+  const preview = useAiPreview(
+    analysis,
+    brief,
+    saved?.preview ? { phase: 'done', preview: saved.preview } : undefined,
+  );
+  const report = useReport(
+    analysis,
+    brief,
+    saved?.deck ? { phase: 'ready', deck: saved.deck } : undefined,
+  );
   const sound = useStorySound(startWithSound);
 
+  /*
+    Keeping the report on this device. Opt-in from the last slide, and the one
+    thing in the product that outlives the tab.
+
+    What was saved is remembered by id so a second save updates the same record
+    rather than adding a twin — the common case being a reader who kept the
+    statistics, then unlocked the report, and now wants the saved copy to have
+    it too. `stale` is that state.
+  */
+  const [savedAs, setSavedAs] = useState<{ id: string; withDeck: boolean } | null>(
+    saved ? { id: saved.id, withDeck: saved.deck !== null } : null,
+  );
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>(() =>
+    !storageAvailable() ? 'unavailable' : saved ? 'saved' : 'idle',
+  );
+  const deckReady = report.state.phase === 'ready';
+  const effectiveSaveStatus: SaveStatus =
+    saveStatus === 'saved' && savedAs && !savedAs.withDeck && deckReady ? 'stale' : saveStatus;
+
+  const save = useCallback(async () => {
+    if (saveStatus === 'saving' || saveStatus === 'unavailable') return;
+    setSaveStatus('saving');
+    try {
+      const record = buildSavedReport({
+        stats,
+        brief,
+        fileName: analysis?.fileName ?? saved?.fileName ?? '',
+        deck: report.state.phase === 'ready' ? report.state.deck : null,
+        preview: preview.state.phase === 'done' ? preview.state.preview : null,
+        id: savedAs?.id,
+      });
+      await saveReport(record);
+      setSavedAs({ id: record.id, withDeck: record.deck !== null });
+      setSaveStatus('saved');
+    } catch {
+      setSaveStatus('error');
+    }
+  }, [analysis, brief, preview.state, report.state, saved, savedAs, saveStatus, stats]);
+
+  // The anonymised lines the free story would be written from, for the wall's
+  // inspect panel. Only exists while the chat does.
+  const sample = useMemo(
+    () =>
+      analysis
+        ? () => (buildPreviewPayload(analysis).payload.moments[0]?.messages ?? []).slice(0, 6)
+        : null,
+    [analysis],
+  );
+
   /**
-   * The deck grows when the report arrives. Free slides, then the one AI
-   * memory, then the wall — and once it is unlocked the paid slides splice in
-   * between the wall and the share card, so the reader keeps swiping in the
-   * same direction rather than being sent somewhere new.
+   * The deck grows when the report arrives. Free slides, then the wall — one
+   * slide that offers the report and, as the smaller option, the free story —
+   * and once it is unlocked the paid slides splice in between the wall and the
+   * share card, so the reader keeps swiping in the same direction rather than
+   * being sent somewhere new.
    */
   const paid = useMemo(
     () =>
@@ -55,7 +131,7 @@ export function Deck({
   );
 
   const slides = free;
-  const total = slides.length + 3 + paid.length; // + AI preview + paywall + paid + final
+  const total = slides.length + 2 + paid.length; // + the wall + paid + final
   const [index, setIndex] = useState(0);
 
   const go = useCallback(
@@ -73,9 +149,8 @@ export function Deck({
   }, [go]);
 
   const current = slides[index];
-  const aiIndex = slides.length;
-  const paywallIndex = aiIndex + 1;
-  const paidSlide = paid[index - paywallIndex - 1];
+  const wallIndex = slides.length;
+  const paidSlide = paid[index - wallIndex - 1];
   const isFinal = index === total - 1;
 
   /**
@@ -85,11 +160,9 @@ export function Deck({
    */
   const backdrop: Backdrop = current
     ? current.backdrop
-    : index === aiIndex
-      ? AI_BACKDROP
-      : index === paywallIndex
-        ? PAYWALL_BACKDROP
-        : (paidSlide?.backdrop ?? FINAL_BACKDROP);
+    : index === wallIndex
+      ? WALL_BACKDROP
+      : (paidSlide?.backdrop ?? FINAL_BACKDROP);
 
   // One note per slide, a chord on the last. Silent until the reader asks for
   // sound; `sting` checks that itself rather than trusting the caller.
@@ -158,22 +231,28 @@ export function Deck({
           <Slide key={current.id} backdrop={current.backdrop} photo={current.photo}>
             {current.render(stats, copy)}
           </Slide>
-        ) : index === aiIndex ? (
-          <AiSlide key="ai" analysis={analysis} state={preview.state} onRun={() => void preview.run()} />
-        ) : index === paywallIndex ? (
-          <PaywallSlide
-            key="paywall"
-            state={report.state}
+        ) : index === wallIndex ? (
+          <WallSlide
+            key="wall"
+            stats={stats}
+            sample={sample}
+            preview={preview.state}
+            report={report.state}
+            paidCount={paid.length}
+            onPreview={() => void preview.run()}
             onUnlock={() => void report.run()}
-            peopleCount={stats.people.length}
-            previewSeen={preview.state.phase === 'done'}
           />
         ) : paidSlide ? (
           <Slide key={paidSlide.id} backdrop={paidSlide.backdrop}>
             {paidSlide.render()}
           </Slide>
         ) : (
-          <FinalSlide key="final" analysis={analysis} onRestart={onRestart} />
+          <FinalSlide
+            key="final"
+            stats={stats}
+            onRestart={onRestart}
+            save={{ status: effectiveSaveStatus, onSave: () => void save() }}
+          />
         )}
       </AnimatePresence>
 

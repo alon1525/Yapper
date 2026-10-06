@@ -84,7 +84,15 @@ export const EN = {
   'final.punchline':
     '{messages} messages, {span}, and somehow nobody has left yet. That is love, technically.',
   'final.privacy': 'Your chat was never uploaded. Close this tab and it is gone.',
+  'final.privacySaved':
+    'Your chat was never uploaded. This report lives in this browser only, and nowhere else.',
   'final.restart': 'Try another chat',
+  // -- Keeping the report on this device: opt-in, from the last slide --------
+  'final.save': 'Keep this report on this device',
+  'final.saveAgain': 'Update the saved copy with the full report',
+  'final.saving': 'Saving\u2026',
+  'final.saved': 'Kept on this device. It is under My reports on the front page.',
+  'final.saveFailed': 'Could not keep it here \u2014 this browser is blocking site storage.',
 
   // ── Sharing ────────────────────────────────────────────────────────────
   'share.open': 'Make a share card',
@@ -144,26 +152,71 @@ export const EN = {
   'span.months': '{n} months',
   'span.years': '{n} years',
 
-  // -- The AI memory, the wall, and the paid report's scaffolding ---------
-  'ai.eyebrow': 'One more thing',
+  // -- The wall: Reg's one slide, with the free story and the paid report --
   'ai.headline': 'Reg\u2019s account of that night',
-  'ai.run': 'Write my story \u2726',
-  'ai.running': 'Reading your best moments\u2026',
   'ai.inspect': 'Show me exactly what gets sent',
+  'wall.turn': 'Reg\u2019s turn',
+  'wall.pitch': 'Everything so far was counted. Now Reg writes.',
+  'wall.eyebrow': 'That was the preview',
+  'wall.previewLede':
+    'That was one. Reg has the rest — and this time he knows your names.',
   'wall.names':
     'The full report is the one request that goes out with your group’s real names — without them it stays generic. Privacy says exactly what is sent.',
-  'wall.eyebrow': 'That was the preview',
-  'wall.free': 'One story was free',
   'wall.unlock': 'Unlock the full roast',
-  'wall.unlocking': 'Unlocking\u2026',
-  'wall.checking': 'Checking the receipts\u2026',
-  'wall.reading': 'Reading your whole chat\u2026',
-  'wall.writing': 'Writing your report\u2026',
-  'wall.sellStories': 'Five more moments, written up like the one you just read',
+  'wall.sellStories': 'Five moments from your history, written up with receipts',
+  'wall.sellCards': 'A case file on everyone in this chat — including the quiet ones',
   'wall.sellAwards': 'The full awards ceremony, one winner each',
   'wall.sellEras': 'Your years, one line at a time',
+  'wall.cards': '{n} people in this chat. {n} case files.',
+  'wall.tryFree': 'Try one story free first',
+  'wall.freeNote': 'Free, and every name is swapped for a token before it leaves your browser.',
+  'wall.noPayment':
+    'No payment is set up yet — this unlock is free while the product is being built.',
+  'wall.working': 'Reg is on it',
+  'wall.ready': 'Unlocked',
+  'wall.readyProse': 'It\u2019s written. Keep tapping.',
+  'wall.readyHint': '{n} slides follow.',
+  'wall.opened':
+    'Opened from this device. To have Reg write the full report, drop the export in again.',
+  'wall.terms': 'Terms',
   'wall.privacy': 'Privacy',
   'wall.refunds': 'Refunds',
+
+  // -- What Reg says he is doing while the report is written ---------------
+  // None of these is tied to a real sub-step — the server reports nothing
+  // back until it is done. They exist so a two-minute wait has somebody in it.
+  'progress.stepUnlock': 'Unlock',
+  'progress.stepRead': 'Read the whole chat',
+  'progress.stepCheck': 'Check the receipts',
+  'progress.stepWrite': 'Write the report',
+  'progress.unlock1': 'Checking the unlock\u2026',
+  'progress.read1': 'Reading all {n} messages. Yes, all of them.',
+  'progress.read2': 'Noticing who never replies',
+  'progress.read3': 'Finding the plan that has been \u201cnext week\u201d for years',
+  'progress.read4': 'Counting how many times someone was \u201cfive minutes away\u201d',
+  'progress.read5': 'Reading the arguments twice',
+  'progress.read6': 'Working out who actually runs this group',
+  'progress.read7': 'Collecting the phrases that only make sense in here',
+  'progress.read8': 'Picking the night everything went sideways',
+  'progress.check1': 'Checking every quote against the real chat',
+  'progress.check2': 'Throwing out anything Reg cannot prove',
+  'progress.check3': 'Making sure nobody gets blamed for something they did not say',
+  'progress.check4': 'Deciding which statistics are actually about you',
+  'progress.write1': 'Writing the jokes',
+  'progress.write2': 'Deleting the jokes that were not funny',
+  'progress.write3': 'Giving everyone a title they did not ask for',
+  'progress.write4': 'Choosing which of your messages to quote back at you',
+  'progress.write5': 'Opening a case file on {people} people',
+  'progress.write6': 'Cutting every sentence that sounds like a greeting card',
+  'progress.write7': 'Making it hurt exactly the right amount',
+  'progress.preview1': 'Reading your best moments',
+  'progress.preview2': 'Picking the one worth telling',
+  'progress.preview3': 'Writing it up, names swapped out',
+  'progress.longWait': 'This takes a minute or two. Reg reads slowly on purpose.',
+  'progress.shortWait': 'About half a minute.',
+
+  'report.caseAgainst': 'The case against {name}',
+  'report.officialTitle': 'Official title',
   'report.breaking': 'Breaking',
   'report.fieldNotes': 'Field notes',
   'report.findings': 'Findings',

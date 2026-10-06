@@ -5,7 +5,9 @@ import { useCallback, useState, type CSSProperties } from 'react';
 import type { ChatStats } from '@wrapped/core';
 import type { Brief } from '@/lib/brief';
 import { readExportFile } from '@/lib/readExport';
+import type { SavedReportSummary } from '@/lib/savedReports';
 import type { AnalyzerState } from '@/lib/useAnalyzer';
+import { MyReports } from './yapped/MyReports';
 import { StoryPreview } from './yapped/StoryPreview';
 import { Steps } from './yapped/Steps';
 import { SourceMarks } from './yapped/Sources';
@@ -96,6 +98,9 @@ export function Landing({
   onCancel,
   stats,
   freeCount,
+  saved = [],
+  onOpenSaved,
+  onDeleteSaved,
 }: {
   state: AnalyzerState;
   brief: Brief;
@@ -106,6 +111,10 @@ export function Landing({
   onCancel: () => void;
   stats: ChatStats | null;
   freeCount: number;
+  /** Reports kept in this browser. The strip and its nav link exist only when there are some. */
+  saved?: SavedReportSummary[];
+  onOpenSaved?: (id: string) => void;
+  onDeleteSaved?: (id: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [readError, setReadError] = useState<string | null>(null);
@@ -190,6 +199,11 @@ export function Landing({
         <div
           style={{ display: 'flex', alignItems: 'center', gap: 22, fontSize: 13, color: '#5E5344' }}
         >
+          {saved.length > 0 && (
+            <a className="yap-nav-links" href="#reports">
+              My reports
+            </a>
+          )}
           <a className="yap-nav-links" href="#how">
             How it works
           </a>
@@ -351,6 +365,16 @@ export function Landing({
           <StoryPreview />
         </div>
       </div>
+
+      {/* ── My reports ─────────────────────────────────────────────────── */}
+      {/* Under the hero and above the pitch: a returning reader came back for
+          this, and should not have to scroll past how the product works to
+          find what they already made. Renders nothing when nothing is kept. */}
+      <MyReports
+        reports={saved}
+        onOpen={(id) => onOpenSaved?.(id)}
+        onDelete={(id) => onDeleteSaved?.(id)}
+      />
 
       {/* ── Marquee ────────────────────────────────────────────────────── */}
       <div
@@ -607,7 +631,10 @@ export function Landing({
               The paid report is the exception: it goes with your real names, and it says so
               before you buy.
             </div>
-            <div style={privacyLine}>Nothing is stored. Close the tab and it&apos;s gone.</div>
+            <div style={privacyLine}>
+              Nothing is stored on our side. Close the tab and it&apos;s gone — unless you choose
+              to keep a report in your own browser, which never reaches us either.
+            </div>
             {/* Three lines is the pitch; the policy is where the same three
                 claims are written out with their exceptions — the share card
                 being the one that matters. Linked from here rather than only
