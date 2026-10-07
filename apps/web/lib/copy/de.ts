@@ -33,13 +33,13 @@ export const DE: Partial<Copy> = {
 
   'fastest.eyebrow': 'Der schnellste Finger',
   'fastest.punchline':
-    'Über {count} Antworten hinweg war diese Person fertig, bevor die anderen zu Ende gelesen hatten.',
+    'Über {count} Antworten hinweg kam die Antwort, bevor die anderen überhaupt fertig gelesen hatten.',
   'fastest.fastest': 'Am schnellsten',
   'fastest.slowest': 'Am langsamsten · {name}',
 
   'ghost.eyebrow': 'Zertifiziertes Gespenst',
   'ghost.punchline': 'So lange weg, ohne eine einzige Nachricht.',
-  'ghost.stillGone': 'Und ist nie zurückgekommen. Die Gruppe hat ohne diese Person weitergemacht.',
+  'ghost.stillGone': 'Und kam nie zurück. Die Gruppe hat einfach weitergemacht.',
   'ghost.returned': 'Und kam dann zurück, als wäre nichts gewesen.',
   'ghost.lastSeen': 'Zuletzt gesehen',
   'ghost.stillGoneLabel': 'Immer noch weg',
@@ -54,7 +54,7 @@ export const DE: Partial<Copy> = {
   'chaos.eyebrow': 'Maximales Chaos',
   'chaos.unit': '{count} Nachrichten an einem Tag',
   'chaos.punchline':
-    '{times}-mal ein normaler Tag hier. Irgendetwas ist passiert. Alle erinnern sich, was.',
+    '{times}-mal so viel wie an einem normalen Tag hier. Irgendwas ist passiert. Alle wissen noch, was.',
 
   'streak.eyebrow': 'Längste Serie',
   'streak.days': 'Tage',
@@ -130,7 +130,7 @@ export const DE: Partial<Copy> = {
   'wall.names': 'Der vollständige Report ist die einzige Anfrage, die mit den echten Namen eurer Gruppe rausgeht. Ohne sie bleibt er beliebig. Was genau gesendet wird, steht im Datenschutz.',
   'wall.eyebrow': 'Das war die Vorschau',
   'wall.unlock': 'Den ganzen Bericht freischalten',
-  'wall.sellStories': 'F\u00fcnf weitere Momente, geschrieben wie der, den ihr gerade gelesen habt',
+  'wall.sellStories': 'Fünf Momente aus eurer Geschichte, aufgeschrieben mit Belegen',
   'wall.sellAwards': 'Die komplette Preisverleihung, ein Gewinner pro Preis',
   'wall.sellEras': 'Eure Jahre, eine Zeile nach der anderen',
   'wall.privacy': 'Datenschutz',
@@ -287,4 +287,74 @@ export const DE: Partial<Copy> = {
   'ob.done.retry': 'Anderen Export versuchen',
   'ob.done.free':
     '{n} Slides gratis. Der ganze Bericht, die Profile für jede Person und das Paket zum Teilen kommen am Ende.',
+
+  'deck.tap': 'tippen →',
+  'deck.end': 'Ende',
+
+  'final.privacySaved':
+    'Euer Chat wurde nie hochgeladen. Dieser Bericht lebt nur in diesem Browser, und sonst nirgends.',
+  'final.save': 'Bericht auf diesem Gerät behalten',
+  'final.saveAgain': 'Gespeicherte Kopie um den vollen Bericht ergänzen',
+  'final.saving': 'Wird gespeichert…',
+  'final.saved': 'Auf diesem Gerät behalten. Du findest ihn auf der Startseite unter My reports.',
+  'final.saveFailed':
+    'Konnte nicht gespeichert werden — dieser Browser blockiert den Speicher der Seite.',
+
+  'wall.turn': 'Reg ist dran',
+  'wall.pitch': 'Bis hierhin wurde gezählt. Jetzt schreibt Reg.',
+  'wall.previewLede': 'Das war eine. Reg hat den Rest — und diesmal kennt er eure Namen.',
+  'wall.sellCards': 'Eine Akte über jede Person in diesem Chat — auch die stillen',
+  'wall.cards': '{n} Leute in diesem Chat. {n} Akten.',
+  'wall.tryFree': 'Erst eine Geschichte gratis',
+  'wall.freeNote':
+    'Kostenlos, und jeder Name wird durch einen Platzhalter ersetzt, bevor etwas den Browser verlässt.',
+  'wall.noPayment':
+    'Es ist noch keine Bezahlung eingerichtet — solange das Produkt gebaut wird, ist das Freischalten gratis.',
+  'wall.working': 'Reg ist dabei',
+  'wall.ready': 'Freigeschaltet',
+  'wall.readyProse': 'Steht geschrieben. Weitertippen.',
+  'wall.readyHint': '{n} Slides folgen.',
+  'wall.opened':
+    'Von diesem Gerät geöffnet. Damit Reg den vollen Bericht schreibt, legt den Export noch einmal ab.',
+  'wall.terms': 'AGB',
+
+  'progress.stepUnlock': 'Freischalten',
+  'progress.stepRead': 'Den ganzen Chat lesen',
+  'progress.stepCheck': 'Die Belege prüfen',
+  'progress.stepWrite': 'Den Bericht schreiben',
+  'progress.unlock1': 'Freischaltung wird geprüft…',
+  'progress.read1': 'Liest alle {n} Nachrichten. Ja, alle.',
+  'progress.read2': 'Merkt sich, wer nie antwortet',
+  'progress.read3': 'Sucht den Plan, der seit Jahren „nächste Woche“ ist',
+  'progress.read4': 'Zählt, wie oft jemand „in fünf Minuten da“ war',
+  'progress.read5': 'Liest die Streits zweimal',
+  'progress.read6': 'Findet heraus, wer diese Gruppe wirklich führt',
+  'progress.read7': 'Sammelt die Sätze, die nur hier drin Sinn ergeben',
+  'progress.read8': 'Sucht die Nacht aus, in der alles aus dem Ruder lief',
+  'progress.check1': 'Prüft jedes Zitat gegen den echten Chat',
+  'progress.check2': 'Wirft alles raus, was Reg nicht belegen kann',
+  'progress.check3': 'Stellt sicher, dass niemandem etwas in den Mund gelegt wird',
+  'progress.check4': 'Entscheidet, welche Zahlen wirklich etwas über euch sagen',
+  'progress.write1': 'Schreibt die Witze',
+  'progress.write2': 'Löscht die Witze, die nicht lustig waren',
+  'progress.write3': 'Verleiht allen einen Titel, um den niemand gebeten hat',
+  'progress.write4': 'Wählt aus, welche eurer Nachrichten euch vorgehalten werden',
+  'progress.write5': 'Legt Akten über {people} Leute an',
+  'progress.write6': 'Streicht jeden Satz, der nach Glückwunschkarte klingt',
+  'progress.write7': 'Sorgt dafür, dass es genau richtig wehtut',
+  'progress.preview1': 'Liest eure besten Momente',
+  'progress.preview2': 'Sucht den aus, der es wert ist, erzählt zu werden',
+  'progress.preview3': 'Schreibt ihn auf, Namen ausgetauscht',
+  'progress.longWait': 'Das dauert ein, zwei Minuten. Reg liest absichtlich langsam.',
+  'progress.shortWait': 'Etwa eine halbe Minute.',
+
+  'report.caseAgainst': 'Die Akte {name}',
+  'report.officialTitle': 'Offizieller Titel',
+  'report.showReceipts': 'Belege zeigen · {n}',
+  'report.hideReceipts': 'Belege ausblenden',
+  'report.exhibit': 'Beweisstück {n} von {m}',
+  'report.exhibitOne': 'Beweisstück',
+  'report.msgs': '{n} Nachr.',
+  'report.patchNotes': 'Patch Notes',
+  'report.noted': 'Notiert',
 };

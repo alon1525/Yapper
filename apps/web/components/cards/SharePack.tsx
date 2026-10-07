@@ -184,7 +184,7 @@ export function SharePack({
                 className="block h-full w-full"
               />
               <span
-                className="absolute right-2 bottom-2 grid h-6 w-6 place-items-center rounded-full text-[12px]"
+                className="absolute end-2 bottom-2 grid h-6 w-6 place-items-center rounded-full text-[12px]"
                 style={{
                   background: on ? 'currentColor' : 'rgba(0,0,0,.45)',
                   color: on ? 'var(--slide-bg)' : 'inherit',

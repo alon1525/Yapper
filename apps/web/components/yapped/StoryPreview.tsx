@@ -194,11 +194,13 @@ export function StoryPreview({
   slideSeconds?: number;
 }) {
   const [i, setI] = useState(0);
-  // The sample opens with sound on, the same way the reader's own deck does.
-  // Nothing is audible until they touch the page — no browser will start an
-  // AudioContext before a gesture — but the chrome shows ♪ from the start and
-  // the very first tap through the story arrives with the soundtrack under it.
-  const sound = useStorySound(true);
+  // The sample opens silent. It used to open with sound on, relying on the
+  // browser to hold the AudioContext back until a gesture — but a browser that
+  // has seen this site before lets the context run at once, and the front page
+  // started humming by itself the moment it loaded, drone and all, to a reader
+  // who had asked for nothing. The ♪ on the phone is the one gesture that
+  // starts it, which is also the only honest reading of that icon.
+  const sound = useStorySound(false);
   const advanceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const go = useCallback(

@@ -207,8 +207,16 @@ export const SLIDES: SlideDef[] = [
 
           {/* The shape of the group's day is the actual content here, so it is
               drawn rather than described — and only the small hours are given
-              the accent, because those are the ones that make the point. */}
-          <div className="mt-6 flex h-[130px] items-end justify-center gap-[3px]" aria-hidden="true">
+              the accent, because those are the ones that make the point.
+
+              Pinned left-to-right in every language: a clock face and a
+              timeline run that way in Hebrew publications too, and a day that
+              started on the right would be read as ending at midnight. */}
+          <div
+            dir="ltr"
+            className="mt-6 flex h-[130px] items-end justify-center gap-[3px]"
+            aria-hidden="true"
+          >
             {s.hourHistogram.map((count, h) => (
               <motion.div
                 key={h}
@@ -226,6 +234,7 @@ export const SLIDES: SlideDef[] = [
             ))}
           </div>
           <p
+            dir="ltr"
             className="mt-2 flex justify-between text-[10px] opacity-60"
             style={{ fontFamily: 'var(--yap-mono)' }}
           >
@@ -437,7 +446,7 @@ export const SLIDES: SlideDef[] = [
           <Eyebrow>{l.t('streak.eyebrow')}</Eyebrow>
           <Poster>
             <AnimatedNumber value={streak.days} locale={l.locale} />
-            <span className="ml-3 text-[0.28em] tracking-normal">{l.t('streak.days')}</span>
+            <span className="ms-3 text-[0.28em] tracking-normal">{l.t('streak.days')}</span>
           </Poster>
           <Punchline>
             {l.t('streak.punchline', { from: day(l, streak.from), to: day(l, streak.to) })}

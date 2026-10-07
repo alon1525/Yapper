@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 /**
  * The soundtrack, synthesised rather than loaded.
@@ -163,33 +163,37 @@ export function useStorySound(startEnabled = false): StorySound {
    * that says "with sound" — that click is the gesture, so honouring it here
    * is legitimate rather than an autoplay workaround.
    *
-   * The sample story on the landing page also opens unmuted, and there no
-   * gesture has happened yet: the context comes up suspended, which would leave
-   * the chrome showing ♪ over silence — indistinguishable from broken. So when
-   * the bed cannot actually run, the first touch or keypress anywhere on the
-   * page is what starts it. That is not autoplay smuggled in; it is the same
-   * "sound is on, waiting for you" state the icon is already claiming.
+   * This used to also arm a page-wide "first touch or keypress starts the
+   * drone" listener, for a sample story that opened unmuted before any gesture
+   * had happened. Two things made that a bug rather than a courtesy: a click
+   * anywhere on the page — the nav, a legal link, the file picker — started a
+   * soundtrack nobody had asked for, and a browser that had seen the site
+   * before did not even wait for the click. Nothing here starts sound now
+   * unless the caller's own gesture already did.
    */
   useEffect(() => {
-    if (!startEnabled) return;
-    startBed();
-    if (acRef.current?.state === 'running') return;
-
-    const unlock = () => {
-      // The gesture that unlocks the page may have been the mute button itself.
-      if (!enabledRef.current) return;
-      void acRef.current?.resume();
-      startBed();
-    };
-    window.addEventListener('pointerdown', unlock, { once: true });
-    window.addEventListener('keydown', unlock, { once: true });
-    return () => {
-      window.removeEventListener('pointerdown', unlock);
-      window.removeEventListener('keydown', unlock);
-    };
+    if (startEnabled) startBed();
     // Deliberately mount-only: `startEnabled` is an opening condition, not a
     // control. Toggling sound afterwards goes through `toggle`.
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /**
+   * A tab in the background keeps its AudioContext running, and a four-
+   * oscillator drone from a tab you are not looking at is "my computer is
+   * making a weird noise". Suspended while hidden, resumed on return — but only
+   * if sound is still on, because the reader may have muted it from here.
+   */
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const onVisibility = () => {
+      const ac = acRef.current;
+      if (!ac) return;
+      if (document.hidden) void ac.suspend();
+      else if (enabledRef.current) void ac.resume();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
   }, []);
 
   useEffect(
@@ -201,5 +205,9 @@ export function useStorySound(startEnabled = false): StorySound {
     [stopBed],
   );
 
-  return { enabled, toggle, sting };
+  // One object per `enabled` state rather than one per render. The deck plays
+  // its sting from an effect keyed on this, and a fresh object every render
+  // meant a note for every re-render — the report arriving, a save landing —
+  // rather than for every slide.
+  return useMemo(() => ({ enabled, toggle, sting }), [enabled, toggle, sting]);
 }

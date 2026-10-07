@@ -52,6 +52,10 @@ export function Deck({
      slide that forgets to accept the prop renders in English and nothing in
      the types says so. */
   const copy = useMemo(() => localise(brief.language), [brief.language]);
+  /* Which way the deck runs. A right-to-left report is right-to-left all the
+     way down: the layout mirrors, the story advances leftwards, and the back
+     third of the screen is the right third. */
+  const rtl = copy.rtl;
   const free = useMemo(() => slidesFor(stats), [stats]);
   // A saved report opens with whatever had been written when it was kept.
   const preview = useAiPreview(
@@ -140,13 +144,17 @@ export function Deck({
   );
 
   useEffect(() => {
+    // The arrows follow the direction the deck runs in: in a right-to-left
+    // report the story advances leftwards, so ← is forward.
+    const forward = rtl ? 'ArrowLeft' : 'ArrowRight';
+    const backward = rtl ? 'ArrowRight' : 'ArrowLeft';
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight' || e.key === ' ') go(1);
-      if (e.key === 'ArrowLeft') go(-1);
+      if (e.key === forward || e.key === ' ') go(1);
+      if (e.key === backward) go(-1);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [go]);
+  }, [go, rtl]);
 
   const current = slides[index];
   const wallIndex = slides.length;
@@ -165,10 +173,13 @@ export function Deck({
       : (paidSlide?.backdrop ?? FINAL_BACKDROP);
 
   // One note per slide, a chord on the last. Silent until the reader asks for
-  // sound; `sting` checks that itself rather than trusting the caller.
+  // sound; `sting` checks that itself rather than trusting the caller. Keyed on
+  // the function, not the whole sound object, so that unmuting does not replay
+  // the current slide's note.
+  const { sting } = sound;
   useEffect(() => {
-    sound.sting(index, isFinal);
-  }, [index, isFinal, sound]);
+    sting(index, isFinal);
+  }, [index, isFinal, sting]);
 
   // The deck is one screen deep and taps rather than scrolls. Leaving the page
   // scrollable underneath it puts a bar down the right of a story player, and
@@ -197,9 +208,13 @@ export function Deck({
       if (target?.closest('button, a, input, textarea, select, [role="button"]')) return;
 
       const box = event.currentTarget.getBoundingClientRect();
-      go(event.clientX - box.left < box.width / 3 ? -1 : 1);
+      const x = event.clientX - box.left;
+      // The back third is the one the story came from: the left in a
+      // left-to-right deck, the right in a right-to-left one.
+      const back = rtl ? x > (box.width * 2) / 3 : x < box.width / 3;
+      go(back ? -1 : 1);
     },
-    [go],
+    [go, rtl],
   );
 
   return (
@@ -209,13 +224,15 @@ export function Deck({
       onClick={onTap}
       className="relative h-dvh w-full overflow-hidden"
       style={{ background: BACKDROPS[backdrop].bg, color: BACKDROPS[backdrop].fg }}
-      // Direction is resolved per text node via dir="auto", not forced here.
-      // Forcing rtl on the container reorders the English UI copy around any
-      // embedded number — "54,162 messages" renders with the number displaced
-      // and the full stop on the wrong end. Letting each string pick its own
-      // direction from its first strong character keeps English copy LTR and
-      // Hebrew names RTL, including when they appear in the same sentence.
-      dir="ltr"
+      // The deck runs the way its language does. This used to be forced LTR
+      // with every text node resolving its own direction, which kept an English
+      // deck readable around a Hebrew name — but left a Hebrew deck as Hebrew
+      // sentences pinned to the left edge of a left-to-right frame, with the
+      // chrome, the rankings and the progress bar all running the wrong way.
+      // Names and quoted messages still carry dir="auto", because the chat's
+      // script is not the report's.
+      lang={copy.language}
+      dir={rtl ? 'rtl' : 'ltr'}
     >
       {/*
         Deliberately NOT mode="wait". That mode holds the outgoing slide until
@@ -256,9 +273,9 @@ export function Deck({
         )}
       </AnimatePresence>
 
-      {/* Story progress. Forced LTR so the bar always fills in reading order of
-          the deck itself rather than flipping with the chat's language. */}
-      <div dir="ltr" className="pointer-events-none absolute inset-x-0 top-0 z-30 flex gap-1 p-3">
+      {/* Story progress. Fills in the deck's own reading order: from the left
+          in a left-to-right report, from the right in a right-to-left one. */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex gap-1 p-3">
         {Array.from({ length: total }, (_, i) => (
           <div
             key={i}
@@ -270,7 +287,7 @@ export function Deck({
               style={{
                 background: 'currentColor',
                 transform: `scaleX(${i <= index ? 1 : 0})`,
-                transformOrigin: 'left',
+                transformOrigin: rtl ? 'right' : 'left',
               }}
             />
           </div>
@@ -341,26 +358,25 @@ export function Deck({
         aria-label={copy.t('deck.prev')}
         onClick={() => go(-1)}
         disabled={index === 0}
-        className="pointer-events-none absolute top-20 bottom-16 left-0 z-10 w-1/3"
+        className="pointer-events-none absolute top-20 bottom-16 start-0 z-10 w-1/3"
       />
       <button
         type="button"
         aria-label={copy.t('deck.next')}
         onClick={() => go(1)}
         disabled={index === total - 1}
-        className="pointer-events-none absolute top-20 right-0 bottom-16 z-10 w-2/3"
+        className="pointer-events-none absolute top-20 end-0 bottom-16 z-10 w-2/3"
       />
 
       <div
-        dir="ltr"
         className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex items-center justify-between px-5 pb-4"
         style={{ fontFamily: 'var(--yap-mono)' }}
       >
-        <span className="text-[10px] tracking-[0.12em] opacity-70">
+        <span dir="ltr" className="text-[10px] tracking-[0.12em] opacity-70">
           {String(index + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}
         </span>
-        <span className="text-[10px] tracking-[0.12em] opacity-70">
-          {isFinal ? 'the end' : 'tap →'}
+        <span className={`text-[10px] opacity-70 ${rtl ? 'tracking-[0.04em]' : 'tracking-[0.12em]'}`}>
+          {copy.t(isFinal ? 'deck.end' : 'deck.tap')}
         </span>
       </div>
     </main>

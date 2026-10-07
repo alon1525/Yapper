@@ -166,18 +166,38 @@ const GROUP_SLIDES: { slot: GroupSlot; label: string; caption: CopyKey }[] = [
   { slot: 'paywall', label: '16', caption: 'ob.photos.slotPaywall' },
 ];
 
-const mono = (extra?: CSSProperties): CSSProperties => ({
-  fontFamily: 'var(--yap-mono)',
-  fontSize: 11,
-  color: '#8A7B63',
-  ...extra,
-});
+/**
+ * The mono label, and the one thing about it that depends on the script.
+ *
+ * Every tracked label on the sheet goes through here. In a right-to-left
+ * language the tracking is pulled in — Hebrew has no capitals and no small
+ * caps, and a label tracked out to 0.18em in it reads as separate letters
+ * rather than a word. Decided once, so the thirty call sites below do not each
+ * have to know.
+ */
+const monoFor =
+  (rtl: boolean) =>
+  (extra?: CSSProperties): CSSProperties => {
+    const style: CSSProperties = {
+      fontFamily: 'var(--yap-mono)',
+      fontSize: 11,
+      color: '#8A7B63',
+      ...extra,
+    };
+    if (rtl && style.letterSpacing) style.letterSpacing = '.04em';
+    return style;
+  };
 
-const eyebrow: CSSProperties = mono({
-  fontSize: 11,
-  letterSpacing: '.18em',
-  textTransform: 'uppercase',
-});
+/* The phone mocks below are drawn in English whatever the report's language,
+   so they keep the left-to-right tracking. */
+const mono = monoFor(false);
+
+const eyebrowFor = (rtl: boolean): CSSProperties =>
+  monoFor(rtl)({
+    fontSize: 11,
+    letterSpacing: '.18em',
+    textTransform: 'uppercase',
+  });
 
 const question: CSSProperties = {
   fontFamily: 'var(--yap-serif)',
@@ -196,14 +216,15 @@ const lede: CSSProperties = {
   maxWidth: '48ch',
 };
 
-const optionalPill: CSSProperties = mono({
-  fontSize: 10,
-  letterSpacing: '.1em',
-  textTransform: 'uppercase',
-  background: '#EFE3CE',
-  borderRadius: 999,
-  padding: '3px 9px',
-});
+const optionalPillFor = (rtl: boolean): CSSProperties =>
+  monoFor(rtl)({
+    fontSize: 10,
+    letterSpacing: '.1em',
+    textTransform: 'uppercase',
+    background: '#EFE3CE',
+    borderRadius: 999,
+    padding: '3px 9px',
+  });
 
 const panel: CSSProperties = {
   background: '#FFFDF8',
@@ -643,6 +664,16 @@ export function Onboarding({
   const copy = useMemo(() => localise(brief.language), [brief.language]);
   const t = copy.t;
 
+  /* The sheet's own labels, tracked for the script they are set in. These
+     shadow the module-level ones, which the English phone mocks keep. */
+  const mono = useMemo(() => monoFor(copy.rtl), [copy.rtl]);
+  const eyebrow = useMemo(() => eyebrowFor(copy.rtl), [copy.rtl]);
+  const optionalPill = useMemo(() => optionalPillFor(copy.rtl), [copy.rtl]);
+  /* Arrows point the way the eye travels. "Back" is on the right in Hebrew. */
+  const backArrow = copy.rtl ? '→' : '←';
+  const onArrow = copy.rtl ? '←' : '→';
+  const pointer = copy.rtl ? '◂' : '▸';
+
   const [step, setStep] = useState<Step>('lang');
   const [dragging, setDragging] = useState(false);
   /* Which app's instructions the export step is showing. It steers the
@@ -945,6 +976,13 @@ export function Onboarding({
   return (
     <div
       ref={sheet}
+      // The sheet runs the way the report's language does, from the moment it
+      // is chosen: every layout below is written in logical properties, so
+      // flipping this one attribute mirrors the header, the footer, the cards
+      // and the export instructions. The language question itself stays
+      // left-to-right — it is asked in English, before there is an answer.
+      lang={copy.language}
+      dir={copy.rtl ? 'rtl' : 'ltr'}
       style={{
         position: 'fixed',
         inset: 0,
@@ -1039,8 +1077,8 @@ export function Onboarding({
         <div style={{ width: '100%', maxWidth: 720 }}>
           {/* ── 1 · Language ─────────────────────────────────────────────── */}
           {step === 'lang' && (
-            <div style={{ animation: 'obPop .35s ease' }}>
-              <div style={eyebrow}>Question 1 of 3</div>
+            <div dir="ltr" style={{ animation: 'obPop .35s ease' }}>
+              <div style={eyebrowFor(false)}>Question 1 of 3</div>
               <h1 style={question}>Which language should Reg write in?</h1>
               <p style={lede}>
                 Your chat can be in any language — this is just the language of the report Reg
@@ -1063,7 +1101,7 @@ export function Onboarding({
                       onClick={() => onBrief({ language: language.code as ReportLanguage })}
                       aria-pressed={on}
                       style={{
-                        textAlign: 'left',
+                        textAlign: 'start',
                         cursor: 'pointer',
                         border: `1.5px solid ${on ? '#1D3A2A' : '#E3D5BE'}`,
                         background: on ? '#FFFDF8' : '#FBF6EC',
@@ -1103,14 +1141,20 @@ export function Onboarding({
                           {on ? '✓' : ''}
                         </div>
                       </div>
-                      <div style={mono({ fontSize: 10.5, letterSpacing: '.08em', marginTop: 8 })}>
+                      <div
+                        style={monoFor(false)({
+                          fontSize: 10.5,
+                          letterSpacing: '.08em',
+                          marginTop: 8,
+                        })}
+                      >
                         {language.note}
                       </div>
                     </button>
                   );
                 })}
               </div>
-              <div style={mono({ marginTop: 14 })}>
+              <div style={monoFor(false)({ marginTop: 14 })}>
                 Arabic is next on Reg&apos;s desk. Ask for yours and he&apos;ll move it up.
               </div>
             </div>
@@ -1140,7 +1184,7 @@ export function Onboarding({
                       onClick={() => onBrief({ kind: kind.name })}
                       aria-pressed={on}
                       style={{
-                        textAlign: 'left',
+                        textAlign: 'start',
                         cursor: 'pointer',
                         border: `1.5px solid ${on ? '#1D3A2A' : '#E3D5BE'}`,
                         background: on ? '#1D3A2A' : '#FFFDF8',
@@ -1209,7 +1253,7 @@ export function Onboarding({
                         onClick={() => onBrief({ tone })}
                         aria-pressed={on}
                         style={{
-                          textAlign: 'left',
+                          textAlign: 'start',
                           cursor: 'pointer',
                           border: `1.5px solid ${on ? '#C2571F' : '#E3D5BE'}`,
                           background: on ? '#C2571F' : '#FFFDF8',
@@ -1312,7 +1356,7 @@ export function Onboarding({
                           ...mono({ fontSize: 10.5, color: '#5E5344' }),
                         }}
                       >
-                        {t(hint)} →
+                        {t(hint)} {onArrow}
                       </button>
                     ))}
                   </div>
@@ -1359,7 +1403,10 @@ export function Onboarding({
                         background: on ? '#FFFDF8' : 'transparent',
                         color: '#15251C',
                         borderRadius: 999,
-                        padding: '9px 16px 9px 11px',
+                        // Tighter on the side the mark sits, whichever side that is.
+                        paddingBlock: 9,
+                        paddingInlineStart: 11,
+                        paddingInlineEnd: 16,
                         fontFamily: 'var(--yap-sans)',
                         fontSize: 14,
                         fontWeight: on ? 700 : 400,
@@ -1458,7 +1505,7 @@ export function Onboarding({
                         return (
                           <>
                             {before}
-                            <span style={{ fontFamily: 'var(--yap-mono)', fontSize: 15 }}>
+                            <span dir="ltr" style={{ fontFamily: 'var(--yap-mono)', fontSize: 15 }}>
                               {source === 'line' ? '[LINE] chat.txt' : '_chat.txt'}
                             </span>
                             {after}
@@ -1576,10 +1623,10 @@ export function Onboarding({
                     }}
                   >
                     <span style={mono({ fontSize: 13, width: 14, color: 'inherit' })}>
-                      {k < scanAt ? '✓' : k === scanAt ? '▸' : '·'}
+                      {k < scanAt ? '✓' : k === scanAt ? pointer : '·'}
                     </span>
                     <span>{line.text}</span>
-                    <span style={mono({ fontSize: 11.5, marginLeft: 'auto' })}>
+                    <span style={mono({ fontSize: 11.5, marginInlineStart: 'auto' })}>
                       {k <= scanAt ? line.value : ''}
                     </span>
                   </div>
@@ -1667,7 +1714,7 @@ export function Onboarding({
                           {merge.into}
                         </div>
                         <div style={mono({ fontSize: 10.5 })}>{merge.why}</div>
-                        <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+                        <div style={{ display: 'flex', gap: 8, marginInlineStart: 'auto' }}>
                           <button
                             type="button"
                             onClick={() => resolveMerge(merge.from, 'kept')}
@@ -1968,7 +2015,7 @@ export function Onboarding({
                               fontSize: 14,
                               lineHeight: 0.95,
                               textTransform: 'uppercase',
-                              textAlign: 'left',
+                              textAlign: 'start',
                               color: ground.fg,
                             }}
                           >
@@ -2071,7 +2118,7 @@ export function Onboarding({
                         <div
                           style={{
                             position: 'absolute',
-                            right: -2,
+                            insetInlineEnd: -2,
                             bottom: -2,
                             width: 22,
                             height: 22,
@@ -2327,7 +2374,7 @@ export function Onboarding({
                 }),
               }}
             >
-              ← {t('ob.back')}
+              {backArrow} {t('ob.back')}
             </button>
             <div
               dir="auto"

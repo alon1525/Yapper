@@ -3,6 +3,7 @@ import {
   Anton,
   Bricolage_Grotesque,
   DM_Mono,
+  Frank_Ruhl_Libre,
   Heebo,
   Instrument_Sans,
   Instrument_Serif,
@@ -54,14 +55,29 @@ const anton = Anton({
   display: 'swap',
 });
 
-/* The landing page is Latin throughout, but a reader's own names come out of
-   their export in whatever they were typed in, and Anton ships no Hebrew. This
-   is the face `Shell` falls back to for those — without the subset a leaderboard
-   of them drops to a system face and the slide loses all its weight. */
+/* The Hebrew faces.
+
+   Every other family above is a Latin subset, and a report written in Hebrew
+   is Hebrew on every surface — the body copy, the eyebrows, the poster
+   numbers' captions, the onboarding's serif questions. Heebo covers the sans,
+   mono and poster roles: a Hebrew cut of the same humanist shape as Space
+   Grotesk, and at 900 it has the weight Anton brings to the Latin deck. The
+   lighter weights are what body copy is set in; load only the heavy ones and
+   every paragraph in Hebrew renders bold.
+
+   Frank Ruhl Libre is the serif — the one Hebrew newspapers are set in, which
+   is exactly the register Instrument Serif gives the Latin landing. */
 const heebo = Heebo({
   subsets: ['hebrew', 'latin'],
-  weight: ['700', '900'],
+  weight: ['400', '500', '700', '900'],
   variable: '--font-heebo',
+  display: 'swap',
+});
+
+const frankRuhl = Frank_Ruhl_Libre({
+  subsets: ['hebrew', 'latin'],
+  weight: ['400', '500'],
+  variable: '--font-frank-ruhl',
   display: 'swap',
 });
 
@@ -97,6 +113,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         spaceGrotesk.variable,
         anton.variable,
         heebo.variable,
+        frankRuhl.variable,
       ].join(' ')}
     >
       <body>{children}</body>

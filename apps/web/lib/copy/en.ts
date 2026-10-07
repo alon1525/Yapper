@@ -23,6 +23,11 @@ export const EN = {
   'deck.restart': 'Back to the first slide',
   'deck.mute': 'Mute the soundtrack',
   'deck.unmute': 'Play the soundtrack',
+  // The two words in the deck's bottom corners. The arrow points the way the
+  // deck advances, which is the other way in a right-to-left language — so it
+  // lives in the table rather than in the JSX.
+  'deck.tap': 'tap →',
+  'deck.end': 'the end',
 
   // ── Free slides ────────────────────────────────────────────────────────
   'welcome.fallbackName': 'Your chat',
@@ -228,6 +233,13 @@ export const EN = {
   'report.standings': 'The standings',
   'report.insideWords': 'Words that mean nothing outside this chat',
   'report.howItWent': 'How it went',
+  'report.showReceipts': 'show receipts · {n}',
+  'report.hideReceipts': 'hide receipts',
+  'report.exhibit': 'Exhibit {n} of {m}',
+  'report.exhibitOne': 'Exhibit',
+  'report.msgs': '{n} msgs',
+  'report.patchNotes': 'Patch notes',
+  'report.noted': 'Noted',
 
   // ── The onboarding, from the second question onwards ────────────────────
   // The language card itself stays English: it is the question that decides

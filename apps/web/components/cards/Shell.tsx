@@ -3,6 +3,7 @@
 import { animate, motion, useMotionValue, useTransform } from 'framer-motion';
 import { type CSSProperties, type ReactNode, useEffect, useMemo } from 'react';
 import type { GroupSlot } from '@/lib/brief';
+import { useCopy } from '@/lib/copy';
 import { percent } from '@/lib/format';
 import { Portrait, SlidePhoto } from './photos';
 
@@ -151,6 +152,31 @@ function isHebrew(node: ReactNode): boolean {
   return typeof node === 'string' && HEBREW.test(node);
 }
 
+/**
+ * The face for a line of display type.
+ *
+ * Anton for Latin, Heebo's heaviest for Hebrew — decided per string, because
+ * an English deck still carries Hebrew names. A right-to-left deck takes Heebo
+ * for everything at poster size, including the digits: a number set in a
+ * condensed Latin face beside a Hebrew word in a wide one reads as two fonts
+ * arguing, and the one thing a poster must not do is argue with itself.
+ */
+function posterFace(text: ReactNode, rtl: boolean): CSSProperties {
+  const hebrew = rtl || isHebrew(text);
+  return {
+    fontFamily: hebrew ? 'var(--yap-heb)' : 'var(--yap-poster)',
+    fontWeight: hebrew ? 900 : 400,
+    letterSpacing: hebrew ? '-0.01em' : '-0.02em',
+  };
+}
+
+/**
+ * Tracking for a small-caps label. Hebrew has no capitals and no small caps,
+ * and a label tracked out to 0.18em in it reads as separate letters rather
+ * than a word, so a right-to-left deck pulls every label's tracking in.
+ */
+const track = (rtl: boolean, wide: string) => (rtl ? 'tracking-[0.04em]' : wide);
+
 export function slideVars(backdrop: Backdrop): CSSProperties {
   const b = BACKDROPS[backdrop];
   return {
@@ -198,13 +224,13 @@ export function Slide({
 
 /** Small caps label. Names the category so the big type does not have to. */
 export function Eyebrow({ children }: { children: ReactNode }) {
+  const { rtl } = useCopy();
   return (
     <motion.p
-      dir="auto"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.1 }}
-      className="mb-4 text-[11px] tracking-[0.18em] uppercase opacity-70"
+      className={`mb-4 text-[11px] uppercase opacity-70 ${track(rtl, 'tracking-[0.18em]')}`}
       style={{ fontFamily: 'var(--yap-mono)' }}
     >
       {children}
@@ -222,7 +248,8 @@ export function Eyebrow({ children }: { children: ReactNode }) {
  * pick direction per string is what keeps a mixed deck readable.
  */
 export function Headline({ children }: { children: ReactNode }) {
-  const hebrew = isHebrew(children);
+  const { rtl } = useCopy();
+  const hebrew = rtl || isHebrew(children);
   return (
     <motion.h2
       dir="auto"
@@ -234,18 +261,22 @@ export function Headline({ children }: { children: ReactNode }) {
           ? 'text-[clamp(2.6rem,10vw,4.4rem)] leading-[0.92]'
           : 'text-[clamp(2.6rem,10vw,4.6rem)] leading-[0.86] uppercase'
       }
-      style={{
-        fontFamily: hebrew ? 'var(--yap-heb)' : 'var(--yap-poster)',
-        fontWeight: hebrew ? 900 : 400,
-        letterSpacing: hebrew ? '-0.01em' : '-0.02em',
-      }}
+      style={posterFace(children, rtl)}
     >
       {children}
     </motion.h2>
   );
 }
 
-/** A number or a short statement at poster size. Always Anton, always Latin. */
+/**
+ * A number or a short statement at poster size.
+ *
+ * Anton in a Latin deck. A right-to-left deck sets it in Heebo, which is wider,
+ * so the scale steps down a notch to keep a six-digit total inside a phone.
+ * Direction is inherited: this used to be pinned LTR for the sake of the
+ * numbers, but a number reads the same both ways and the word beside it does
+ * not.
+ */
 export function Poster({
   children,
   size = 'lg',
@@ -253,18 +284,23 @@ export function Poster({
   children: ReactNode;
   size?: 'lg' | 'md' | 'sm';
 }) {
-  const scale = {
-    lg: 'text-[clamp(3.4rem,17vw,6.5rem)] leading-[0.82]',
-    md: 'text-[clamp(2.4rem,11vw,4rem)] leading-[0.88]',
-    sm: 'text-[clamp(1.5rem,6vw,2.1rem)] leading-[0.95]',
-  }[size];
+  const { rtl } = useCopy();
+  const scale = (
+    rtl
+      ? {
+          lg: 'text-[clamp(3rem,14vw,5.6rem)] leading-[0.9]',
+          md: 'text-[clamp(2.1rem,9.5vw,3.5rem)] leading-[0.95]',
+          sm: 'text-[clamp(1.4rem,5.5vw,1.9rem)] leading-[1]',
+        }
+      : {
+          lg: 'text-[clamp(3.4rem,17vw,6.5rem)] leading-[0.82] uppercase',
+          md: 'text-[clamp(2.4rem,11vw,4rem)] leading-[0.88] uppercase',
+          sm: 'text-[clamp(1.5rem,6vw,2.1rem)] leading-[0.95] uppercase',
+        }
+  )[size];
 
   return (
-    <div
-      dir="ltr"
-      className={`${scale} uppercase`}
-      style={{ fontFamily: 'var(--yap-poster)', letterSpacing: '-0.02em' }}
-    >
+    <div className={scale} style={posterFace(children, rtl)}>
       {children}
     </div>
   );
@@ -293,7 +329,6 @@ export function RegProse({ children }: { children: ReactNode }) {
 export function Punchline({ children }: { children: ReactNode }) {
   return (
     <motion.p
-      dir="auto"
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.5, duration: 0.5 }}
@@ -306,10 +341,10 @@ export function Punchline({ children }: { children: ReactNode }) {
 
 /** A pill of secondary information, in the accent rather than the body colour. */
 export function Tag({ children }: { children: ReactNode }) {
+  const { rtl } = useCopy();
   return (
     <span
-      dir="auto"
-      className="mt-5 inline-flex w-fit rounded-full px-3.5 py-2 text-[11px] tracking-[0.1em] uppercase"
+      className={`mt-5 inline-flex w-fit rounded-full px-3.5 py-2 text-[11px] uppercase ${track(rtl, 'tracking-[0.1em]')}`}
       style={{
         fontFamily: 'var(--yap-mono)',
         background: 'var(--slide-accent)',
@@ -322,19 +357,18 @@ export function Tag({ children }: { children: ReactNode }) {
 }
 
 export function Stat({ label, value }: { label: string; value: string }) {
+  const { rtl } = useCopy();
   return (
     <div className="rounded-xl px-3.5 py-3" style={{ background: 'var(--slide-panel)' }}>
       <p
-        className="text-[9.5px] tracking-[0.15em] uppercase opacity-65"
+        className={`text-[9.5px] uppercase opacity-65 ${track(rtl, 'tracking-[0.15em]')}`}
         style={{ fontFamily: 'var(--yap-mono)' }}
       >
         {label}
       </p>
-      <p
-        dir="auto"
-        className="mt-1 text-xl leading-none"
-        style={{ fontFamily: 'var(--yap-poster)' }}
-      >
+      {/* A value is a date or a duration as often as a number, and in Hebrew
+          both are words — "פחות מדקה" has no Anton glyphs at all. */}
+      <p dir="auto" className="mt-1 text-xl leading-none" style={posterFace(value, rtl)}>
         {value}
       </p>
     </div>
@@ -411,6 +445,7 @@ export function Ranking({
   rows: { label: string; value: number; share?: number }[];
   locale?: string;
 }) {
+  const { rtl } = useCopy();
   // Bars are scaled to the leader, not to 100%: one person with 18% of a
   // sixteen-person chat is the top of this board, and a bar filling a fifth of
   // the slide would read as "barely spoke".
@@ -421,7 +456,8 @@ export function Ranking({
       {rows.map((row, i) => (
         <motion.div
           key={row.label}
-          initial={{ opacity: 0, x: -10 }}
+          // Rows slide in from the edge they are read from.
+          initial={{ opacity: 0, x: rtl ? 10 : -10 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.25 + i * 0.07, duration: 0.4 }}
           className="flex flex-col gap-1.5"
@@ -443,8 +479,7 @@ export function Ranking({
               dir="auto"
               className="min-w-0 flex-1 truncate"
               style={{
-                fontFamily: HEBREW.test(row.label) ? 'var(--yap-heb)' : 'var(--yap-poster)',
-                fontWeight: HEBREW.test(row.label) ? 900 : 400,
+                ...posterFace(row.label, rtl),
                 fontSize: `${Math.max(15, 25 - i * 2)}px`,
                 lineHeight: 1.1,
               }}
@@ -459,7 +494,7 @@ export function Ranking({
             </span>
           </div>
           {row.share !== undefined && (
-            <div className="ml-10 flex items-center gap-3">
+            <div className="ms-10 flex items-center gap-3">
               <div
                 aria-hidden="true"
                 className="h-[3px] flex-1 overflow-hidden rounded-full"
@@ -481,7 +516,7 @@ export function Ranking({
                 />
               </div>
               <span
-                className="w-9 shrink-0 text-right text-xs tabular-nums"
+                className="w-9 shrink-0 text-end text-xs tabular-nums"
                 style={{
                   fontFamily: 'var(--yap-mono)',
                   color: i === 0 ? 'var(--slide-accent)' : undefined,

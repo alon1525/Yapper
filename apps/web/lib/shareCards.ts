@@ -179,7 +179,7 @@ export function cardsFor(stats: ChatStats, l: Localised): CardSpec[] {
  * than hard-coded: `next/font` mangles the family name at build time, and the
  * mangled name is only knowable at runtime.
  */
-function families(): { poster: string; serif: string; mono: string; sans: string } {
+function families(): { poster: string; serif: string; mono: string; sans: string; heb: string } {
   const style = getComputedStyle(document.documentElement);
   const read = (name: string, fallback: string) =>
     style.getPropertyValue(name).trim() || fallback;
@@ -188,8 +188,12 @@ function families(): { poster: string; serif: string; mono: string; sans: string
     serif: read('--yap-serif', 'Georgia, serif'),
     mono: read('--yap-mono', 'monospace'),
     sans: read('--yap-sans', 'system-ui, sans-serif'),
+    heb: read('--yap-heb', 'system-ui, sans-serif'),
   };
 }
+
+/** The poster face has no Hebrew; a value in it is set in Heebo's heaviest. */
+const HEBREW = /[֐-׿]/;
 
 /**
  * Canvas will happily draw with a font it has not loaded yet, silently
@@ -205,6 +209,7 @@ export async function ensureFonts(): Promise<void> {
     document.fonts.load(`400 60px ${f.serif}`),
     document.fonts.load(`400 32px ${f.mono}`),
     document.fonts.load(`700 40px ${f.sans}`),
+    document.fonts.load(`900 200px ${f.heb}`),
   ]).catch(() => undefined);
   await document.fonts.ready;
 }
@@ -300,16 +305,31 @@ export function drawCard(
     ctx.globalAlpha = 1;
   }
 
+  /*
+    Everything hangs off the reading edge: the left of the card in a
+    left-to-right report, the right in a right-to-left one. `x(o)` is `o`
+    pixels in from that edge and `far(o)` is `o` pixels in from the other, and
+    text is aligned towards whichever it is anchored to — so the same drawing
+    code lays out a Hebrew card as a mirror of the English one rather than as
+    an English card with Hebrew words pinned to its left.
+  */
+  const rtl = l.rtl;
+  const x = (offset: number) => (rtl ? w - pad - offset : pad + offset);
+  const far = (offset: number) => (rtl ? pad + offset : w - pad - offset);
+  const near: CanvasTextAlign = rtl ? 'right' : 'left';
+  const away: CanvasTextAlign = rtl ? 'left' : 'right';
+  ctx.direction = rtl ? 'rtl' : 'ltr';
   ctx.textBaseline = 'alphabetic';
-  ctx.textAlign = 'left';
+  ctx.textAlign = near;
 
-  // ── Label, top left, in mono ───────────────────────────────────────────
+  // ── Label, top corner, in mono ─────────────────────────────────────────
   ctx.fillStyle = ground.fg;
   ctx.globalAlpha = 0.7;
   ctx.font = `400 ${34 * scale}px ${f.mono}`;
   const label = card.label.toUpperCase();
-  ctx.letterSpacing = `${6 * scale}px`;
-  ctx.fillText(label, pad, pad + 40 * scale);
+  // Hebrew has no capitals to track; spaced out, it reads as separate letters.
+  ctx.letterSpacing = `${(rtl ? 2 : 6) * scale}px`;
+  ctx.fillText(label, x(0), pad + 40 * scale);
   ctx.letterSpacing = '0px';
   ctx.globalAlpha = 1;
 
@@ -326,42 +346,58 @@ export function drawCard(
       ctx.globalAlpha = i > 2 ? 0.7 : 1;
 
       ctx.font = `400 ${58 * scale}px ${f.poster}`;
-      ctx.fillText(String(i + 1), pad, top);
+      ctx.fillText(String(i + 1), x(0), top);
 
       const nameSize = fitFont(ctx, row.name, f.sans, '700', 58 * scale, inner - 300 * scale, 30);
       ctx.font = `700 ${nameSize}px ${f.sans}`;
-      ctx.fillText(row.name, pad + 76 * scale, top);
+      ctx.fillText(row.name, x(76 * scale), top);
 
       ctx.font = `400 ${36 * scale}px ${f.mono}`;
-      ctx.textAlign = 'right';
-      ctx.fillText(row.value, w - pad, top);
-      ctx.textAlign = 'left';
+      ctx.textAlign = away;
+      ctx.fillText(row.value, far(0), top);
+      ctx.textAlign = near;
 
       // The bar is scaled to the leader, not to the whole chat: one person with
-      // 18% of a sixteen-person group is the top of this board.
+      // 18% of a sixteen-person group is the top of this board. It runs from
+      // under the name towards the far edge, and fills from the name's side.
       const barY = top + 26 * scale;
       const barH = 14 * scale;
+      const trackW = inner - 76 * scale;
+      const trackX = rtl ? pad : pad + 76 * scale;
+      const fillW = trackW * (row.share / topShare);
       ctx.globalAlpha = 0.25;
-      ctx.fillRect(pad + 76 * scale, barY, inner - 76 * scale, barH);
+      ctx.fillRect(trackX, barY, trackW, barH);
       ctx.globalAlpha = i > 2 ? 0.7 : 1;
       ctx.fillStyle = ground.accent;
-      ctx.fillRect(pad + 76 * scale, barY, (inner - 76 * scale) * (row.share / topShare), barH);
+      ctx.fillRect(rtl ? trackX + trackW - fillW : trackX, barY, fillW, barH);
       ctx.globalAlpha = 1;
     });
   } else {
     // ── Every other card: one enormous value ─────────────────────────────
     const isGlyph = Boolean(card.glyph);
-    const family = isGlyph ? f.sans : card.value.length > 12 ? f.serif : f.poster;
-    const startSize = isGlyph ? 420 * scale : card.value.length > 12 ? 150 * scale : 320 * scale;
-    const size = fitFont(ctx, card.value, family, '400', startSize, inner, 48 * scale);
-    ctx.font = `400 ${size}px ${family}`;
+    const hebrew = HEBREW.test(card.value);
+    const family = isGlyph
+      ? f.sans
+      : hebrew
+        ? f.heb
+        : card.value.length > 12
+          ? f.serif
+          : f.poster;
+    const weight = hebrew && !isGlyph ? '900' : '400';
+    const startSize = isGlyph
+      ? 420 * scale
+      : card.value.length > 12
+        ? 150 * scale
+        : (hebrew ? 260 : 320) * scale;
+    const size = fitFont(ctx, card.value, family, weight, startSize, inner, 48 * scale);
+    ctx.font = `${weight} ${size}px ${family}`;
     ctx.fillStyle = ground.fg;
 
     const lines = wrap(ctx, card.value, inner);
     const lineH = size * (isGlyph ? 1 : 0.92);
     y = h * 0.46 - ((lines.length - 1) * lineH) / 2;
     for (const line of lines) {
-      ctx.fillText(line, pad, y);
+      ctx.fillText(line, x(0), y);
       y += lineH;
     }
 
@@ -372,18 +408,18 @@ export function drawCard(
       ctx.globalAlpha = 0.92;
       y += 40 * scale;
       for (const line of wrap(ctx, card.caption, inner).slice(0, 3)) {
-        ctx.fillText(line, pad, y);
+        ctx.fillText(line, x(0), y);
         y += 68 * scale;
       }
       ctx.globalAlpha = 1;
     }
   }
 
-  // ── The mark, bottom left ──────────────────────────────────────────────
+  // ── The mark, bottom corner ────────────────────────────────────────────
   ctx.font = `400 ${40 * scale}px ${f.poster}`;
   ctx.fillStyle = ground.fg;
   ctx.globalAlpha = 0.85;
-  ctx.fillText(l.t('share.watermark'), pad, h - pad);
+  ctx.fillText(l.t('share.watermark'), x(0), h - pad);
   ctx.globalAlpha = 1;
 }
 

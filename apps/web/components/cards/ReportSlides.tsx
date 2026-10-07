@@ -43,6 +43,7 @@ import { usePhoto } from './photos';
  * the actual answer.
  */
 function Receipts({ quotes }: { quotes: Quote[] }) {
+  const copy = useCopy();
   const [open, setOpen] = useState(false);
   if (quotes.length === 0) return null;
 
@@ -52,14 +53,16 @@ function Receipts({ quotes }: { quotes: Quote[] }) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="rounded-full px-3 py-1.5 text-[10px] tracking-[0.14em] uppercase transition hover:opacity-80"
+        className={`rounded-full px-3 py-1.5 text-[10px] uppercase transition hover:opacity-80 ${copy.rtl ? 'tracking-[0.04em]' : 'tracking-[0.14em]'}`}
         style={{
           fontFamily: 'var(--yap-mono)',
           background: 'var(--slide-panel)',
           color: 'currentColor',
         }}
       >
-        {open ? 'hide receipts' : `show receipts · ${quotes.length}`}
+        {open
+          ? copy.t('report.hideReceipts')
+          : copy.t('report.showReceipts', { n: quotes.length })}
       </button>
 
       {open && (
@@ -142,6 +145,7 @@ function splitLabel(line: string): { label: string | null; value: string } {
 }
 
 function LabelledLines({ body, mono = false }: { body: string; mono?: boolean }) {
+  const { rtl } = useCopy();
   // A two-line headline at poster leading sits almost on top of the first
   // label at the old margin; the charge needs air under the name of the crime.
   return (
@@ -151,7 +155,7 @@ function LabelledLines({ body, mono = false }: { body: string; mono?: boolean })
         return (
           <motion.div
             key={i}
-            initial={{ opacity: 0, x: -10 }}
+            initial={{ opacity: 0, x: rtl ? 10 : -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.07 * i, duration: 0.35 }}
           >
@@ -179,12 +183,13 @@ function LabelledLines({ body, mono = false }: { body: string; mono?: boolean })
 }
 
 function BulletLines({ body }: { body: string }) {
+  const { rtl } = useCopy();
   return (
     <ul className="mt-4 flex flex-col gap-2">
       {lines(body).map((line, i) => (
         <motion.li
           key={i}
-          initial={{ opacity: 0, x: -8 }}
+          initial={{ opacity: 0, x: rtl ? 8 : -8 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.06 * i, duration: 0.3 }}
           dir="auto"
@@ -294,7 +299,7 @@ function DossierSlide({
   const verdicts = (slide.jokeScores ?? []).slice(0, 5);
 
   const pad = (n: number) => String(n).padStart(2, '0');
-  const hebrew = HEBREW.test(slide.title);
+  const hebrew = copy.rtl || HEBREW.test(slide.title);
 
   return (
     <div
@@ -316,11 +321,15 @@ function DossierSlide({
       }}
     >
       <div
-        className="flex items-center justify-between text-[9.5px] tracking-[0.18em] uppercase"
+        className={`flex items-center justify-between text-[9.5px] uppercase ${copy.rtl ? 'tracking-[0.04em]' : 'tracking-[0.18em]'}`}
         style={{ fontFamily: 'var(--yap-mono)', color: DOSSIER.muted }}
       >
-        <span>{exhibit ? `Exhibit ${pad(exhibit.n)} of ${pad(exhibit.of)}` : 'Exhibit'}</span>
-        {facts[0] && <span dir="ltr">{String(facts[0].value)} msgs</span>}
+        <span>
+          {exhibit
+            ? copy.t('report.exhibit', { n: pad(exhibit.n), m: pad(exhibit.of) })
+            : copy.t('report.exhibitOne')}
+        </span>
+        {facts[0] && <span>{copy.t('report.msgs', { n: String(facts[0].value) })}</span>}
       </div>
       <div className="mt-[9px] h-px" style={{ background: DOSSIER.rule }} />
 
@@ -366,7 +375,7 @@ function DossierSlide({
               className="min-w-0 flex-1 px-2 py-[9px]"
               // No divider before the first cell: the strip is columns inside one
               // ruled band, not three boxes pushed together.
-              style={i > 0 ? { borderLeft: `1px solid ${DOSSIER.rule}` } : undefined}
+              style={i > 0 ? { borderInlineStart: `1px solid ${DOSSIER.rule}` } : undefined}
             >
               <p
                 dir="auto"
@@ -437,7 +446,7 @@ function DossierSlide({
               <span className="flex-1" />
               <span
                 dir="ltr"
-                className="shrink-0 text-right text-[12px] font-medium tabular-nums"
+                className="shrink-0 text-end text-[12px] font-medium tabular-nums"
                 style={{ fontFamily: 'var(--yap-mono)', color: accent }}
               >
                 {verdict.value}
@@ -450,8 +459,7 @@ function DossierSlide({
       {slide.closer && (
         <div className="mt-auto pt-3">
           <p
-            dir="auto"
-            className="text-[8.5px] tracking-[0.16em] uppercase"
+            className={`text-[8.5px] uppercase ${copy.rtl ? 'tracking-[0.04em]' : 'tracking-[0.16em]'}`}
             style={{ fontFamily: 'var(--yap-mono)', color: DOSSIER.muted }}
           >
             {copy.t('report.officialTitle')}
@@ -564,7 +572,10 @@ export function ReportSlide({
     case 'patch_notes':
       return (
         <>
-          <Eyebrow>Patch notes{slide.subtitle ? ` · ${slide.subtitle}` : ''}</Eyebrow>
+          <Eyebrow>
+            {copy.t('report.patchNotes')}
+            {slide.subtitle ? ` · ${slide.subtitle}` : ''}
+          </Eyebrow>
           <Headline>{slide.title}</Headline>
           <BulletLines body={slide.body} />
           <Receipts quotes={slide.quotes} />
@@ -618,7 +629,7 @@ export function ReportSlide({
             {slide.stats.map((stat, i) => (
               <motion.div
                 key={stat.label}
-                initial={{ opacity: 0, x: -12 }}
+                initial={{ opacity: 0, x: copy.rtl ? 12 : -12 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.06 * i, duration: 0.35 }}
                 className="flex items-baseline justify-between gap-3"
@@ -667,7 +678,7 @@ export function ReportSlide({
     default:
       return (
         <>
-          <Eyebrow>{slide.subtitle || 'Noted'}</Eyebrow>
+          <Eyebrow>{slide.subtitle || copy.t('report.noted')}</Eyebrow>
           <Headline>{slide.title}</Headline>
           <Body>{slide.body}</Body>
           {quote && <PulledQuote quote={quote} />}

@@ -148,13 +148,15 @@ export function ReportProgress({
   // of one, and the film is shortened so the slide's buttons stay in reach.
   const compact = phase === 'preview';
 
+  // The pointer at the current step faces the way the line reads.
+  const pointer = copy.rtl ? '◂' : '▸';
+
   return (
     <div aria-live="polite" className="mt-5">
-      <div
-        dir="ltr"
-        className="h-[5px] overflow-hidden rounded-full"
-        style={{ background: 'var(--slide-panel)' }}
-      >
+      {/* The bar fills from the reading edge — a block narrower than its
+          parent sits at the start of it, which is the right in a
+          right-to-left deck. */}
+      <div className="h-[5px] overflow-hidden rounded-full" style={{ background: 'var(--slide-panel)' }}>
         <div
           className="h-full rounded-full"
           style={{
@@ -194,12 +196,12 @@ export function ReportProgress({
                     className="w-4 shrink-0 text-[13px]"
                     style={{ fontFamily: 'var(--yap-mono)' }}
                   >
-                    {done ? '✓' : current ? '▸' : '·'}
+                    {done ? '✓' : current ? pointer : '·'}
                   </span>
-                  <span dir="auto">{copy.t(step.label)}</span>
+                  <span>{copy.t(step.label)}</span>
                 </div>
                 {current && (
-                  <div className="mt-1.5 ml-7">
+                  <div className="mt-1.5 ms-7">
                     <Caption line={line} params={params} />
                   </div>
                 )}

@@ -58,12 +58,46 @@
   */
   --yap-cjk: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Yu Gothic UI', Meiryo,
     'Noto Sans CJK JP', 'Noto Sans JP', 'Microsoft YaHei', 'Malgun Gothic';
-  --yap-serif: var(--font-instrument-serif), Georgia, 'Times New Roman', 'Hiragino Mincho ProN',
-    'Yu Mincho', var(--yap-cjk), serif;
-  --yap-sans: var(--font-space-grotesk), ui-sans-serif, system-ui, var(--yap-cjk), sans-serif;
-  --yap-poster: var(--font-anton), Impact, 'Arial Narrow', var(--yap-cjk), sans-serif;
+  /*
+    Hebrew sits second in every stack, straight after the Latin face. Fallback
+    is per glyph, so Latin and digits stay in the face the design chose and
+    only the Hebrew letters — a name on an English slide, or the whole deck
+    when the report is in Hebrew — go to Heebo or Frank Ruhl. Without it the
+    first place Hebrew used to land was a Windows Times New Roman, in the
+    middle of a mono eyebrow.
+  */
+  --yap-latin-serif: var(--font-instrument-serif), var(--font-frank-ruhl), Georgia,
+    'Times New Roman', 'Hiragino Mincho ProN', 'Yu Mincho', var(--yap-cjk), serif;
+  --yap-serif: var(--yap-latin-serif);
+  --yap-sans: var(--font-space-grotesk), var(--font-heebo), ui-sans-serif, system-ui,
+    var(--yap-cjk), sans-serif;
+  --yap-poster: var(--font-anton), var(--font-heebo), Impact, 'Arial Narrow', var(--yap-cjk),
+    sans-serif;
   --yap-heb: var(--font-heebo), ui-sans-serif, system-ui, var(--yap-cjk), sans-serif;
-  --yap-mono: var(--font-dm-mono), ui-monospace, var(--yap-cjk), monospace;
+  --yap-heb-serif: var(--font-frank-ruhl), var(--font-heebo), Georgia, 'Times New Roman', serif;
+  --yap-mono: var(--font-dm-mono), var(--font-heebo), ui-monospace, var(--yap-cjk), monospace;
+}
+
+/*
+  A surface written right to left.
+
+  Set by the onboarding sheet and the deck when the report's language runs
+  that way; the landing page never carries it. The serif changes for the whole
+  subtree: Instrument Serif has no Hebrew, and per-glyph fallback would set the
+  Latin punctuation of a Hebrew headline in one face and the words in another.
+  Frank Ruhl first makes the line one face. Tracking is handled where it is
+  set — Hebrew has no capitals, and a label tracked out to 0.18em reads as
+  separate letters rather than a word, so the components pull it in.
+*/
+[dir='rtl'] {
+  --yap-serif: var(--yap-heb-serif);
+}
+
+/* The one left-to-right island inside a right-to-left sheet: the language
+   question, asked in English before there is an answer. It keeps the Latin
+   serif rather than inheriting the Hebrew one from the sheet around it. */
+[dir='rtl'] [dir='ltr'] {
+  --yap-serif: var(--yap-latin-serif);
 }
 
 html {
