@@ -4,6 +4,7 @@ import {
   BROAD_KINDS,
   type DictionaryEntry,
   type Finding,
+  type JokeScore,
   type Quote,
   type Score,
   type Slide,
@@ -131,13 +132,27 @@ const LONG_DIGITS_RE = /\d[\d\s-]{9,}/;
 const ADDRESS_RE =
   /\b\d{1,4}\s+[\p{L}][\p{L}\s]{2,30}\s+(street|st\.?|avenue|ave\.?|road|rd\.?|boulevard|blvd\.?)\b|\b(רחוב|רח')\s+[\p{L}]/iu;
 
+/**
+ * Calendar notation: `2024-03-09`, `2024-03-09 14:22`, `12/01/2023`, `14:22`.
+ *
+ * Removed before the digit rules run. An ISO date is ten characters of digits
+ * and hyphens, which is exactly the shape `LONG_DIGITS_RE` was written to
+ * catch — and the writer is handed dates on purpose, as the "From"/"To"/"Date"
+ * figures of half the statistic slides and on every quote. On the first real
+ * deck this threw away seven slides, including four dossiers, for "carrying a
+ * phone number" that was the day something happened.
+ */
+const DATE_TIME_RE =
+  /\b\d{4}-\d{2}-\d{2}(?:[ T]\d{1,2}:\d{2}(?::\d{2})?)?\b|\b\d{1,2}[./]\d{1,2}[./]\d{2,4}\b|\b\d{1,2}:\d{2}\b/g;
+
 function containsSensitiveData(text: string): boolean {
   if (EMAIL_RE.test(text)) return true;
   if (ADDRESS_RE.test(text)) return true;
-  if (LONG_DIGITS_RE.test(text)) return true;
+  const digits = text.replace(DATE_TIME_RE, ' ');
+  if (LONG_DIGITS_RE.test(digits)) return true;
   // A bare date like "12/01/2023" matches the phone shape, so require enough
   // digits to actually be a number somebody could ring.
-  const phone = PHONE_RE.exec(text);
+  const phone = PHONE_RE.exec(digits);
   return phone !== null && (phone[0].match(/\d/g) ?? []).length >= 9;
 }
 
@@ -459,7 +474,17 @@ export function verifyFinding(finding: Finding, ctx: VerificationContext): Verdi
  * "avoid generic phrasing" is an instruction a model agrees with and then
  * ignores on the eleventh slide.
  */
+/**
+ * A phrase in a script where `\b` cannot be used: Hebrew letters are not `\w`,
+ * so `\bבכל\b` never matched anything and the Hebrew half of this list was
+ * decoration. Letter lookarounds do the same job in every script.
+ */
+function phrase(text: string): RegExp {
+  return new RegExp(`(?<![\\p{L}])${text}(?![\\p{L}])`, 'u');
+}
+
 const BANNED_PHRASES: readonly RegExp[] = [
+  // Greeting card.
   /\bevery group (?:chat )?has (?:one|that one|a)\b/i,
   /\bthe glue that (?:holds|held)\b/i,
   /\balways there when you need\b/i,
@@ -473,10 +498,28 @@ const BANNED_PHRASES: readonly RegExp[] = [
   /\bthrough thick and thin\b/i,
   /\bwhat a year it(?:'s| has) been\b/i,
   /\bat the end of the day,? (?:it'?s|this is) about\b/i,
-  // Hebrew equivalents of the same greeting-card register.
-  /\bבכל קבוצה יש\b/,
-  /\bהדבק שמחזיק\b/,
-  /\bשנה מלאה בזיכרונות\b/,
+  // Analyst. Software describing people, which is the other way a slide stops
+  // being about anyone — and the register the first real decks came back in.
+  /\bthe (?:data|numbers|stats|statistics|figures) (?:show|shows|suggest|suggests|reveal|reveals|tell|tells|speak|speaks|say|says|don'?t lie|do not lie|never lie)\b/i,
+  /\bstatistically speaking\b/i,
+  /\b(?:it(?:'s| is) )?worth noting\b/i,
+  /\ba testament to\b/i,
+  /\bin conclusion\b/i,
+  /\bspeaks volumes\b/i,
+  /\bsays a lot about\b/i,
+  /\bupon (?:closer )?(?:inspection|analysis)\b/i,
+  /\b(?:our|the|this) analysis (?:shows|reveals|suggests|indicates|found)\b/i,
+  // Hebrew: both registers.
+  phrase('בכל קבוצה יש'),
+  phrase('הדבק שמחזיק'),
+  phrase('שנה מלאה בזיכרונות'),
+  phrase("יותר מ(?:סתם )?(?:קבוצה|קבוצת|צ'אט|צ׳אט)"),
+  phrase('הנתונים (?:מראים|מצביעים|מלמדים|מספרים|אומרים|מדברים|לא משקרים)'),
+  phrase('המספרים (?:מראים|מצביעים|מלמדים|מספרים|אומרים|מדברים|לא משקרים)'),
+  phrase('(?:מעניין|ראוי|יש|חשוב|כדאי) לציין'),
+  phrase('כפי ש(?:ניתן לראות|עולה מ|אפשר לראות)'),
+  phrase('מבחינה סטטיסטית'),
+  phrase('מה שמעיד על'),
 ];
 
 /**
@@ -519,7 +562,7 @@ const BODY_BUDGET: Record<string, number> = {
   receipt: 420,
 };
 
-function numbersIn(text: string): number[] {
+export function numbersIn(text: string): number[] {
   // Thousands separators are stripped so "8,493" reads as one number rather
   // than as an 8 and a 493.
   const out: number[] = [];
@@ -539,11 +582,28 @@ function numbersIn(text: string): number[] {
  * produce one. Any figure in the prose that is not in `stats`, not in a verified
  * quote, and not small enough to be rhetoric, was made up.
  */
+/**
+ * Figures a slide may carry beyond its own stats and quotes.
+ *
+ * `figures` are numbers the planner computed for *other* slides of the same
+ * deck: a dossier that alludes to the monologue slide — as the planner tells it
+ * to — says "352 messages", and 352 is a true thing about this chat wherever
+ * it is printed. The rule exists to catch invention, not true numbers in the
+ * wrong place. `texts` are lines the writer was shown and may quote — the
+ * spread of a person's own messages — whose numbers are theirs, not the
+ * report's.
+ */
+export interface AllowedFigures {
+  figures?: Iterable<number>;
+  texts?: readonly string[];
+}
+
 export function verifySlideCopy(
   slide: Slide,
   ctx: VerificationContext,
   /** The axes this slide was briefed with. Omitted for slides that have none. */
   axes: readonly ScoreAxis[] = [],
+  extra: AllowedFigures = {},
 ): Verdict<Slide> {
   const issues: VerificationIssue[] = [];
 
@@ -551,6 +611,9 @@ export function verifySlideCopy(
   for (const stat of slide.stats) {
     if (typeof stat.value === 'number') allowed.add(stat.value);
     else for (const n of numbersIn(stat.value)) allowed.add(n);
+    // A label is a figure too when the planner wrote one into it: a month key
+    // of "2024-03" as a label made every year in the copy "invented".
+    for (const n of numbersIn(stat.label)) allowed.add(n);
   }
   // Anything the group themselves said, and the dates it was said on, is
   // quotable without being a fabricated statistic.
@@ -558,6 +621,21 @@ export function verifySlideCopy(
     for (const n of numbersIn(quote.text)) allowed.add(n);
     for (const n of numbersIn(quote.date)) allowed.add(n);
   }
+  // The same for every line the slide was briefed with, quoted on the card or
+  // not: "works 10 to 16" is what somebody typed, and a slide repeating it has
+  // not invented a statistic.
+  for (const id of slide.evidenceMessageIds ?? []) {
+    const m = ctx.message(id);
+    if (!m || m.kind === 'system') continue;
+    for (const n of numbersIn(ctx.visibleText(m))) allowed.add(n);
+    for (const n of numbersIn(dayKey(m))) allowed.add(n);
+    // The writer sees each line stamped `[2025-06-03 17:11]`; "at 17:11" is
+    // the time it was sent, not a figure it made up.
+    allowed.add(m.localHour);
+    allowed.add(m.localMinute);
+  }
+  for (const n of extra.figures ?? []) allowed.add(n);
+  for (const text of extra.texts ?? []) for (const n of numbersIn(text)) allowed.add(n);
 
   /* --- score bars --------------------------------------------------- */
 
@@ -660,10 +738,21 @@ export function verifySlideCopy(
     }
   }
 
+  /*
+    Generic phrasing is fatal now, not a note. It used to be recorded and the
+    slide shown anyway, which made the banned list advice to the writer rather
+    than a rule — and a slide that says "the data shows" is the slide a reader
+    screenshots to complain about. Fewer slides is always allowed; that one is
+    not.
+  */
   const fatal = issues.some(
-    (i) => i.code === 'sensitive-data' || i.code === 'off-limits' || i.code === 'invented-number',
+    (i) =>
+      i.code === 'sensitive-data' ||
+      i.code === 'off-limits' ||
+      i.code === 'invented-number' ||
+      i.code === 'generic-phrasing',
   );
-  const soft = issues.some((i) => i.code === 'generic-phrasing' || i.code === 'too-long');
+  const soft = issues.some((i) => i.code === 'too-long');
 
   return {
     action: fatal ? 'reject' : soft ? 'rewrite' : 'include',
@@ -743,6 +832,45 @@ export function verifyDictionary(
   }
 
   return { kept, rejected };
+}
+
+/* ------------------------------------------------------------------ *
+ * Repeated verdicts
+ * ------------------------------------------------------------------ */
+
+/**
+ * Caps how often one rating value appears across a deck.
+ *
+ * Told that the value of a verdict may be impossible, a model finds two
+ * impossible values it likes and puts both on every card — seven cards with an
+ * `∞/100` and a `117/100` each, which reads as a template the moment the
+ * reader has seen three of them. The writer is asked not to; this is the rule
+ * for when it does anyway. A value may appear on `perDeck` cards; after that
+ * it is dropped from later cards, which keep at least `keepAtLeast` ratings so
+ * that a card is never stripped bare.
+ */
+export function dedupeVerdicts<T extends { jokeScores: JokeScore[] }>(
+  slides: readonly T[],
+  perDeck = 2,
+  keepAtLeast = 2,
+): T[] {
+  const seen = new Map<string, number>();
+  const key = (value: string) => value.normalize('NFC').replace(/\s+/g, '').toLowerCase();
+
+  return slides.map((slide) => {
+    const kept: JokeScore[] = [];
+    const spare: JokeScore[] = [];
+    for (const verdict of slide.jokeScores ?? []) {
+      if ((seen.get(key(verdict.value)) ?? 0) < perDeck) kept.push(verdict);
+      else spare.push(verdict);
+    }
+    while (kept.length < keepAtLeast && spare.length > 0) kept.push(spare.shift()!);
+    for (const verdict of kept) {
+      const k = key(verdict.value);
+      seen.set(k, (seen.get(k) ?? 0) + 1);
+    }
+    return kept.length === (slide.jokeScores ?? []).length ? slide : { ...slide, jokeScores: kept };
+  });
 }
 
 /* ------------------------------------------------------------------ *

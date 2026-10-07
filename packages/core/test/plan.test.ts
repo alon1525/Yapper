@@ -29,6 +29,7 @@ function build(text: string, findings: { finding: Finding; strength: number }[] 
     stalledPlans: findStalledPlans(parsed, language),
     findings,
     tokenOf: (name) => p.tokenFor(name),
+    messages: parsed.messages,
   };
 }
 
@@ -48,16 +49,14 @@ describe('weak-statistic suppression', () => {
     expect(reason(plan, 'stat-reply-speed')).toMatch(/only to the minute/);
   });
 
-  it('drops the leaderboard when nobody is actually ahead', () => {
-    const even = [
-      ...Array.from({ length: 30 }, (_, i) =>
-        `0${(i % 9) + 1}/03/2023, 1${i % 9}:00 - ${['Ann', 'Bo', 'Cy'][i % 3]}: message ${i}`,
-      ),
-    ].join('\n');
-
-    const plan = planDeck(build(even));
+  it('never repeats the free deck: no leaderboard and no monthly timeline', () => {
+    // Both are cards the reader swiped through before paying. A paid deck that
+    // opened by showing them again in a different font was the first complaint
+    // about it, and neither can carry material the writer could write from.
+    const plan = planDeck(build(GYM_GROUP));
     expect(has(plan, 'stat-leaderboard')).toBe(false);
-    expect(reason(plan, 'stat-leaderboard')).toMatch(/same amount/);
+    expect(has(plan, 'stat-timeline')).toBe(false);
+    expect(plan.suppressed.some((s) => s.slide === 'stat-leaderboard')).toBe(false);
   });
 
   it('drops the ghost slide when the longest silence is a fortnight', () => {

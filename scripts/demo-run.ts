@@ -115,6 +115,7 @@ const plan = planDeck({
   stalledPlans: findStalledPlans(parsed, language),
   findings: verified,
   tokenOf: (name) => pseudonymizer.tokenFor(name),
+  messages: parsed.messages,
 });
 
 console.log(`\nSTAGE 6 — ${plan.briefs.length} slides planned, ${plan.suppressed.length} suppressed`);
@@ -126,7 +127,7 @@ for (const b of plan.briefs) {
   const messages = b.evidenceMessageIds
     .map((id) => byId.get(id))
     .filter((m): m is NonNullable<typeof m> => m !== undefined && m.kind === 'text')
-    .slice(0, 4);
+    .slice(0, b.quoteBudget);
   if (messages.length > 0) evidence[b.id] = anonymizeMessages(messages, pseudonymizer);
 }
 

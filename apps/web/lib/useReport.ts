@@ -6,7 +6,10 @@ import {
   WrittenDeckSchema,
   anonymizeMessages,
   createVerificationContext,
+  dedupeVerdicts,
+  inferGenders,
   isDuplicate,
+  numbersIn,
   pickVoiceSamples,
   planDeck,
   restoreDeep,
@@ -92,13 +95,6 @@ async function post(url: string, body: unknown): Promise<unknown> {
   return response.json();
 }
 
-/** Quotes offered to the writer for one slide, drawn from its own evidence. */
-const QUOTES_PER_SLIDE = 4;
-/**
- * A dossier gets twice that. Its evidence is now the detective's findings
- * about one person, and quoting those lines back at them is most of the card.
- */
-const QUOTES_PER_DOSSIER = 8;
 /** Lines of their own the writer gets per person, to hear how they talk. */
 const SAMPLE_PER_PERSON = 24;
 
@@ -198,6 +194,9 @@ export function useReport(
         stalledPlans: derived.stalledPlans,
         findings: verified,
         tokenOf: (name) => pseudonymizer.tokenFor(name),
+        // So the planner can locate the events its statistics only count —
+        // the run, the silence, the loud day — and hand the writer the lines.
+        messages: parsed.messages,
       });
 
       // Quotes are chosen here, from verified evidence, so the writer is never
@@ -209,7 +208,9 @@ export function useReport(
         const messages = slideBrief.evidenceMessageIds
           .map((id) => byId.get(id))
           .filter((m): m is NonNullable<typeof m> => m !== undefined && m.kind === 'text')
-          .slice(0, slideBrief.format === 'profile' ? QUOTES_PER_DOSSIER : QUOTES_PER_SLIDE);
+          // How many the planner thinks this slide needs: four to prove a
+          // claim, fourteen to retell a scene. See `SlideBrief.quoteBudget`.
+          .slice(0, slideBrief.quoteBudget);
         if (messages.length > 0) {
           evidence[slideBrief.id] = anonymizeMessages(messages, pseudonymizer);
         }
@@ -246,6 +247,21 @@ export function useReport(
         }
       }
 
+      /*
+        How each person writes about themselves, for the languages that
+        conjugate for it. The writer sees `Person H`, not a name, so this is
+        the only way it can know that "Person H wrote" is "כתבה" and not
+        "כתב" — and a card that gets that wrong is the first thing the whole
+        group notices. Only people who appear on some slide; a token nobody
+        writes about is a token nobody needs to decline.
+      */
+      const mentioned = new Set(plan.briefs.flatMap((b) => b.people));
+      const genders: Record<string, 'm' | 'f'> = {};
+      for (const [sender, gender] of inferGenders(parsed)) {
+        const token = pseudonymizer.tokenFor(sender);
+        if (mentioned.has(token)) genders[token] = gender;
+      }
+
       /* --- stage 7: write --------------------------------------------- */
       setState({ phase: 'writing' });
       const written = WrittenDeckSchema.parse(
@@ -261,6 +277,7 @@ export function useReport(
           briefs: plan.briefs satisfies SlideBrief[],
           voiceSamples,
           evidence,
+          genders,
         }),
       ) as WrittenDeck;
 
@@ -268,6 +285,22 @@ export function useReport(
       await yieldToPaint();
       const slides: Slide[] = [];
       const rejectedSlides: ReportDeck['audit']['rejectedSlides'] = [];
+
+      /*
+        Every figure the planner computed for any slide of this deck. A dossier
+        is told the monologue slide exists and asked to allude to it, and when
+        it does it says "352 messages" — a true number about this chat, printed
+        one slide away from where it was briefed. The invented-number rule is
+        for invention; this is the set of numbers that are not.
+      */
+      const deckFigures = new Set<number>();
+      for (const b of plan.briefs) {
+        for (const s of b.stats) {
+          if (typeof s.value === 'number') deckFigures.add(s.value);
+          else for (const n of numbersIn(s.value)) deckFigures.add(n);
+          for (const n of numbersIn(s.label)) deckFigures.add(n);
+        }
+      }
 
       for (const slide of written.slides) {
         // The stats a slide may cite are the planner's, not the writer's — a
@@ -281,6 +314,14 @@ export function useReport(
           // may cite are the planner's. A writer that returned its own would
           // otherwise legitimise any score by declaring it.
           planned?.scoreAxes ?? [],
+          {
+            figures: deckFigures,
+            // The subject's own lines, which the writer was shown and told it
+            // may quote: a number in one of them is theirs, not the report's.
+            texts: (slide.people.length === 1 ? (voiceSamples[slide.people[0]!] ?? []) : []).map(
+              (m) => m.text,
+            ),
+          },
         );
 
         if (checked.action === 'reject') {
@@ -310,7 +351,8 @@ export function useReport(
 
       const deck: ReportDeck = {
         // Names go back on here, in the browser. The server never held the map.
-        slides: restoreDeep(slides, pseudonymizer),
+        // The verdicts are thinned first: see `dedupeVerdicts`.
+        slides: restoreDeep(dedupeVerdicts(slides), pseudonymizer),
         dictionary: restoreDeep(dictionary.kept, pseudonymizer),
         audit: {
           suppressed: plan.suppressed,

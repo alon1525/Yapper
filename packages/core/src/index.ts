@@ -36,6 +36,9 @@ export type { VoiceProfile } from './stats/voice';
 export { isSubstantive, looksPasted, pickVoiceSamples, substanceOf } from './stats/samples';
 export type { VoiceSampleOptions } from './stats/samples';
 
+export { inferGenders } from './stats/gender';
+export type { GrammaticalGender } from './stats/gender';
+
 export {
   conversationMessages,
   scoreRecall,
@@ -89,13 +92,15 @@ export type {
 } from './report/plan';
 export {
   createVerificationContext,
+  dedupeVerdicts,
   isDuplicate,
+  numbersIn,
   similarity,
   verifyDictionary,
   verifyFinding,
   verifySlideCopy,
 } from './report/verify';
-export type { TokenSource, VerificationContext } from './report/verify';
+export type { AllowedFigures, TokenSource, VerificationContext } from './report/verify';
 
 export { findCandidateMoments, getWindowMessages } from './moments/moments';
 export type { MomentOptions, MomentSignals, MomentWindow } from './moments/moments';

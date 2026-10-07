@@ -384,7 +384,8 @@ describe('verifySlideCopy', () => {
     );
 
     expect(verdict.issues.map((i) => i.code)).toContain('generic-phrasing');
-    expect(verdict.action).toBe('rewrite');
+    // Fatal, not a note: a slide that says it is thrown away, not shown.
+    expect(verdict.action).toBe('reject');
   });
 
   it('flags copy that will not fit the slide', () => {

@@ -47,6 +47,12 @@ export interface ReportLanguageSpec {
   rtl: boolean;
   /** The first line of every prompt, and the only thing that decides the output language. */
   instruction: string;
+  /**
+   * How the paid report should sound in this language: the register, and the
+   * tics a model reaches for in it when it has nothing to say. Writer only —
+   * the detective is told to be flat, and the free preview has its own voice.
+   */
+  writerNote: string;
 }
 
 export const REPORT_LANGUAGES: readonly ReportLanguageSpec[] = [
@@ -57,6 +63,8 @@ export const REPORT_LANGUAGES: readonly ReportLanguageSpec[] = [
     locale: 'en-GB',
     rtl: false,
     instruction: 'Write your output in English.',
+    writerNote:
+      'English register: the way the funniest person in the group texts, not the way a brand posts. Contractions, fragments, no corporate verbs, no "notably".',
   },
   {
     code: 'he',
@@ -78,6 +86,14 @@ export const REPORT_LANGUAGES: readonly ReportLanguageSpec[] = [
       'Write your output in Hebrew.',
       'Treat each Person token as a Hebrew word. Attach ONLY the seven single-letter prefixes (ו ה ל ב מ ש כ) directly to it, with no hyphen and no space: write "וPerson A", "לPerson B", never "ו-Person A". Every separate word keeps its normal space — write "של Person A", "את Person B", "עם Person C", never "שלPerson A".',
     ].join(' '),
+    writerNote: [
+      'Hebrew register: write the way an Israeli friend roasts the group inside the group — spoken, short, dry, direct.',
+      'Not newspaper Hebrew, not literary Hebrew, not an English joke translated.',
+      'Never write, as the narrator: אכן, כפי שניתן לראות, הנתונים מראים, מעניין לציין, ראוי לציין, לא פחות מ-, באופן מפתיע, בסופו של יום, יותר מסתם קבוצה.',
+      "Slang only when it appears in the group's own messages.",
+      "Every verb and adjective agrees with the gender of the person it describes — use the gender notes below; where a person's gender is not given, use forms that do not mark it (address the group in the plural, use noun sentences) rather than guess.",
+      'Digits are always 0-9. Quotation marks are ״…״ or "…", never «…». No English words inside a Hebrew sentence unless the group itself wrote them.',
+    ].join(' '),
   },
   {
     code: 'ja',
@@ -92,6 +108,8 @@ export const REPORT_LANGUAGES: readonly ReportLanguageSpec[] = [
       // cleanly — it is katakana and さん that do not.
       'Particles may follow a token directly, as in "Person Aは" — but write the token itself in Latin letters every time.',
     ].join(' '),
+    writerNote:
+      'Japanese register: the casual tone the group itself uses — no です/ます unless they use them. Deadpan works best in short sentences; never explain the joke.',
   },
   {
     code: 'es',
@@ -100,6 +118,8 @@ export const REPORT_LANGUAGES: readonly ReportLanguageSpec[] = [
     locale: 'es-ES',
     rtl: false,
     instruction: ['Write your output in Spanish.', KEEP_TOKENS].join(' '),
+    writerNote:
+      "Spanish register: spoken, in the group's own variety — tú, vos or usted as they use it, their vocabulary, not neutral textbook Spanish. Agree every adjective with the person it describes; where a person's gender is unclear from their messages, write around it.",
   },
   {
     code: 'pt',
@@ -108,6 +128,8 @@ export const REPORT_LANGUAGES: readonly ReportLanguageSpec[] = [
     locale: 'pt-BR',
     rtl: false,
     instruction: ['Write your output in Portuguese.', KEEP_TOKENS].join(' '),
+    writerNote:
+      "Portuguese register: spoken, in the group's own variety (Brazilian or European, as they write it). Agree every adjective with the person it describes; where unclear, write around it.",
   },
   {
     code: 'fr',
@@ -116,6 +138,8 @@ export const REPORT_LANGUAGES: readonly ReportLanguageSpec[] = [
     locale: 'fr-FR',
     rtl: false,
     instruction: ['Write your output in French.', KEEP_TOKENS].join(' '),
+    writerNote:
+      'French register: spoken French, tutoiement as the group uses it, none of the written connectors (en effet, par ailleurs, force est de constater). Agree adjectives and participles with the person; where unclear, write around it.',
   },
   {
     code: 'de',
@@ -131,6 +155,8 @@ export const REPORT_LANGUAGES: readonly ReportLanguageSpec[] = [
       // hyphens hanging off it.
       'Never join a token into a compound: write "die Nachricht von Person A", never "Person-A-Nachricht".',
     ].join(' '),
+    writerNote:
+      'German register: spoken German, du, short sentences. No Beamtendeutsch, no nominal style, no "es lässt sich festhalten".',
   },
   {
     code: 'ru',
@@ -139,6 +165,8 @@ export const REPORT_LANGUAGES: readonly ReportLanguageSpec[] = [
     locale: 'ru-RU',
     rtl: false,
     instruction: ['Write your output in Russian.', KEEP_TOKENS].join(' '),
+    writerNote:
+      "Russian register: spoken, ты, short. No bureaucratic register (следует отметить, данные показывают). Past-tense verbs and adjectives agree with the person's gender; where unclear from their messages, write around it.",
   },
 ];
 
@@ -163,4 +191,9 @@ export function reportLanguage(code: ReportLanguage | undefined): ReportLanguage
 /** What the model is told about the language it is writing in. */
 export function languageInstruction(code: ReportLanguage | undefined): string {
   return reportLanguage(code).instruction;
+}
+
+/** What the writer is told about how the report should sound in this language. */
+export function writerNote(code: ReportLanguage | undefined): string {
+  return reportLanguage(code).writerNote;
 }

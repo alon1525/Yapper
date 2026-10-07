@@ -68,6 +68,12 @@ the real messages, confirms the quote was said, confirms who said it, and
 throws away anything that does not match. Findings with invented or approximate
 ids are lost, so citing carefully is the only way your work survives.
 
+For a legendary_moment, nostalgic_moment, prediction_aged_badly or failed_plan,
+cite the whole scene: every message id from where it starts to where it lands,
+in order, up to twenty. The writer sees only the lines you cite, and a scene it
+cannot read is a scene it cannot retell — it will summarise instead, which is
+the failure this whole pipeline exists to avoid.
+
 - A claim about how someone *generally* behaves needs evidence from at least two
   different days. One conversation is a mood, not a pattern.
 - A claim about a single occasion needs the ids from that occasion.

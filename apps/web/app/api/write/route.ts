@@ -95,6 +95,9 @@ const RequestSchema = z.object({
         sensitivity: z.enum(['low', 'medium', 'high']),
         strength: z.number(),
         targetLength: z.number().int().min(40).max(700),
+        /* Spent in the browser, where the evidence is chosen; carried here
+           only because the brief is forwarded whole. */
+        quoteBudget: z.number().int().min(0).max(40).optional(),
       }),
     )
     .max(40),
@@ -111,7 +114,10 @@ const RequestSchema = z.object({
           edited: z.boolean().optional(),
         }),
       )
-      .max(8),
+      /* Fourteen for a scene — the loud day, the run into silence — which is
+         written from its lines or not at all. Kept in step with the planner's
+         largest `quoteBudget`. */
+      .max(16),
   ),
   /**
    * How each person actually writes, keyed by token.
@@ -138,6 +144,11 @@ const RequestSchema = z.object({
         .max(32),
     )
     .default({}),
+  /**
+   * How each person writes about themselves, where the chat's language marks
+   * it. Keyed by token, so it carries no identity; see `inferGenders`.
+   */
+  genders: z.record(z.string().max(40), z.enum(['m', 'f'])).default({}),
 });
 
 export async function POST(request: Request) {
@@ -208,6 +219,7 @@ export async function POST(request: Request) {
       briefs: payload.briefs as never,
       evidence: payload.evidence,
       voiceSamples: payload.voiceSamples,
+      genders: payload.genders,
     }),
     schema: WrittenDeckSchema,
     maxTokens: 20000,
