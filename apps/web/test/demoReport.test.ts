@@ -28,7 +28,7 @@ function person(i: number, over: Partial<PersonDigest> = {}): PersonDigest {
     meanLength: 25,
     questionShare: 0.1,
     oneWordShare: 0.1,
-    longestMessage: null,
+    samples: [],
     ...over,
   };
 }
@@ -111,7 +111,13 @@ describe('demoReport', () => {
             reasons: ['12 bursts of laughter'],
             participants: 3,
             messages: [
-              { sender: 'Person A', time: '12:00', text: 'שורה אמיתית מתוך השיחה הזאת' },
+              {
+                id: 0,
+                sender: 'Person A',
+                time: '12:00',
+                date: '2024-01-01',
+                text: 'שורה אמיתית מתוך השיחה הזאת',
+              },
             ],
           },
         ],

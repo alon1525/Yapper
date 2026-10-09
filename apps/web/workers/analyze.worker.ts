@@ -5,10 +5,14 @@ import {
   computeStats,
   findCandidateMoments,
   parseChat,
-  unsavedParticipants,
+  roster,
+  suggestMerges,
   type ChatStats,
+  type ExportFormat,
+  type MergeSuggestion,
   type MomentWindow,
   type ParseResult,
+  type RosterEntry,
 } from '@wrapped/core';
 
 /**
@@ -17,10 +21,15 @@ import {
  * true because parsing and statistics never leave the worker.
  *
  * Two phases, because of a question that can only be asked after parsing: an
- * export names unsaved contacts by phone number, and nobody wants to read a
- * story about `+972 58-666-8048`. The parse result is held here between the
- * phases so that answering costs nothing — re-parsing a 173k-message export to
- * apply two renames would be several seconds of work to change two strings.
+ * export names unsaved contacts by phone number, nobody wants to read a story
+ * about `+972 58-666-8048`, and a contact renamed in 2019 is sitting on the
+ * leaderboard twice with half their messages each. Neither is knowable before
+ * the file is read or fixable after the statistics are computed, so parsing
+ * stops and hands the roster back.
+ *
+ * The parse result is held here between the phases so that answering costs
+ * nothing — re-parsing a 173k-message export to apply two renames would be
+ * several seconds of work to change two strings.
  */
 
 export interface AnalyzeRequest {
@@ -32,15 +41,26 @@ export interface AnalyzeRequest {
 
 export interface FinalizeRequest {
   type: 'finalize';
-  /** Display name → what the user calls them. Empty values are ignored. */
+  /**
+   * Display name → what the user calls them. Empty values are ignored, and two
+   * keys may share a value — that is how a merge is expressed.
+   */
   aliases: Record<string, string>;
 }
 
 export type WorkerRequest = AnalyzeRequest | FinalizeRequest;
 
 export type AnalyzeResponse =
-  | { type: 'progress'; stage: string; fraction: number }
-  | { type: 'needs-names'; unsaved: string[] }
+  /** `messages` is a real running count, not the fraction scaled up. */
+  | { type: 'progress'; stage: string; fraction: number; messages: number }
+  | {
+      type: 'roster';
+      people: RosterEntry[];
+      merges: MergeSuggestion[];
+      messages: number;
+      /** Which app wrote the file, so the next question can name it correctly. */
+      format: ExportFormat;
+    }
   | { type: 'done'; parsed: ParseResult; stats: ChatStats; moments: MomentWindow[] }
   | { type: 'error'; message: string };
 
@@ -49,13 +69,15 @@ const post = (msg: AnalyzeResponse) => (self as unknown as Worker).postMessage(m
 let held: { parsed: ParseResult; fileName?: string } | null = null;
 
 function finish(parsed: ParseResult, fileName?: string) {
-  post({ type: 'progress', stage: 'Counting every single emoji', fraction: 0.6 });
+  const messages = parsed.messages.length;
+
+  post({ type: 'progress', stage: 'Counting every single emoji', fraction: 0.6, messages });
   const stats = computeStats(parsed, fileName ? { fileName } : {});
 
-  post({ type: 'progress', stage: 'Looking for the moments you forgot', fraction: 0.85 });
+  post({ type: 'progress', stage: 'Looking for the moments you forgot', fraction: 0.85, messages });
   const moments = findCandidateMoments(parsed);
 
-  post({ type: 'progress', stage: 'Writing your story', fraction: 1 });
+  post({ type: 'progress', stage: 'Writing your story', fraction: 1, messages });
   post({ type: 'done', parsed, stats, moments });
 }
 
@@ -72,18 +94,19 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
 
     const { text, fileName, dateOrder } = event.data;
 
-    post({ type: 'progress', stage: 'Reading your messages', fraction: 0.02 });
+    post({ type: 'progress', stage: 'Reading your messages', fraction: 0.02, messages: 0 });
 
     const parsed = parseChat(text, {
       ...(dateOrder ? { dateOrder } : {}),
       // Parsing owns the first 55% of the bar. It is genuinely the slow part on
       // a large export, so the progress the user sees is real rather than a
       // timer pretending to be work.
-      onProgress: (f) =>
+      onProgress: (f, messages) =>
         post({
           type: 'progress',
           stage: f < 0.5 ? 'Reading your messages' : 'Sorting out who said what',
           fraction: 0.02 + f * 0.53,
+          messages,
         }),
     });
 
@@ -97,14 +120,17 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
       return;
     }
 
-    const unsaved = unsavedParticipants(parsed);
-    if (unsaved.length > 0) {
-      held = { parsed, ...(fileName ? { fileName } : {}) };
-      post({ type: 'needs-names', unsaved });
-      return;
-    }
-
-    finish(parsed, fileName);
+    // Always stop here, even when every contact was saved and nothing looks
+    // like a duplicate. The reader is the only one who can confirm that, and a
+    // step that appears for some chats and not others is a step nobody trusts.
+    held = { parsed, ...(fileName ? { fileName } : {}) };
+    post({
+      type: 'roster',
+      people: roster(parsed),
+      merges: suggestMerges(parsed),
+      messages: parsed.messages.length,
+      format: parsed.format,
+    });
   } catch (error) {
     post({
       type: 'error',

@@ -1,94 +1,124 @@
 'use client';
 
 import { useState } from 'react';
-import { formatNumber, shortName } from '@/lib/format';
-import type { Analysis } from '@/lib/useAnalyzer';
-import { DeckButton, Eyebrow, Headline, Punchline, Slide, type Backdrop } from './Shell';
+import type { ChatStats } from '@wrapped/core';
+import { useCopy } from '@/lib/copy';
+import { num, spanLabel } from '@/lib/localFormat';
+import { splitTitle } from '@/lib/reportLines';
+import { GROUP_SLOT_BACKDROP } from './photos';
+import { NightGround, Stamp, accentOf } from './ReportGround';
+import { SharePack } from './SharePack';
+import { DeckButton, Eyebrow, Poster, Punchline, Slide, type Backdrop } from './Shell';
 
-/** Closes on the same lime the deck opened on. */
-export const FINAL_BACKDROP: Backdrop = 'lime';
+/**
+ * Closes on the night ground the deck opened on, with the design's closer in
+ * pink. Read from the photo table so the onboarding's preview tile of this
+ * slide cannot be drawn on a different one.
+ */
+export const FINAL_BACKDROP: Backdrop = GROUP_SLOT_BACKDROP.verdict;
+
+/**
+ * Keeping the report on this device, from the deck's point of view.
+ *
+ * `stale` means a copy was saved before the paid report was written — the
+ * reader kept the statistics, then unlocked — and the saved copy can be
+ * brought up to date in place. `unavailable` is a browser with no storage to
+ * offer, where the control is simply absent rather than present and broken.
+ */
+export type SaveStatus = 'idle' | 'saving' | 'saved' | 'stale' | 'error' | 'unavailable';
 
 export function FinalSlide({
-  analysis,
+  stats,
   onRestart,
+  save,
 }: {
-  analysis: Analysis;
+  stats: ChatStats;
   onRestart: () => void;
+  save: { status: SaveStatus; onSave: () => void };
 }) {
-  const { stats } = analysis;
-  const [downloading, setDownloading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const download = async () => {
-    setDownloading(true);
-    setError(null);
-    try {
-      const response = await fetch('/api/share-card', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          groupName: stats.groupName,
-          spanLabel: stats.span.label,
-          totalMessages: stats.totalMessages,
-          topTalker: stats.people[0]
-            ? { name: shortName(stats.people[0].name), share: stats.people[0].share }
-            : null,
-          nightOwl: stats.awards.nightOwl ? shortName(stats.awards.nightOwl) : null,
-          topEmoji: stats.topEmoji[0]?.value ?? null,
-          language: stats.language,
-        }),
-      });
-
-      if (!response.ok) throw new Error('render failed');
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${stats.groupName ?? 'chat'}-yapped.png`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      setError('Could not build the image. Try again.');
-    } finally {
-      setDownloading(false);
-    }
-  };
+  const copy = useCopy();
+  const [sharing, setSharing] = useState(false);
+  const saving = save.status === 'saving';
+  // The design's closer sets the last beat of its headline on a tilted stamp.
+  const { head, tail } = splitTitle(copy.t('final.headline'));
 
   return (
-    <Slide backdrop={FINAL_BACKDROP}>
-      <Eyebrow>Group verdict</Eyebrow>
-      <Headline>Send it to the group</Headline>
+    <Slide
+      backdrop={FINAL_BACKDROP}
+      photo="verdict"
+      align="end"
+      ground={<NightGround tone="pink" at="bottom" photo="verdict" />}
+      accent={accentOf('pink')}
+    >
+      <Eyebrow>{copy.t('final.eyebrow')}</Eyebrow>
+      <Poster size="md">
+        {head && (
+          <>
+            {head}
+            <br />
+          </>
+        )}
+        <Stamp tone="pink">{tail}</Stamp>
+      </Poster>
       <Punchline>
-        {formatNumber(stats.totalMessages, stats.language)} messages, {stats.span.label}, and
-        somehow nobody has left yet. That&apos;s love, technically.
+        {copy.t('final.punchline', {
+          messages: num(copy, stats.totalMessages),
+          span: spanLabel(copy, stats),
+        })}
       </Punchline>
 
       <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-        <DeckButton onClick={() => void download()} disabled={downloading}>
-          {downloading ? 'Building your card…' : 'Download share card'}
-        </DeckButton>
+        <DeckButton onClick={() => setSharing(true)}>{copy.t('share.open')}</DeckButton>
         <DeckButton onClick={onRestart} variant="ghost">
-          Try another chat
+          {copy.t('final.restart')}
         </DeckButton>
       </div>
 
-      {error && (
-        <p
-          role="alert"
-          className="mt-4 rounded-xl px-4 py-3 text-sm"
-          style={{ background: 'var(--slide-panel)' }}
-        >
-          {error}
-        </p>
+      {/*
+        Opt-in, on the last slide, in words that say where it goes. This is
+        the one thing in the product that outlives the tab, so it is never
+        done on the reader's behalf — and the line underneath changes to say
+        so once it has been.
+      */}
+      {save.status !== 'unavailable' && (
+        <div className="mt-5">
+          {save.status === 'saved' ? (
+            <p dir="auto" className="text-[13px] leading-relaxed opacity-80">
+              {copy.t('final.saved')}
+            </p>
+          ) : (
+            <DeckButton onClick={save.onSave} variant="ghost" disabled={saving}>
+              {saving
+                ? copy.t('final.saving')
+                : save.status === 'stale'
+                  ? copy.t('final.saveAgain')
+                  : copy.t('final.save')}
+            </DeckButton>
+          )}
+          {save.status === 'error' && (
+            <p
+              role="alert"
+              dir="auto"
+              className="mt-3 rounded-xl px-4 py-3 text-sm"
+              style={{ background: 'var(--slide-panel)' }}
+            >
+              {copy.t('final.saveFailed')}
+            </p>
+          )}
+        </div>
       )}
 
       <p
+        dir="auto"
         className="mt-7 text-[11px] leading-relaxed opacity-60"
         style={{ fontFamily: 'var(--yap-mono)' }}
       >
-        Your chat was never uploaded. Close this tab and it is gone.
+        {copy.t(save.status === 'saved' || save.status === 'stale' ? 'final.privacySaved' : 'final.privacy')}
       </p>
+
+      {/* The pack takes the whole slide rather than floating over it: picking
+          cards is the task at that point, not a dialog interrupting one. */}
+      {sharing && <SharePack stats={stats} onClose={() => setSharing(false)} />}
     </Slide>
   );
 }

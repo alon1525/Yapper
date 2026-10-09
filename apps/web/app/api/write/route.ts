@@ -1,0 +1,288 @@
+import { NextResponse } from 'next/server';
+import { WrittenDeckSchema, normalizeWrittenDeck, type WrittenDeck } from '@wrapped/core';
+import { z } from 'zod';
+import { REPORT_LANGUAGE_CODES } from '@/lib/languages';
+import { loadFixture } from '@/lib/fixture';
+import { failureBody, generateStructured } from '@/lib/generate';
+import { modelConfigured, modelFor, modelMissingMessage } from '@/lib/providers';
+import { gatePaidRequest } from '@/lib/paidRoute';
+import { EDITOR_SYSTEM, editorPrompt } from '@/lib/editorPrompt';
+import { WRITER_SYSTEM, writerPrompt } from '@/lib/writerPrompt';
+
+/**
+ * Stage 7 — the comedy pass, and 7b — the edit.
+ *
+ * Receives briefs that have already been planned and verified, and returns
+ * finished copy. It is given no chat to search and no freedom to introduce a
+ * fact: the figures on each brief are the only ones permitted, the quotes are
+ * the only ones permitted, and the browser re-checks both against the real
+ * messages when the reply lands.
+ *
+ * The draft then goes through a second call that reads it as a head writer
+ * would and sends back a shorter, sharper deck. See `editorPrompt.ts` for why
+ * that is a separate call rather than a paragraph in the first one. The edit
+ * can be switched off with `WRAPPED_EDITOR=off`, and a failed edit falls back
+ * to the draft: a reader who has paid gets a deck either way.
+ *
+ * Same gate as the other paid routes, because this is the request that reaches
+ * the expensive model. Two calls to it now, hence the longer ceiling.
+ */
+
+export const runtime = 'nodejs';
+export const maxDuration = 240;
+
+/** The pass whose output people actually read, so it gets the better model. */
+
+const MAX_EXCERPT_CHARS = 120_000;
+
+const StatSchema = z.object({
+  label: z.string().max(60),
+  value: z.union([z.number(), z.string().max(40)]),
+});
+
+const RequestSchema = z.object({
+  token: z.string().max(500),
+  language: z.enum(['en', 'he', 'other']),
+  participantCount: z.number().int().min(1).max(500),
+  brief: z
+    .object({
+      /* Built from the language table rather than written out again — a
+         language on the cards but not in this enum is one the reader can pick
+         and the route then rejects. */
+      language: z.enum(REPORT_LANGUAGE_CODES),
+      kind: z.string().max(40),
+      /* The register switch. Optional for the same reason it is on the brief
+         digest: a client that predates it still sends a valid request, and the
+         writer then gets the default, which is the roast. */
+      tone: z.enum(['roast', 'gentle']).optional(),
+      notes: z.string().max(600),
+    })
+    .optional(),
+  fingerprint: z.object({
+    totalMessages: z.number().int().min(1),
+    spanLabel: z.string().max(120),
+    participantCount: z.number().int().min(1).max(500),
+  }),
+  digest: z.object({
+    totalMessages: z.number(),
+    spanLabel: z.string().max(120),
+  }),
+  voice: z.object({
+    register: z.string().max(300),
+    roastTolerance: z.number().min(0).max(1),
+    darkHumour: z.boolean(),
+  }),
+  groupSummary: z.string().max(600),
+  briefs: z
+    .array(
+      z.object({
+        id: z.string().max(80),
+        type: z.string().max(30),
+        format: z.string().max(30),
+        /* A dossier's angle now carries what the investigation found about
+           that person, one line per finding. See `foldFindingsIntoDossiers`,
+           which keeps under this. */
+        angle: z.string().max(1200),
+        stats: z.array(StatSchema).max(12),
+        /* Whitelisted like everything else on a brief. Left out, the writer is
+           asked to rename axes it was never shown and invents the lot. */
+        scoreAxes: z
+          .array(
+            z.object({
+              key: z.string().max(40),
+              value: z.number().int().min(0).max(100),
+              meaning: z.string().max(160),
+            }),
+          )
+          .max(16)
+          .default([]),
+        people: z.array(z.string().max(40)).max(60),
+        evidenceMessageIds: z.array(z.number().int().min(0)).max(40),
+        findingIds: z.array(z.string().max(60)).max(8),
+        sensitivity: z.enum(['low', 'medium', 'high']),
+        strength: z.number(),
+        targetLength: z.number().int().min(40).max(700),
+        /* Spent in the browser, where the evidence is chosen; carried here
+           only because the brief is forwarded whole. */
+        quoteBudget: z.number().int().min(0).max(40).optional(),
+      }),
+    )
+    .max(40),
+  evidence: z.record(
+    z.string().max(80),
+    z
+      .array(
+        z.object({
+          id: z.number().int().min(0),
+          sender: z.string().max(40),
+          time: z.string().max(10),
+          date: z.string().max(12),
+          text: z.string().max(1000),
+          edited: z.boolean().optional(),
+        }),
+      )
+      /* Fourteen for a scene — the loud day, the run into silence — which is
+         written from its lines or not at all. Kept in step with the planner's
+         largest `quoteBudget`. */
+      .max(16),
+  ),
+  /**
+   * How each person actually writes, keyed by token.
+   *
+   * The comedy pass used to see four approved quotes per slide and nothing
+   * else — it was asked to be funny about a person it had never heard speak.
+   * These are real messages with real ids, so anything the writer lifts from
+   * them still verifies in the browser like any other quote.
+   */
+  voiceSamples: z
+    .record(
+      z.string().max(40),
+      z
+        .array(
+          z.object({
+            id: z.number().int().min(0),
+            sender: z.string().max(40),
+            time: z.string().max(10),
+            date: z.string().max(12),
+            text: z.string().max(1000),
+            edited: z.boolean().optional(),
+          }),
+        )
+        .max(32),
+    )
+    .default({}),
+  /**
+   * How each person writes about themselves, where the chat's language marks
+   * it. Keyed by token, so it carries no identity; see `inferGenders`.
+   */
+  genders: z.record(z.string().max(40), z.enum(['m', 'f'])).default({}),
+});
+
+export async function POST(request: Request) {
+  let payload: z.infer<typeof RequestSchema>;
+  try {
+    payload = RequestSchema.parse(await request.json());
+  } catch {
+    return NextResponse.json({ error: 'Malformed request.' }, { status: 400 });
+  }
+
+  const senders = [
+    ...payload.briefs.flatMap((b) => b.people),
+    ...Object.values(payload.evidence).flatMap((quotes) => quotes.map((q) => q.sender)),
+  ];
+
+  const blocked = await gatePaidRequest(request, payload, {
+    bucket: 'write',
+    maxExcerptChars: MAX_EXCERPT_CHARS,
+    senders,
+  });
+  if (blocked) return blocked;
+
+  if (!modelConfigured()) {
+    /*
+      The same escape hatch the other two written routes have, and the stage that
+      needed it most: this is where slide *layout* is decided, and a format that
+      overflows its card or reads flat is only visible once real copy is playing
+      through the real deck. `/api/detective` degrades to an empty discovery
+      instead, so the planner still briefs every statistic and persona slide and
+      a fixture written against those ids plays end to end with no key attached.
+
+      Scoped exactly as `fixture.ts` describes: reachable only on a deploy with
+      no key, and only when `WRAPPED_FIXTURE_DIR` points somewhere local. It
+      cannot stand in for a generation somebody paid for.
+    */
+    const written = loadFixture('write');
+    if (written) {
+      const parsed = WrittenDeckSchema.safeParse(written);
+      if (!parsed.success) {
+        console.error('[write] fixture failed the schema', parsed.error.issues);
+        return NextResponse.json({ error: 'The deck fixture is not valid.' }, { status: 500 });
+      }
+      return NextResponse.json(parsed.data, { headers: { 'Cache-Control': 'no-store' } });
+    }
+
+    return NextResponse.json(
+      { error: 'AI writing is not configured on this server.' },
+      { status: 503 },
+    );
+  }
+
+  const model = modelFor('write');
+  if (!model) {
+    console.error(`[write] ${modelMissingMessage('write')}`);
+    return NextResponse.json({ error: 'AI is not configured on this server.' }, { status: 503 });
+  }
+
+  const material = writerPrompt({
+    language: payload.language,
+    brief: payload.brief,
+    voice: payload.voice,
+    groupSummary: payload.groupSummary,
+    // The route's own schema is intentionally looser than core's — it
+    // validates shape and size for safety, and core's types carry the meaning.
+    briefs: payload.briefs as never,
+    evidence: payload.evidence,
+    voiceSamples: payload.voiceSamples,
+    genders: payload.genders,
+  });
+  // The planner's costume for each slide, so a writer that invents a format
+  // falls back to what this slide was meant to be rather than to `plain`.
+  const normalize = (deck: unknown) =>
+    normalizeWrittenDeck(deck, new Map(payload.briefs.map((b) => [b.id, b.format])));
+
+  const result = await generateStructured({
+    model,
+    system: WRITER_SYSTEM,
+    prompt: material,
+    schema: WrittenDeckSchema,
+    maxTokens: 20000,
+    stage: 'write',
+    normalize,
+  });
+
+  if (!result.ok) {
+    return NextResponse.json(failureBody(result), { status: result.status });
+  }
+
+  const deck = await edit(model, material, result.value, normalize);
+
+  return NextResponse.json(deck, { headers: { 'Cache-Control': 'no-store' } });
+}
+
+/**
+ * The edit, with the draft as the floor.
+ *
+ * An editor that fails validation, or that comes back having cut more than
+ * half the deck, is an editor that has misread the task, and the reader has
+ * paid: the draft goes out as written and the failure goes to the log.
+ */
+async function edit(
+  model: string,
+  material: string,
+  draft: WrittenDeck,
+  normalize: (deck: unknown) => unknown,
+): Promise<WrittenDeck> {
+  if (process.env.WRAPPED_EDITOR === 'off') return draft;
+
+  const edited = await generateStructured({
+    model,
+    system: EDITOR_SYSTEM,
+    prompt: editorPrompt({ material, draft }),
+    schema: WrittenDeckSchema,
+    maxTokens: 20000,
+    stage: 'edit',
+    normalize,
+  });
+
+  if (!edited.ok) {
+    console.warn(`[edit] falling back to the draft: ${edited.error}`);
+    return draft;
+  }
+  if (edited.value.slides.length < Math.ceil(draft.slides.length / 2)) {
+    console.warn(
+      `[edit] falling back to the draft: the edit kept ${edited.value.slides.length} of ${draft.slides.length} slides`,
+    );
+    return draft;
+  }
+  return edited.value;
+}

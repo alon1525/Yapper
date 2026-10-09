@@ -1,9 +1,11 @@
 'use client';
 
 import { animate, motion, useMotionValue, useTransform } from 'framer-motion';
-import { useEffect, type CSSProperties, type ReactNode } from 'react';
-import type { ChatLanguage } from '@wrapped/core';
-import { formatNumber } from '@/lib/format';
+import { type CSSProperties, type ReactNode, useEffect, useMemo } from 'react';
+import type { GroupSlot } from '@/lib/brief';
+import { useCopy } from '@/lib/copy';
+import { percent } from '@/lib/format';
+import { Portrait, SlidePhoto } from './photos';
 
 /**
  * Per-slide palettes.
@@ -105,9 +107,56 @@ export const BACKDROPS = {
     onAccent: '#221600',
     panel: 'rgb(246 239 228 / 0.08)',
   },
+  /**
+   * The paid report's ground. The design's second deck sits every written
+   * slide on the same near-black and lets a per-slide bloom supply the colour,
+   * so the colour rotation lives in `ReportGround` rather than here. White type;
+   * lime for the one accented thing on a slide.
+   */
+  night: {
+    bg: '#0B0B0F',
+    fg: '#FFFFFF',
+    accent: '#C9F24D',
+    onAccent: '#10130E',
+    panel: 'rgb(255 255 255 / 0.10)',
+  },
 } as const;
 
 export type Backdrop = keyof typeof BACKDROPS;
+
+/**
+ * The dossier stock.
+ *
+ * The one slide in the deck that does not take the rotating ground. A case file
+ * is a *paper* object — printed rules, a dotted leader, a portrait plate — and
+ * every tone below is a shade of the same cream, which is what makes it read as
+ * one sheet rather than as a card with lines drawn on it. Run the same markup on
+ * lime and the rules become decoration.
+ *
+ * So this is a closed set, and it is here rather than in the slide for the same
+ * reason `BACKDROPS` is: the deck keeps its colours in one file.
+ *
+ * `accents` rotate per person. Three, because a dossier is a serious document
+ * with exactly one coloured thing on it, and a fourth hue starts to look like a
+ * palette rather than a file stamp.
+ */
+export const DOSSIER = {
+  stock: '#F3EADA',
+  ink: '#15251C',
+  /** The printed rules above and below the fact strip. */
+  rule: '#D9CDB5',
+  /** Leaders between a score's label and its number. */
+  leader: '#CFC2A8',
+  /** Unfilled part of a score bar. */
+  track: '#E0D4BC',
+  /** Small caps: exhibit number, field names, the official-title label. */
+  muted: '#8A7B63',
+  /** Body copy that is not the headline — the epithet, a score's label. */
+  body: '#3F4A36',
+  /** The portrait plate: the stock behind a photo, or behind the stand-in face. */
+  plate: '#E5D9C1',
+  accents: ['#C2571F', '#2F4FB8', '#1D3A2A'],
+} as const;
 
 /** Hebrew has no Anton. Names in it are set in Heebo's heaviest weight instead. */
 const HEBREW = /[֐-׿]/;
@@ -115,6 +164,31 @@ const HEBREW = /[֐-׿]/;
 function isHebrew(node: ReactNode): boolean {
   return typeof node === 'string' && HEBREW.test(node);
 }
+
+/**
+ * The face for a line of display type.
+ *
+ * Anton for Latin, Heebo's heaviest for Hebrew — decided per string, because
+ * an English deck still carries Hebrew names. A right-to-left deck takes Heebo
+ * for everything at poster size, including the digits: a number set in a
+ * condensed Latin face beside a Hebrew word in a wide one reads as two fonts
+ * arguing, and the one thing a poster must not do is argue with itself.
+ */
+export function posterFace(text: ReactNode, rtl: boolean): CSSProperties {
+  const hebrew = rtl || isHebrew(text);
+  return {
+    fontFamily: hebrew ? 'var(--yap-heb)' : 'var(--yap-poster)',
+    fontWeight: hebrew ? 900 : 400,
+    letterSpacing: hebrew ? '-0.01em' : '-0.02em',
+  };
+}
+
+/**
+ * Tracking for a small-caps label. Hebrew has no capitals and no small caps,
+ * and a label tracked out to 0.18em in it reads as separate letters rather
+ * than a word, so a right-to-left deck pulls every label's tracking in.
+ */
+const track = (rtl: boolean, wide: string) => (rtl ? 'tracking-[0.04em]' : wide);
 
 export function slideVars(backdrop: Backdrop): CSSProperties {
   const b = BACKDROPS[backdrop];
@@ -127,40 +201,96 @@ export function slideVars(backdrop: Backdrop): CSSProperties {
   };
 }
 
-export function Slide({ backdrop, children }: { backdrop: Backdrop; children: ReactNode }) {
+/**
+ * Where the column sits on the slide. The statistics deck centres everything;
+ * the written deck reads top-down like a page and bottom-up on its cover, the
+ * way the design's second deck does.
+ */
+export type SlideAlign = 'start' | 'center' | 'end';
+
+const ALIGN: Record<SlideAlign, string> = {
+  start: 'justify-start',
+  center: 'justify-center',
+  end: 'justify-end',
+};
+
+export function Slide({
+  backdrop,
+  photo,
+  align = 'center',
+  ground,
+  accent,
+  children,
+}: {
+  backdrop: Backdrop;
+  /** Renders the reader's own photo behind the type, graded into this ground. */
+  photo?: GroupSlot;
+  align?: SlideAlign;
+  /**
+   * Anything drawn under the column at the slide's full size — the night
+   * deck's bloom and grain. The column is `max-w-lg`, so a layer rendered
+   * inside it would stop at the column's edge.
+   */
+  ground?: ReactNode;
+  /**
+   * This slide's own accent, overriding the backdrop's. On the night ground
+   * the colour belongs to the slide rather than to the backdrop, and every
+   * widget that reaches for `--slide-accent` should get the slide's.
+   */
+  accent?: { color: string; on: string };
+  children: ReactNode;
+}) {
   return (
     <motion.section
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.35 }}
-      className="absolute inset-0 flex flex-col justify-center overflow-y-auto px-7 pt-24 pb-24 sm:px-14"
-      style={slideVars(backdrop)}
+      className={`yap-quiet-scroll absolute inset-0 flex flex-col ${ALIGN[align]} overflow-y-auto px-7 pt-24 pb-24 sm:px-14`}
+      style={{
+        ...slideVars(backdrop),
+        ...(accent
+          ? { ['--slide-accent' as string]: accent.color, ['--slide-on-accent' as string]: accent.on }
+          : null),
+      }}
     >
+      {/* The ground is handed down rather than looked up, so the photo layer
+          never has to know which slide it is on — it tints itself with whatever
+          colour this slide already is. */}
+      {photo && <SlidePhoto slot={photo} ground={BACKDROPS[backdrop].bg} />}
+      {ground}
       {/*
         The design frames every slide inside a 368px phone. On a 1440px desktop
         the same type at the same measure would be a wall, so the column stays
         narrow and centred — the deck reads like a story on any screen instead
         of only on the one it was drawn for.
       */}
-      <div className="mx-auto w-full max-w-lg">{children}</div>
+      <div className="relative mx-auto w-full max-w-lg">{children}</div>
     </motion.section>
   );
 }
 
-/** Small caps label. Names the category so the big type does not have to. */
+/**
+ * Small caps label. Names the category so the big type does not have to.
+ *
+ * A `div`, not a `p`: the written deck puts a face beside the name in it, and
+ * a face is a block.
+ */
 export function Eyebrow({ children }: { children: ReactNode }) {
+  const { rtl } = useCopy();
   return (
-    <motion.p
+    <motion.div
+      // The written deck puts a model-written subtitle here, which may be in
+      // the chat's script rather than the report's.
       dir="auto"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.1 }}
-      className="mb-4 text-[11px] tracking-[0.18em] uppercase opacity-70"
+      className={`mb-4 text-[11px] uppercase opacity-70 ${track(rtl, 'tracking-[0.18em]')}`}
       style={{ fontFamily: 'var(--yap-mono)' }}
     >
       {children}
-    </motion.p>
+    </motion.div>
   );
 }
 
@@ -174,7 +304,8 @@ export function Eyebrow({ children }: { children: ReactNode }) {
  * pick direction per string is what keeps a mixed deck readable.
  */
 export function Headline({ children }: { children: ReactNode }) {
-  const hebrew = isHebrew(children);
+  const { rtl } = useCopy();
+  const hebrew = rtl || isHebrew(children);
   return (
     <motion.h2
       dir="auto"
@@ -186,18 +317,22 @@ export function Headline({ children }: { children: ReactNode }) {
           ? 'text-[clamp(2.6rem,10vw,4.4rem)] leading-[0.92]'
           : 'text-[clamp(2.6rem,10vw,4.6rem)] leading-[0.86] uppercase'
       }
-      style={{
-        fontFamily: hebrew ? 'var(--yap-heb)' : 'var(--yap-poster)',
-        fontWeight: hebrew ? 900 : 400,
-        letterSpacing: hebrew ? '-0.01em' : '-0.02em',
-      }}
+      style={posterFace(children, rtl)}
     >
       {children}
     </motion.h2>
   );
 }
 
-/** A number or a short statement at poster size. Always Anton, always Latin. */
+/**
+ * A number or a short statement at poster size.
+ *
+ * Anton in a Latin deck. A right-to-left deck sets it in Heebo, which is wider,
+ * so the scale steps down a notch to keep a six-digit total inside a phone.
+ * Direction is inherited: this used to be pinned LTR for the sake of the
+ * numbers, but a number reads the same both ways and the word beside it does
+ * not.
+ */
 export function Poster({
   children,
   size = 'lg',
@@ -205,18 +340,23 @@ export function Poster({
   children: ReactNode;
   size?: 'lg' | 'md' | 'sm';
 }) {
-  const scale = {
-    lg: 'text-[clamp(3.4rem,17vw,6.5rem)] leading-[0.82]',
-    md: 'text-[clamp(2.4rem,11vw,4rem)] leading-[0.88]',
-    sm: 'text-[clamp(1.5rem,6vw,2.1rem)] leading-[0.95]',
-  }[size];
+  const { rtl } = useCopy();
+  const scale = (
+    rtl
+      ? {
+          lg: 'text-[clamp(3rem,14vw,5.6rem)] leading-[0.9]',
+          md: 'text-[clamp(2.1rem,9.5vw,3.5rem)] leading-[0.95]',
+          sm: 'text-[clamp(1.4rem,5.5vw,1.9rem)] leading-[1]',
+        }
+      : {
+          lg: 'text-[clamp(3.4rem,17vw,6.5rem)] leading-[0.82] uppercase',
+          md: 'text-[clamp(2.4rem,11vw,4rem)] leading-[0.88] uppercase',
+          sm: 'text-[clamp(1.5rem,6vw,2.1rem)] leading-[0.95] uppercase',
+        }
+  )[size];
 
   return (
-    <div
-      dir="ltr"
-      className={`${scale} uppercase`}
-      style={{ fontFamily: 'var(--yap-poster)', letterSpacing: '-0.02em' }}
-    >
+    <div className={scale} style={posterFace(children, rtl)}>
       {children}
     </div>
   );
@@ -245,7 +385,6 @@ export function RegProse({ children }: { children: ReactNode }) {
 export function Punchline({ children }: { children: ReactNode }) {
   return (
     <motion.p
-      dir="auto"
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.5, duration: 0.5 }}
@@ -258,10 +397,10 @@ export function Punchline({ children }: { children: ReactNode }) {
 
 /** A pill of secondary information, in the accent rather than the body colour. */
 export function Tag({ children }: { children: ReactNode }) {
+  const { rtl } = useCopy();
   return (
     <span
-      dir="auto"
-      className="mt-5 inline-flex w-fit rounded-full px-3.5 py-2 text-[11px] tracking-[0.1em] uppercase"
+      className={`mt-5 inline-flex w-fit rounded-full px-3.5 py-2 text-[11px] uppercase ${track(rtl, 'tracking-[0.1em]')}`}
       style={{
         fontFamily: 'var(--yap-mono)',
         background: 'var(--slide-accent)',
@@ -274,19 +413,25 @@ export function Tag({ children }: { children: ReactNode }) {
 }
 
 export function Stat({ label, value }: { label: string; value: string }) {
+  const { rtl } = useCopy();
   return (
-    <div className="rounded-xl px-3.5 py-3" style={{ background: 'var(--slide-panel)' }}>
+    <div
+      className="rounded-2xl border px-3.5 py-3"
+      style={{
+        background: 'var(--slide-panel)',
+        borderColor: 'color-mix(in srgb, currentColor 14%, transparent)',
+        backdropFilter: 'blur(12px)',
+      }}
+    >
       <p
-        className="text-[9.5px] tracking-[0.15em] uppercase opacity-65"
+        className={`text-[9.5px] uppercase opacity-65 ${track(rtl, 'tracking-[0.15em]')}`}
         style={{ fontFamily: 'var(--yap-mono)' }}
       >
         {label}
       </p>
-      <p
-        dir="auto"
-        className="mt-1 text-xl leading-none"
-        style={{ fontFamily: 'var(--yap-poster)' }}
-      >
+      {/* A value is a date or a duration as often as a number, and in Hebrew
+          both are words — "פחות מדקה" has no Anton glyphs at all. */}
+      <p dir="auto" className="mt-1 text-xl leading-none" style={posterFace(value, rtl)}>
         {value}
       </p>
     </div>
@@ -309,15 +454,17 @@ export function Panel({ children }: { children: ReactNode }) {
  */
 export function AnimatedNumber({
   value,
-  language = 'en',
+  locale = 'en-GB',
   className = '',
 }: {
   value: number;
-  language?: ChatLanguage;
+  /** The report's locale, not the chat's — this number is the report talking. */
+  locale?: string;
   className?: string;
 }) {
   const count = useMotionValue(0);
-  const text = useTransform(count, (v) => formatNumber(v, language));
+  const format = useMemo(() => new Intl.NumberFormat(locale), [locale]);
+  const text = useTransform(count, (v) => format.format(Math.round(v)));
 
   useEffect(() => {
     const prefersReduced =
@@ -342,53 +489,115 @@ export function AnimatedNumber({
  * The leaderboard. Rank in Anton, name in its own script, count in mono pinned
  * to the trailing edge — the design's own shape, and the reason it reads at a
  * glance is that the eye only has to scan one column.
+ *
+ * Every row carries a face: the reader's photo of that person where there is
+ * one, the animal that stands in for them where there is not. The portraits are
+ * deliberately small — the ranking is the content, and eight circular
+ * photographs down the left edge would turn a leaderboard into a contact list.
+ *
+ * `share` is optional and adds a second line under each row: a bar drawn against
+ * the leader, with the person's percentage of the whole chat at the end of it.
+ * Both live below rather than becoming further columns — the name row is already
+ * four items wide inside a 368px phone, and the name is the one thing on it that
+ * must not be squeezed. The percentage also belongs next to the bar it labels.
  */
 export function Ranking({
   rows,
-  language = 'en',
+  locale = 'en-GB',
 }: {
-  rows: { label: string; value: number }[];
-  language?: ChatLanguage;
+  rows: { label: string; value: number; share?: number }[];
+  locale?: string;
 }) {
+  const { rtl } = useCopy();
+  // Bars are scaled to the leader, not to 100%: one person with 18% of a
+  // sixteen-person chat is the top of this board, and a bar filling a fifth of
+  // the slide would read as "barely spoke".
+  const topShare = Math.max(...rows.map((r) => r.share ?? 0), 0);
+
   return (
-    <div className="mt-6 flex flex-col gap-2.5">
+    <div className="mt-5 flex flex-col">
       {rows.map((row, i) => (
         <motion.div
           key={row.label}
-          initial={{ opacity: 0, x: -10 }}
+          // Rows slide in from the edge they are read from.
+          initial={{ opacity: 0, x: rtl ? 30 : -30 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.25 + i * 0.07, duration: 0.4 }}
-          className="flex items-baseline gap-3"
-          style={{ opacity: i > 2 ? 0.62 : 1 }}
+          transition={{ delay: 0.2 + i * 0.09, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+          className={`flex flex-col gap-1.5 border-b ${i < 3 ? 'py-2' : 'py-1.5'}`}
+          style={{
+            opacity: i > 2 ? 0.62 : 1,
+            borderColor: 'color-mix(in srgb, currentColor 12%, transparent)',
+          }}
         >
-          <span
-            className="w-7 shrink-0"
-            style={{
-              fontFamily: 'var(--yap-poster)',
-              fontSize: `${Math.max(18, 34 - i * 4)}px`,
-              color: i === 0 ? 'var(--slide-accent)' : undefined,
-            }}
-          >
-            {i + 1}
-          </span>
-          <span
-            dir="auto"
-            className="min-w-0 flex-1 truncate"
-            style={{
-              fontFamily: HEBREW.test(row.label) ? 'var(--yap-heb)' : 'var(--yap-poster)',
-              fontWeight: HEBREW.test(row.label) ? 900 : 400,
-              fontSize: `${Math.max(15, 25 - i * 2)}px`,
-              lineHeight: 1.1,
-            }}
-          >
-            {row.label}
-          </span>
-          <span
-            className="shrink-0 text-xs tabular-nums opacity-75"
-            style={{ fontFamily: 'var(--yap-mono)' }}
-          >
-            {formatNumber(row.value, language)}
-          </span>
+          {/* The design's board: the rank small in mono, the name at a size
+              that falls with the rank, the count pinned to the trailing edge. */}
+          <div className="flex items-center gap-2.5">
+            <span
+              dir="ltr"
+              className="min-w-[20px] shrink-0 text-[10px] opacity-50"
+              style={{ fontFamily: 'var(--yap-mono)' }}
+            >
+              {String(i + 1).padStart(2, '0')}
+            </span>
+            <Portrait name={row.label} size={i === 0 ? 34 : 26} />
+            <span
+              dir="auto"
+              className="min-w-0 flex-1 truncate"
+              style={{
+                ...posterFace(row.label, rtl),
+                fontSize: i === 0 ? 'clamp(30px,10vw,44px)' : i < 3 ? 'clamp(23px,7.5vw,32px)' : '19px',
+                lineHeight: 0.98,
+                color: i === 0 ? 'var(--slide-accent)' : undefined,
+              }}
+            >
+              {row.label}
+            </span>
+            <span
+              dir="ltr"
+              className="shrink-0 text-xs tabular-nums"
+              style={{
+                fontFamily: 'var(--yap-mono)',
+                color: i === 0 ? 'var(--slide-accent)' : undefined,
+                opacity: i === 0 ? 1 : 0.75,
+              }}
+            >
+              {new Intl.NumberFormat(locale).format(row.value)}
+            </span>
+          </div>
+          {row.share !== undefined && (
+            <div className="ms-10 flex items-center gap-3">
+              <div
+                aria-hidden="true"
+                className="h-[3px] flex-1 overflow-hidden rounded-full"
+                style={{ background: 'var(--slide-panel)' }}
+              >
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{
+                    width: `${Math.max(3, (row.share / Math.max(topShare, 0.0001)) * 100)}%`,
+                  }}
+                  transition={{ delay: 0.35 + i * 0.07, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                  className="h-full rounded-full"
+                  style={{
+                    background:
+                      i === 0
+                        ? 'var(--slide-accent)'
+                        : 'color-mix(in srgb, currentColor 45%, transparent)',
+                  }}
+                />
+              </div>
+              <span
+                className="w-9 shrink-0 text-end text-xs tabular-nums"
+                style={{
+                  fontFamily: 'var(--yap-mono)',
+                  color: i === 0 ? 'var(--slide-accent)' : undefined,
+                  opacity: i === 0 ? 1 : 0.75,
+                }}
+              >
+                {percent(row.share)}
+              </span>
+            </div>
+          )}
         </motion.div>
       ))}
     </div>

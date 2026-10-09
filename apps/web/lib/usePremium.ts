@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useRef, useState } from 'react';
-import { restoreDeep } from '@wrapped/core';
+import type { Brief } from './brief';
 import { buildPremiumPayload } from './premiumPayload';
 import type { PremiumReport } from './premiumPrompt';
 import type { Analysis } from './useAnalyzer';
@@ -29,15 +29,47 @@ async function post(url: string, body: unknown): Promise<{ data: unknown; demo: 
     body: JSON.stringify(body),
   });
   if (!response.ok) {
-    const parsed = (await response.json().catch(() => ({}))) as { error?: string };
-    throw new Error(parsed.error ?? 'Something went wrong.');
+    const parsed = (await response.json().catch(() => ({}))) as {
+      error?: string;
+      detail?: string;
+    };
+    // Only ever set when the deployment runs with WRAPPED_DEBUG_ERRORS — see the
+    // identical handling in useReport, which this must not drift from.
+    const message = parsed.error ?? 'Something went wrong.';
+    throw new Error(parsed.detail ? `${message} (${parsed.detail})` : message);
   }
   // Set by the server when no key is configured and the report was built
   // deterministically. The deck labels it rather than passing it off as written.
   return { data: await response.json(), demo: response.headers.get('X-Wrapped-Demo') === '1' };
 }
 
-export function usePremium(analysis: Analysis) {
+/**
+ * Puts the roster's spelling back on every character card.
+ *
+ * The paid report is written from real names, so nothing needs restoring — but
+ * a name is now something the model retypes rather than a token it copies, and
+ * a display name is frequently `ליאת🕎` or `בןבןבןבן דוד`. A model that quietly
+ * drops the emoji or tidies the spelling produces a card headed with a name
+ * that is not quite anybody's.
+ *
+ * The schema asks for one card per participant in the order given, so when the
+ * count matches, position is the reliable identity and the model's spelling is
+ * not. An exact match is left alone; anything else is snapped back to the
+ * roster. When the counts disagree the model has departed from the contract and
+ * its own labels are all there is to go on.
+ */
+function alignNames(report: PremiumReport, roster: string[]): PremiumReport {
+  if (report.characters.length !== roster.length) return report;
+
+  return {
+    ...report,
+    characters: report.characters.map((character, i) =>
+      roster.includes(character.sender) ? character : { ...character, sender: roster[i]! },
+    ),
+  };
+}
+
+export function usePremium(analysis: Analysis, brief?: Brief) {
   const [state, setState] = useState<PremiumState>({ phase: 'locked' });
   const inFlight = useRef(false);
 
@@ -46,7 +78,7 @@ export function usePremium(analysis: Analysis) {
     inFlight.current = true;
 
     try {
-      const { payload, pseudonymizer } = buildPremiumPayload(analysis);
+      const payload = buildPremiumPayload(analysis, brief);
 
       setState({ phase: 'unlocking' });
       const { data: checkout } = await post('/api/checkout', payload.fingerprint);
@@ -55,9 +87,16 @@ export function usePremium(analysis: Analysis) {
       setState({ phase: 'generating' });
       const { data: raw, demo } = await post('/api/premium', { ...payload, token });
 
-      // Names come back here, in the browser, exactly as they do for the free
-      // preview. Paying does not change who holds the mapping.
-      setState({ phase: 'ready', report: restoreDeep(raw as PremiumReport, pseudonymizer), demo });
+      // Nothing to restore: unlike every free path, this report came back with
+      // the group's own names already on it, because that is what was sent.
+      setState({
+        phase: 'ready',
+        report: alignNames(
+          raw as PremiumReport,
+          payload.people.map((p) => p.sender),
+        ),
+        demo,
+      });
     } catch (error) {
       setState({
         phase: 'error',
@@ -66,7 +105,7 @@ export function usePremium(analysis: Analysis) {
     } finally {
       inFlight.current = false;
     }
-  }, [analysis]);
+  }, [analysis, brief]);
 
   return { state, unlock };
 }

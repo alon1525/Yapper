@@ -30,9 +30,19 @@ export function formatMonth(key: string, language: ChatLanguage = 'en'): string 
   }).format(new Date(Date.UTC(y, m - 1, 1)));
 }
 
-/** Human reply times. Precision below a minute is what makes them funny. */
-export function formatDuration(ms: number | null): string {
+/**
+ * Human reply times. Precision below a minute is what makes them funny — but
+ * only when the export has it.
+ *
+ * `precisionMs` is the chat's own resolution (`ChatStats.timestampPrecisionMs`).
+ * A gap shorter than one tick of it is not "0s", it is a reply the file cannot
+ * time: on a minute-granularity export — which is most of them — a median of
+ * zero means half their replies landed inside the same minute, and that is what
+ * gets said.
+ */
+export function formatDuration(ms: number | null, precisionMs = 1000): string {
   if (ms === null) return '—';
+  if (ms < precisionMs) return precisionMs >= 60_000 ? 'under a minute' : 'under a second';
   const seconds = Math.round(ms / 1000);
   if (seconds < 60) return `${seconds}s`;
   const minutes = Math.round(seconds / 60);

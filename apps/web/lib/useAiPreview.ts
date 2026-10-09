@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { restoreDeep } from '@wrapped/core';
 import { buildPreviewPayload } from './aiPayload';
+import type { Brief } from './brief';
 import type { Analysis } from './useAnalyzer';
 
 /**
@@ -28,16 +29,22 @@ export type PreviewState =
   | { phase: 'done'; preview: Preview }
   | { phase: 'error'; message: string };
 
-export function useAiPreview(analysis: Analysis) {
-  const [state, setState] = useState<PreviewState>({ phase: 'gate' });
+export function useAiPreview(
+  /** Null when the deck was opened from this device's storage: the chat is not here. */
+  analysis: Analysis | null,
+  brief?: Brief,
+  /** A story saved with the report opens already written. */
+  initial?: PreviewState,
+) {
+  const [state, setState] = useState<PreviewState>(initial ?? { phase: 'gate' });
   const inFlight = useRef(false);
 
   const run = useCallback(async () => {
-    if (inFlight.current) return;
+    if (inFlight.current || !analysis) return;
     inFlight.current = true;
     setState({ phase: 'sending' });
 
-    const { payload, pseudonymizer } = buildPreviewPayload(analysis);
+    const { payload, pseudonymizer } = buildPreviewPayload(analysis, brief);
 
     try {
       const response = await fetch('/api/ai-preview', {
@@ -65,7 +72,7 @@ export function useAiPreview(analysis: Analysis) {
     } finally {
       inFlight.current = false;
     }
-  }, [analysis]);
+  }, [analysis, brief]);
 
   return { state, run };
 }

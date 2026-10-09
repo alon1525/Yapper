@@ -13,12 +13,14 @@ import {
   ANDROID_HEADER,
   ATTACHMENT_PATTERNS,
   DELETED_PATTERNS,
+  EDITED_PATTERNS,
   IOS_HEADER,
   KNOWN_SYSTEM_PATTERNS,
   MAX_SENDER_LENGTH,
   SYSTEM_WITH_COLON_PATTERNS,
   stripInvisible,
 } from './patterns';
+import { looksLikeLineExport, parseLineExport } from './line';
 
 /** A header line decomposed into its raw numeric parts, before D/M resolution. */
 interface RawHeader {
@@ -149,6 +151,20 @@ function resolveDateOrder(
   };
 }
 
+/**
+ * Peel the "edited" marker off a body, if it has one.
+ *
+ * Done before classification, not after: `<Media omitted> <This message was
+ * edited>` matches no attachment pattern with the suffix still attached, and an
+ * edited media message would be counted as ordinary text.
+ */
+function stripEdited(body: string): { body: string; edited: boolean } {
+  for (const p of EDITED_PATTERNS) {
+    if (p.test(body)) return { body: body.replace(p, ''), edited: true };
+  }
+  return { body, edited: false };
+}
+
 function classifyBody(body: string): { kind: MessageKind; attachmentType?: AttachmentType } {
   const trimmed = body.trim();
 
@@ -183,6 +199,13 @@ function splitSender(remainder: string): { sender: string; body: string } | null
 }
 
 export function parseChat(raw: string, options: ParseOptions = {}): ParseResult {
+  // LINE's export is a different file, not a WhatsApp dialect, and it is read
+  // by its own function — everything below this line assumes a timestamp per
+  // message and a day/month ambiguity to resolve, and LINE has neither. Kept as
+  // a guard clause rather than a branch inside the loop so that a change to one
+  // reader cannot break the other.
+  if (looksLikeLineExport(raw)) return parseLineExport(raw, options);
+
   const { onProgress, dateOrder: forcedOrder, defaultDateOrder = 'DMY' } = options;
 
   // Normalise line endings. A leading BOM needs no special case here: every
@@ -216,7 +239,7 @@ export function parseChat(raw: string, options: ParseOptions = {}): ParseResult 
     headerLineIndex.push(i);
     headers.push({ ...hit.header, line: i + 1 });
 
-    if ((i & 0x3ff) === 0) onProgress?.((i / totalLines) * 0.5);
+    if ((i & 0x3ff) === 0) onProgress?.((i / totalLines) * 0.5, headers.length);
   }
 
   if (headers.length === 0) {
@@ -237,8 +260,8 @@ export function parseChat(raw: string, options: ParseOptions = {}): ParseResult 
         {
           code: 'no-messages',
           message:
-            'No WhatsApp messages found. This does not look like a chat export — make sure ' +
-            'you exported the chat as a .txt file.',
+            'No messages found. This does not look like a chat export — make sure you ' +
+            'exported the chat as a .txt file from WhatsApp or LINE.',
         },
       ],
     };
@@ -279,12 +302,15 @@ export function parseChat(raw: string, options: ParseOptions = {}): ParseResult 
     continuationLines += continuation.length;
 
     const split = splitSender(header.remainder);
-    const fullBody =
+    const rawBody =
       continuation.length > 0
         ? [split ? split.body : header.remainder, ...continuation].join('\n')
         : split
           ? split.body
           : header.remainder;
+    // The marker sits at the very end of the whole message, so this has to run
+    // after the continuation lines are folded in, not on the header line alone.
+    const { body: fullBody, edited } = stripEdited(rawBody);
 
     const day = order === 'DMY' ? header.a : header.b;
     const month = order === 'DMY' ? header.b : header.a;
@@ -326,11 +352,12 @@ export function parseChat(raw: string, options: ParseOptions = {}): ParseResult 
       body: fullBody,
       kind,
       ...(attachmentType ? { attachmentType } : {}),
+      ...(edited ? { edited: true } : {}),
       lineStart: header.line,
       lineCount: 1 + continuation.length,
     });
 
-    if ((h & 0x3ff) === 0) onProgress?.(0.5 + (h / headers.length) * 0.5);
+    if ((h & 0x3ff) === 0) onProgress?.(0.5 + (h / headers.length) * 0.5, messages.length);
   }
 
   const orphanLines = headerLineIndex[0]!;
@@ -358,7 +385,7 @@ export function parseChat(raw: string, options: ParseOptions = {}): ParseResult 
     .sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0]))
     .map(([name]) => name);
 
-  onProgress?.(1);
+  onProgress?.(1, messages.length);
 
   return {
     messages,

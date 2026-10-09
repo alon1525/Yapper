@@ -3,6 +3,7 @@ import {
   detectLanguage,
   minWordLength,
   stopwordsFor,
+  wordSegmenterFor,
   type ChatLanguage,
 } from '../lang/language';
 import {
@@ -156,6 +157,10 @@ export function computeStats(parsed: ParseResult, options: StatsOptions = {}): C
   const language = options.language ?? detectLanguage(parsed.messages);
   const stopwords = stopwordsFor(language);
   const minWord = minWordLength(language);
+  /* Built once for the whole export rather than per message: a chat with no
+     spaces in it needs ICU to find its word boundaries, and constructing a
+     segmenter 173,000 times is most of the cost of doing so. */
+  const segmenter = wordSegmenterFor(language);
 
   // System messages are excluded from every per-person statistic. They belong
   // to nobody, and attributing them silently inflates whoever spoke last.
@@ -182,6 +187,10 @@ export function computeStats(parsed: ParseResult, options: StatsOptions = {}): C
   let totalLinks = 0;
   let totalEmoji = 0;
   let longestOverall: Message | null = null;
+  // A single message with a non-zero seconds field is enough to prove the
+  // export was written to the second; without one, every gap in the file is a
+  // whole number of minutes.
+  let hasSeconds = false;
 
   const silences: Silence[] = [];
 
@@ -202,6 +211,8 @@ export function computeStats(parsed: ParseResult, options: StatsOptions = {}): C
     acc.days.add(dk);
     acc.lastTs = ts;
     acc.lastDay = dk;
+
+    if (!hasSeconds && m.ts.getUTCSeconds() !== 0) hasSeconds = true;
 
     if (m.localHour < 5) acc.nightMessages++;
     else if (m.localHour < 8) acc.earlyMessages++;
@@ -231,11 +242,11 @@ export function computeStats(parsed: ParseResult, options: StatsOptions = {}): C
       acc.characters += chars;
       totalCharacters += chars;
 
-      const wordTotal = countWords(m.body);
+      const wordTotal = countWords(m.body, segmenter);
       acc.words += wordTotal;
       totalWords += wordTotal;
 
-      for (const w of extractWords(m.body, stopwords, minWord)) {
+      for (const w of extractWords(m.body, stopwords, minWord, segmenter)) {
         increment(acc.wordCounts, w);
         increment(wordsAll, w);
       }
@@ -403,6 +414,7 @@ export function computeStats(parsed: ParseResult, options: StatsOptions = {}): C
       label: spanLabel(firstMsg, lastMsg),
     },
     perDay: msgs.length / spanDays,
+    timestampPrecisionMs: hasSeconds ? 1_000 : 60_000,
     people,
     hourHistogram,
     weekdayHistogram,
@@ -556,6 +568,7 @@ function emptyStats(
     totalEmoji: 0,
     span: { first: '', last: '', days: 0, activeDays: 0, label: '' },
     perDay: 0,
+    timestampPrecisionMs: 60_000,
     people: [],
     hourHistogram: new Array<number>(24).fill(0),
     weekdayHistogram: new Array<number>(7).fill(0),

@@ -1,7 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ChatStats, MomentWindow, ParseResult } from '@wrapped/core';
+import type {
+  ChatStats,
+  ExportFormat,
+  MergeSuggestion,
+  MomentWindow,
+  ParseResult,
+  RosterEntry,
+} from '@wrapped/core';
 import type { AnalyzeResponse } from '@/workers/analyze.worker';
 
 export interface Analysis {
@@ -13,9 +20,23 @@ export interface Analysis {
 
 export type AnalyzerState =
   | { phase: 'idle' }
-  | { phase: 'working'; stage: string; fraction: number }
-  /** Parsed, but some members are only known by phone number. */
-  | { phase: 'naming'; unsaved: string[] }
+  /** `messages` is the real running count, which the scan step shows. */
+  | { phase: 'working'; stage: string; fraction: number; messages: number }
+  /**
+   * Parsed. Who is who is the one question only the reader can answer.
+   *
+   * `messages` is the final count and is carried here rather than left to the
+   * next phase to recover: the reading step is still on screen when this
+   * arrives, and a counter that falls back to zero at the finish line reads as
+   * the file having been dropped.
+   */
+  | {
+      phase: 'roster';
+      people: RosterEntry[];
+      merges: MergeSuggestion[];
+      messages: number;
+      format: ExportFormat;
+    }
   | { phase: 'done'; analysis: Analysis }
   | { phase: 'error'; message: string };
 
@@ -25,6 +46,11 @@ export type AnalyzerState =
  */
 export function useAnalyzer() {
   const workerRef = useRef<Worker | null>(null);
+  /* The last count the worker reported. Held outside state so that finalizing —
+     which re-enters the "working" phase after the roster step — can carry the
+     figure forward. A counter that has climbed to 173,319 and then resets to
+     zero reads as the file having been dropped. */
+  const countRef = useRef(0);
   const [state, setState] = useState<AnalyzerState>({ phase: 'idle' });
 
   useEffect(() => {
@@ -42,16 +68,30 @@ export function useAnalyzer() {
     });
     workerRef.current = worker;
 
-    setState({ phase: 'working', stage: 'Opening your export', fraction: 0 });
+    countRef.current = 0;
+    setState({ phase: 'working', stage: 'Opening your export', fraction: 0, messages: 0 });
 
     worker.onmessage = (event: MessageEvent<AnalyzeResponse>) => {
       const msg = event.data;
       if (msg.type === 'progress') {
-        setState({ phase: 'working', stage: msg.stage, fraction: msg.fraction });
-      } else if (msg.type === 'needs-names') {
+        countRef.current = Math.max(countRef.current, msg.messages);
+        setState({
+          phase: 'working',
+          stage: msg.stage,
+          fraction: msg.fraction,
+          messages: countRef.current,
+        });
+      } else if (msg.type === 'roster') {
+        countRef.current = msg.messages;
         // The worker keeps the parsed chat in memory while we ask, so answering
         // resumes rather than re-parses.
-        setState({ phase: 'naming', unsaved: msg.unsaved });
+        setState({
+          phase: 'roster',
+          people: msg.people,
+          merges: msg.merges,
+          messages: msg.messages,
+          format: msg.format,
+        });
       } else if (msg.type === 'done') {
         setState({
           phase: 'done',
@@ -77,13 +117,19 @@ export function useAnalyzer() {
   }, []);
 
   const finalize = useCallback((aliases: Record<string, string>) => {
-    setState({ phase: 'working', stage: 'Counting every single emoji', fraction: 0.6 });
+    setState({
+      phase: 'working',
+      stage: 'Counting every single emoji',
+      fraction: 0.6,
+      messages: countRef.current,
+    });
     workerRef.current?.postMessage({ type: 'finalize', aliases });
   }, []);
 
   const reset = useCallback(() => {
     workerRef.current?.terminate();
     workerRef.current = null;
+    countRef.current = 0;
     setState({ phase: 'idle' });
   }, []);
 

@@ -1,12 +1,17 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useState, type CSSProperties } from 'react';
 import type { ChatStats } from '@wrapped/core';
+import type { Brief } from '@/lib/brief';
 import { readExportFile } from '@/lib/readExport';
+import type { SavedReportSummary } from '@/lib/savedReports';
 import type { AnalyzerState } from '@/lib/useAnalyzer';
+import { MyReports } from './yapped/MyReports';
 import { StoryPreview } from './yapped/StoryPreview';
 import { Steps } from './yapped/Steps';
-import { UploadModal, type Panel } from './yapped/UploadModal';
+import { SourceMarks } from './yapped/Sources';
+import { Onboarding } from './yapped/Onboarding';
 
 /**
  * Yapped's front page.
@@ -85,36 +90,42 @@ function RevealPoint({ n, children }: { n: string; children: React.ReactNode }) 
 
 export function Landing({
   state,
+  brief,
+  onBrief,
   onAnalyze,
   onNames,
   onPlay,
   onCancel,
   stats,
-  slideCount,
   freeCount,
+  saved = [],
+  onOpenSaved,
+  onDeleteSaved,
 }: {
   state: AnalyzerState;
+  brief: Brief;
+  onBrief: (patch: Partial<Brief>) => void;
   onAnalyze: (text: string, fileName: string, mediaCount: number) => void;
   onNames: (aliases: Record<string, string>) => void;
   onPlay: () => void;
   onCancel: () => void;
   stats: ChatStats | null;
-  slideCount: number;
   freeCount: number;
+  /** Reports kept in this browser. The strip and its nav link exist only when there are some. */
+  saved?: SavedReportSummary[];
+  onOpenSaved?: (id: string) => void;
+  onDeleteSaved?: (id: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [picked, setPicked] = useState<{ name: string; size: number } | null>(null);
   const [readError, setReadError] = useState<string | null>(null);
 
   const pick = useCallback(
     async (file: File) => {
       setReadError(null);
-      setPicked({ name: file.name, size: file.size });
       try {
         const { text, fileName, mediaCount } = await readExportFile(file);
         onAnalyze(text, fileName, mediaCount);
       } catch (e) {
-        setPicked(null);
         setReadError(
           e instanceof Error
             ? e.message
@@ -127,22 +138,9 @@ export function Landing({
 
   const close = useCallback(() => {
     setOpen(false);
-    setPicked(null);
     setReadError(null);
     onCancel();
   }, [onCancel]);
-
-  /* The modal never keeps its own copy of where we are — it reads it off the
-     analyzer, so there is one answer to "what is happening" rather than two
-     that can drift apart. */
-  const panel: Panel =
-    state.phase === 'working'
-      ? 'scan'
-      : state.phase === 'naming'
-        ? 'naming'
-        : state.phase === 'done'
-          ? 'ready'
-          : 'guide';
 
   return (
     <div
@@ -152,7 +150,11 @@ export function Landing({
         color: '#15251C',
         fontFamily: 'var(--yap-sans)',
         minHeight: '100vh',
-        overflowX: 'hidden',
+        // `clip`, not `hidden`: hiding one axis makes the other compute to
+        // `auto`, which quietly turns this wrapper into a second scroller and
+        // puts its own bar down the right of the page. `clip` trims the
+        // over-wide marquee without any of that.
+        overflowX: 'clip',
       }}
     >
       {/* ── Nav ────────────────────────────────────────────────────────── */}
@@ -197,6 +199,11 @@ export function Landing({
         <div
           style={{ display: 'flex', alignItems: 'center', gap: 22, fontSize: 13, color: '#5E5344' }}
         >
+          {saved.length > 0 && (
+            <a className="yap-nav-links" href="#reports">
+              My reports
+            </a>
+          )}
           <a className="yap-nav-links" href="#how">
             How it works
           </a>
@@ -285,7 +292,7 @@ export function Landing({
               textWrap: 'pretty',
             }}
           >
-            Drop in your WhatsApp export and Reg turns every message into a 40-slide story: the top
+            Drop in your WhatsApp or LINE export and Reg turns every message into a 40-slide story: the top
             yapper, the certified ghost, the night it all went sideways, and awards nobody asked
             for.
           </p>
@@ -314,12 +321,13 @@ export function Landing({
               <div style={{ fontFamily: 'var(--yap-serif)', fontSize: 26, lineHeight: 1.15 }}>
                 Feed Reg your chat export
               </div>
+              <SourceMarks size={22} style={{ marginTop: 12 }} />
               <div
                 style={{
                   fontFamily: 'var(--yap-mono)',
                   fontSize: 11,
                   color: '#8A7B63',
-                  marginTop: 8,
+                  marginTop: 10,
                 }}
               >
                 .txt or .zip — both work
@@ -342,7 +350,7 @@ export function Landing({
                     boxShadow: '0 8px 0 #0F231A',
                   }}
                 >
-                  Choose your chat export
+                  Brief Reg, then drop the export
                 </button>
               </div>
             </div>
@@ -357,6 +365,16 @@ export function Landing({
           <StoryPreview />
         </div>
       </div>
+
+      {/* ── My reports ─────────────────────────────────────────────────── */}
+      {/* Under the hero and above the pitch: a returning reader came back for
+          this, and should not have to scroll past how the product works to
+          find what they already made. Renders nothing when nothing is kept. */}
+      <MyReports
+        reports={saved}
+        onOpen={(id) => onOpenSaved?.(id)}
+        onDelete={(id) => onDeleteSaved?.(id)}
+      />
 
       {/* ── Marquee ────────────────────────────────────────────────────── */}
       <div
@@ -416,6 +434,27 @@ export function Landing({
         </div>
         <div style={{ marginTop: 26 }}>
           <Steps />
+        </div>
+        {/* The three films are WhatsApp's menus. Saying so is the honest way to
+            carry LINE here — a LINE user who follows a WhatsApp film looks for
+            a "Without media" option their app has never had. */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            flexWrap: 'wrap',
+            marginTop: 18,
+            fontFamily: 'var(--yap-sans)',
+            fontSize: 13.5,
+            color: '#5E5344',
+          }}
+        >
+          <SourceMarks size={20} style={{ justifyContent: 'flex-start' }} />
+          <div>
+            WhatsApp is shown above. On LINE it&apos;s the ☰ menu → Settings → Export chat
+            history, and Reg reads that file just the same.
+          </div>
         </div>
       </div>
 
@@ -488,7 +527,7 @@ export function Landing({
                   textTransform: 'uppercase',
                 }}
               >
-                Nine years. No cure.
+                Nine years. Still no pizza.
               </div>
             </div>
             <div
@@ -545,16 +584,18 @@ export function Landing({
                 CERTIFIED GHOST
               </div>
               <div
-                dir="rtl"
                 style={{
-                  fontFamily: 'var(--yap-heb)',
-                  fontWeight: 900,
-                  fontSize: 24,
-                  lineHeight: 1,
+                  fontFamily: 'var(--yap-poster)',
+                  fontSize: 30,
+                  lineHeight: 0.88,
+                  letterSpacing: '-.01em',
+                  textTransform: 'uppercase',
                   marginTop: 6,
                 }}
               >
-                תמיר הגבר
+                Submarine
+                <br />
+                Dave
               </div>
             </div>
           </div>
@@ -584,27 +625,42 @@ export function Landing({
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={privacyLine}>Every number is calculated in your browser.</div>
             <div style={privacyLine}>
-              Reg&apos;s lines are optional, and he only ever sees an anonymised copy.
+              Reg&apos;s free lines are optional, and he only ever sees an anonymised copy.
             </div>
-            <div style={privacyLine}>Nothing is stored. Close the tab and it&apos;s gone.</div>
+            <div style={privacyLine}>
+              The paid report is the exception: it goes with your real names, and it says so
+              before you buy.
+            </div>
+            <div style={privacyLine}>
+              Nothing is stored on our side. Close the tab and it&apos;s gone — unless you choose
+              to keep a report in your own browser, which never reaches us either.
+            </div>
+            {/* Three lines is the pitch; the policy is where the same three
+                claims are written out with their exceptions — the share card
+                being the one that matters. Linked from here rather than only
+                from the footer, because this is where a reader who cares has
+                just been given a reason to want the detail. */}
+            <Link
+              href="/privacy"
+              style={{ fontSize: 13.5, color: '#F5B324', marginTop: 2, width: 'fit-content' }}
+            >
+              Read the full privacy policy →
+            </Link>
           </div>
         </div>
       </div>
 
       {open && (
-        <UploadModal
-          panel={panel}
+        <Onboarding
+          state={state}
+          brief={brief}
+          onBrief={onBrief}
           onClose={close}
           onPick={(file) => void pick(file)}
           onNames={onNames}
           onPlay={onPlay}
-          picked={picked}
           error={state.phase === 'error' ? state.message : readError}
-          stage={state.phase === 'working' ? state.stage : ''}
-          fraction={state.phase === 'working' ? state.fraction : 0}
-          unsaved={state.phase === 'naming' ? state.unsaved : []}
           stats={stats}
-          slideCount={slideCount}
           freeCount={freeCount}
         />
       )}
@@ -639,11 +695,21 @@ export function Landing({
             />
             © 2026 Yapped — Reg is a robot and has no legal standing.
           </div>
-          <div style={{ display: 'flex', gap: 20, fontSize: 13, color: '#5E5344' }}>
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '10px 20px',
+              fontSize: 13,
+              color: '#5E5344',
+            }}
+          >
             <a href="#upload">Get yapped</a>
             <a href="#preview">Sample</a>
-            <a href="#how">Privacy</a>
-            <a href="#how">Terms</a>
+            <Link href="/privacy">Privacy</Link>
+            <Link href="/terms">Terms</Link>
+            <Link href="/refunds">Refunds</Link>
+            <Link href="/accessibility">Accessibility</Link>
           </div>
         </div>
       </div>
