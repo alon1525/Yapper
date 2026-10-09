@@ -7,10 +7,11 @@ import { useCopy } from '@/lib/copy';
 import type { PreviewState } from '@/lib/useAiPreview';
 import type { ReportState } from '@/lib/useReport';
 import { GROUP_SLOT_BACKDROP } from './photos';
+import { NightGround, accentOf } from './ReportGround';
 import { ReportProgress } from './ReportProgress';
 import { DeckButton, Eyebrow, RegProse, Slide, type Backdrop } from './Shell';
 
-/** The design's own closing frame: forest green, Reg, an amber button. */
+/** The night ground, with the design's amber as the one warm thing on it. */
 export const WALL_BACKDROP: Backdrop = GROUP_SLOT_BACKDROP.paywall;
 
 /**
@@ -81,17 +82,14 @@ export function WallSlide({
   const mono = { fontFamily: 'var(--yap-mono)' } as const;
 
   return (
-    <Slide backdrop={WALL_BACKDROP} photo="paywall">
-      {/* The warm bloom the design puts behind Reg on this exact frame. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            'radial-gradient(80% 60% at 50% 0%, rgb(245 179 36 / 0.20), transparent 70%)',
-        }}
-      />
-
+    <Slide
+      backdrop={WALL_BACKDROP}
+      photo="paywall"
+      // The warm bloom the design puts behind Reg on this exact frame, and the
+      // amber button under it.
+      ground={<NightGround tone="sun" at="top" photo="paywall" />}
+      accent={accentOf('sun')}
+    >
       <div className="relative">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/reg.png" alt="" className="mb-4 block h-16 w-16 rounded-full" />

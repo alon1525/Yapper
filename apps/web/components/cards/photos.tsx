@@ -66,10 +66,10 @@ export function useGroupPhoto(slot: GroupSlot | undefined): string | undefined {
  * defined`.
  */
 export const GROUP_SLOT_BACKDROP: Record<GroupSlot, Backdrop> = {
-  opener: 'lime',
-  chaos: 'red',
-  verdict: 'lime',
-  paywall: 'forest',
+  opener: 'night',
+  chaos: 'night',
+  verdict: 'night',
+  paywall: 'night',
 };
 
 interface Grade {
@@ -93,31 +93,29 @@ interface Grade {
 /**
  * How a photo is pushed under the type.
  *
- * Straight from the design's own treatment test, which set five options beside
- * each other and picked one: *photo crushed into the slide's own colour, hard
- * gradient, film grain — this is the one I'd ship.*
+ * The design's second deck keeps the photograph: in colour, oversized and
+ * drifting, under a three-stop wash of the near-black ground that is lightest
+ * at the top and heaviest where the copy sits, with film grain over the lot.
+ * The duotone its first pass used (photo crushed into the slide's own colour)
+ * belonged to a deck of flat colours; on one dark ground the colour comes from
+ * the bloom beside the photo, not from inside it.
  *
- * The order matters and none of it is decorative:
+ * The order still matters and none of it is decorative:
  *
- * 1. **Greyscale first.** The photo supplies luminance and nothing else. This
- *    is what stops a red jumper in someone's holiday snap from fighting the
- *    slide.
- * 2. **The ground, blended.** `color` re-hues every pixel to the slide's own
- *    hue — a true duotone, so the lime slide stays lime and the photo becomes
- *    the lime slide's photo. The chaos slide uses `multiply` instead, which
- *    burns rather than tints; it should read as an event, not a portrait.
- * 3. **A three-stop wash** in a shade of the ground, heaviest where the copy
- *    sits. The design puts its type at the bottom and uses a bottom gradient;
- *    this deck centres its column, so the middle stop is the strong one here.
- *    That is the one deliberate departure.
+ * 1. **A light grade.** A touch of contrast and a little less brightness, so
+ *    the picture reads as footage rather than as a snapshot pasted in.
+ * 2. **The wash.** A shade of the ground at three stops. The design's own
+ *    numbers are 55 / 35 / 88 top to bottom for a slide whose copy sits at the
+ *    foot; the slides that centre their column take a heavier middle stop.
+ * 3. **The bloom under the chaos day.** The one violent slide also gets a dark
+ *    radial behind its centre, so the red reads as an event rather than a tint.
  * 4. **Grain.** Half a pixel of white on a 3px grid in overlay, jittering in
  *    two steps. It is the cheapest layer and the one that does the most: it is
  *    the difference between a photograph with a filter on it and something that
  *    looks printed.
  *
- * An earlier version of this dropped the photo to a third under a flat veil.
- * It was legible and it was dead — no duotone, no grain, a snapshot behind
- * fog. Legibility was never the hard part; keeping the photo *and* the type is.
+ * The tint layer is kept at zero rather than removed, so a grade can still ask
+ * for a duotone if one slide ever wants one again.
  *
  * Every colour is derived from the ground passed in, so this module names none,
  * and the onboarding's preview tiles run the same function. A photo that looks
@@ -125,50 +123,52 @@ interface Grade {
  * reader has no way to report.
  */
 export const GROUP_GRADES: Record<GroupSlot, Grade> = {
-  /* B · Duotone opener — the design's recommended treatment. */
+  /* The cover: copy at the foot, so the wash is the design's own three stops. */
   opener: {
-    filter: 'grayscale(1) contrast(1.25) brightness(.92)',
+    filter: 'contrast(1.08) saturate(.95) brightness(.9)',
     opacity: 1,
-    blend: 'color',
-    tint: 0.92,
-    washTop: 0.12,
-    washMid: 0.68,
-    washBottom: 0.95,
+    blend: 'multiply',
+    tint: 0,
+    washTop: 0.55,
+    washMid: 0.4,
+    washBottom: 0.9,
     vignette: false,
     grain: 0.16,
   },
-  /* C · Chaos day — red multiply, blown contrast, black bloom. */
+  /* The loud day: darker, harder, with the black bloom behind the centre. */
   chaos: {
-    filter: 'grayscale(1) contrast(1.6) brightness(.6)',
+    filter: 'contrast(1.3) saturate(.8) brightness(.7)',
     opacity: 1,
     blend: 'multiply',
-    tint: 1,
-    washTop: 0.1,
+    tint: 0,
+    washTop: 0.5,
     washMid: 0.45,
-    washBottom: 0.8,
+    washBottom: 0.85,
     vignette: true,
     grain: 0.2,
   },
-  /* D · Ghost background — the treatment that survives a 2016 potato camera. */
+  /* The closer: copy at the foot again. */
   verdict: {
-    filter: 'grayscale(1) contrast(1.3) brightness(1.05)',
-    opacity: 0.5,
-    blend: 'color',
-    tint: 0.6,
-    washTop: 0.2,
-    washMid: 0.72,
-    washBottom: 0.96,
-    vignette: false,
-    grain: 0.12,
-  },
-  paywall: {
-    filter: 'grayscale(1) contrast(1.2) brightness(.85)',
+    filter: 'contrast(1.08) saturate(.9) brightness(.85)',
     opacity: 1,
-    blend: 'color',
-    tint: 0.92,
-    washTop: 0.25,
-    washMid: 0.74,
-    washBottom: 0.96,
+    blend: 'multiply',
+    tint: 0,
+    washTop: 0.5,
+    washMid: 0.45,
+    washBottom: 0.92,
+    vignette: false,
+    grain: 0.16,
+  },
+  /* The wall: Reg and a button in the middle of the frame, so the middle stop
+     carries the weight. */
+  paywall: {
+    filter: 'contrast(1.1) saturate(.85) brightness(.8)',
+    opacity: 1,
+    blend: 'multiply',
+    tint: 0,
+    washTop: 0.55,
+    washMid: 0.7,
+    washBottom: 0.92,
     vignette: false,
     grain: 0.16,
   },
@@ -251,7 +251,10 @@ export function SlidePhoto({ slot, ground }: { slot: GroupSlot; ground: string }
       aria-hidden="true"
       className="pointer-events-none absolute inset-0 isolate overflow-hidden"
     >
-      <div className="absolute inset-0" style={layers.image} />
+      {/* Oversized by 6% on every edge and drifting, so a still photograph
+          reads as footage. The onboarding's tile draws the same layers without
+          the drift; a thumbnail that pans is a thumbnail that distracts. */}
+      <div className="yap-drift absolute -inset-[6%]" style={layers.image} />
       <div className="absolute inset-0" style={layers.tint} />
       <div className="absolute inset-0" style={layers.wash} />
       {layers.grain && <div className="yap-grain absolute inset-0" style={layers.grain} />}

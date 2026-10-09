@@ -1,15 +1,16 @@
 import { NextResponse } from 'next/server';
-import { WrittenDeckSchema, normalizeWrittenDeck } from '@wrapped/core';
+import { WrittenDeckSchema, normalizeWrittenDeck, type WrittenDeck } from '@wrapped/core';
 import { z } from 'zod';
 import { REPORT_LANGUAGE_CODES } from '@/lib/languages';
 import { loadFixture } from '@/lib/fixture';
 import { failureBody, generateStructured } from '@/lib/generate';
 import { modelConfigured, modelFor, modelMissingMessage } from '@/lib/providers';
 import { gatePaidRequest } from '@/lib/paidRoute';
+import { EDITOR_SYSTEM, editorPrompt } from '@/lib/editorPrompt';
 import { WRITER_SYSTEM, writerPrompt } from '@/lib/writerPrompt';
 
 /**
- * Stage 7 — the comedy pass.
+ * Stage 7 — the comedy pass, and 7b — the edit.
  *
  * Receives briefs that have already been planned and verified, and returns
  * finished copy. It is given no chat to search and no freedom to introduce a
@@ -17,12 +18,18 @@ import { WRITER_SYSTEM, writerPrompt } from '@/lib/writerPrompt';
  * the only ones permitted, and the browser re-checks both against the real
  * messages when the reply lands.
  *
+ * The draft then goes through a second call that reads it as a head writer
+ * would and sends back a shorter, sharper deck. See `editorPrompt.ts` for why
+ * that is a separate call rather than a paragraph in the first one. The edit
+ * can be switched off with `WRAPPED_EDITOR=off`, and a failed edit falls back
+ * to the draft: a reader who has paid gets a deck either way.
+ *
  * Same gate as the other paid routes, because this is the request that reaches
- * the expensive model.
+ * the expensive model. Two calls to it now, hence the longer ceiling.
  */
 
 export const runtime = 'nodejs';
-export const maxDuration = 120;
+export const maxDuration = 240;
 
 /** The pass whose output people actually read, so it gets the better model. */
 
@@ -206,33 +213,76 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'AI is not configured on this server.' }, { status: 503 });
   }
 
+  const material = writerPrompt({
+    language: payload.language,
+    brief: payload.brief,
+    voice: payload.voice,
+    groupSummary: payload.groupSummary,
+    // The route's own schema is intentionally looser than core's — it
+    // validates shape and size for safety, and core's types carry the meaning.
+    briefs: payload.briefs as never,
+    evidence: payload.evidence,
+    voiceSamples: payload.voiceSamples,
+    genders: payload.genders,
+  });
+  // The planner's costume for each slide, so a writer that invents a format
+  // falls back to what this slide was meant to be rather than to `plain`.
+  const normalize = (deck: unknown) =>
+    normalizeWrittenDeck(deck, new Map(payload.briefs.map((b) => [b.id, b.format])));
+
   const result = await generateStructured({
     model,
     system: WRITER_SYSTEM,
-    prompt: writerPrompt({
-      language: payload.language,
-      brief: payload.brief,
-      voice: payload.voice,
-      groupSummary: payload.groupSummary,
-      // The route's own schema is intentionally looser than core's — it
-      // validates shape and size for safety, and core's types carry the meaning.
-      briefs: payload.briefs as never,
-      evidence: payload.evidence,
-      voiceSamples: payload.voiceSamples,
-      genders: payload.genders,
-    }),
+    prompt: material,
     schema: WrittenDeckSchema,
     maxTokens: 20000,
     stage: 'write',
-    // The planner's costume for each slide, so a writer that invents a format
-    // falls back to what this slide was meant to be rather than to `plain`.
-    normalize: (deck) =>
-      normalizeWrittenDeck(deck, new Map(payload.briefs.map((b) => [b.id, b.format]))),
+    normalize,
   });
 
   if (!result.ok) {
     return NextResponse.json(failureBody(result), { status: result.status });
   }
 
-  return NextResponse.json(result.value, { headers: { 'Cache-Control': 'no-store' } });
+  const deck = await edit(model, material, result.value, normalize);
+
+  return NextResponse.json(deck, { headers: { 'Cache-Control': 'no-store' } });
+}
+
+/**
+ * The edit, with the draft as the floor.
+ *
+ * An editor that fails validation, or that comes back having cut more than
+ * half the deck, is an editor that has misread the task, and the reader has
+ * paid: the draft goes out as written and the failure goes to the log.
+ */
+async function edit(
+  model: string,
+  material: string,
+  draft: WrittenDeck,
+  normalize: (deck: unknown) => unknown,
+): Promise<WrittenDeck> {
+  if (process.env.WRAPPED_EDITOR === 'off') return draft;
+
+  const edited = await generateStructured({
+    model,
+    system: EDITOR_SYSTEM,
+    prompt: editorPrompt({ material, draft }),
+    schema: WrittenDeckSchema,
+    maxTokens: 20000,
+    stage: 'edit',
+    normalize,
+  });
+
+  if (!edited.ok) {
+    console.warn(`[edit] falling back to the draft: ${edited.error}`);
+    return draft;
+  }
+  if (edited.value.slides.length < Math.ceil(draft.slides.length / 2)) {
+    console.warn(
+      `[edit] falling back to the draft: the edit kept ${edited.value.slides.length} of ${draft.slides.length} slides`,
+    );
+    return draft;
+  }
+  return edited.value;
 }

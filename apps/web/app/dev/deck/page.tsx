@@ -10,17 +10,18 @@ import { REPORT_LANGUAGE_CODES, type ReportLanguage } from '@/lib/languages';
  * fake report is a page somebody will screenshot as a real one.
  *
  * `?lang=he` runs the deck right-to-left with Hebrew chrome, which is the
- * layout check the fixture's English copy cannot do on its own.
+ * layout check the fixture's English copy cannot do on its own. `?from=start`
+ * opens on the first statistics slide instead of the first written one.
  */
 export default async function DevDeckPage({
   searchParams,
 }: {
-  searchParams: Promise<{ lang?: string }>;
+  searchParams: Promise<{ lang?: string; from?: string }>;
 }) {
   if (process.env.NODE_ENV === 'production') notFound();
-  const { lang } = await searchParams;
+  const { lang, from } = await searchParams;
   const language = (REPORT_LANGUAGE_CODES as readonly string[]).includes(lang ?? '')
     ? (lang as ReportLanguage)
     : 'en';
-  return <DevDeck language={language} />;
+  return <DevDeck language={language} from={from === 'start' ? 'start' : 'paid'} />;
 }

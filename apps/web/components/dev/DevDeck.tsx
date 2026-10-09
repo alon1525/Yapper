@@ -16,7 +16,14 @@ import { slidesFor } from '@/components/cards/slides';
  * finished, no chat behind them. The deck opens on the first paid slide so the
  * thing being looked at is the first thing on screen.
  */
-export function DevDeck({ language = 'en' }: { language?: ReportLanguage }) {
+export function DevDeck({
+  language = 'en',
+  from = 'paid',
+}: {
+  language?: ReportLanguage;
+  /** Where to open: on the first written slide, or at the very start. */
+  from?: 'paid' | 'start';
+}) {
   const saved = useMemo<SavedReport>(() => {
     const parsed = parseChat(devExport());
     const stats = computeStats(parsed, { fileName: 'WhatsApp Chat with Famboys.txt' });
@@ -47,7 +54,7 @@ export function DevDeck({ language = 'en' }: { language?: ReportLanguage }) {
       }}
       saved={saved}
       onRestart={() => window.location.reload()}
-      startAt={firstPaid}
+      startAt={from === 'start' ? 0 : firstPaid}
     />
   );
 }

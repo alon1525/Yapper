@@ -4,7 +4,7 @@ import { motion, type Transition } from 'framer-motion';
 import type { CSSProperties, ReactNode } from 'react';
 import type { GroupSlot } from '@/lib/brief';
 import { useCopy } from '@/lib/copy';
-import { posterFace } from './Shell';
+import { posterFace, type SlideAlign } from './Shell';
 import { useGroupPhoto } from './photos';
 
 /**
@@ -26,6 +26,8 @@ export const NIGHT = {
   teal: '#16E0C8',
   orange: '#FF6B1A',
   violet: '#4B1BD1',
+  /** The loud day. Outside the rotation: one slide in a deck gets to be red. */
+  red: '#FF2E2E',
   white: '#FFFFFF',
 } as const;
 
@@ -39,13 +41,31 @@ export const INK: Record<Tone, string> = {
   teal: '#04231F',
   orange: '#1A0A00',
   violet: '#F1ECFF',
+  red: '#FFF3F3',
   white: '#0B0B0F',
 };
 
 /** The tones a bloom rotates through, in the order the design sequences them. */
 export const TONES: readonly Tone[] = ['lime', 'pink', 'violet', 'orange', 'sun', 'teal'];
 
+/** A tone as the slide's accent: what `--slide-accent` / `--slide-on-accent` become. */
+export const accentOf = (tone: Tone) => ({ color: NIGHT[tone], on: INK[tone] });
+
 export type BloomAt = 'top' | 'bottom' | 'left' | 'right';
+
+/**
+ * How a slide sits on the night ground: its colour, where the colour bleeds
+ * in from, how the column is aligned, which group photo lies under it. Both
+ * decks declare one of these per slide and `Deck` draws the ground from it; a
+ * slide with no `tone` (the dossier) draws none.
+ */
+export interface Dress {
+  tone: Tone;
+  at: BloomAt;
+  align?: SlideAlign;
+  photo?: GroupSlot;
+  letterbox?: boolean;
+}
 
 const BLOOM_POS: Record<BloomAt, CSSProperties> = {
   top: { left: '-20%', top: '-10%', width: '90%', height: '50%' },
@@ -58,8 +78,11 @@ export const alpha = (colour: string, a: number) =>
   `color-mix(in srgb, ${colour} ${Math.round(a * 100)}%, transparent)`;
 
 /**
- * Everything under the column: the photo when there is one, the bloom, the
- * grain. All of it `pointer-events-none` so the tap-to-advance still lands.
+ * Everything under the column but the photo: the bloom and the grain. The
+ * photo itself is `SlidePhoto`, drawn by `Slide` from the reader's slot, so
+ * that the onboarding's preview tile and the deck cannot disagree about how a
+ * photo will look. All of it `pointer-events-none` so the tap-to-advance still
+ * lands.
  */
 export function NightGround({
   tone,
@@ -69,7 +92,11 @@ export function NightGround({
 }: {
   tone: Tone;
   at?: BloomAt;
-  /** A group-photo slot to draw underneath, when the reader filled it. */
+  /**
+   * The slot `Slide` is drawing under this ground, if any. A filled slot
+   * brings its own grain and softens the bloom, so the colour does not fight
+   * the picture.
+   */
   photo?: GroupSlot;
   /** Two black bars, top and bottom. The documentary is shot in widescreen. */
   letterbox?: boolean;
@@ -84,22 +111,6 @@ export function NightGround({
           <div className="absolute inset-x-0 bottom-0 z-10 h-[7%] bg-black/85" />
         </>
       )}
-      {url && (
-        <>
-          <div
-            className="yap-drift absolute -inset-[6%] bg-cover bg-center"
-            style={{ backgroundImage: `url(${url})` }}
-          />
-          {/* Darkest where the copy sits. The design's own three stops. */}
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                'linear-gradient(180deg, rgb(11 11 15 / 0.55) 0%, rgb(11 11 15 / 0.35) 40%, rgb(11 11 15 / 0.88) 100%)',
-            }}
-          />
-        </>
-      )}
       <div
         className="absolute"
         style={{
@@ -108,8 +119,40 @@ export function NightGround({
           filter: 'blur(30px)',
         }}
       />
-      <div className="yap-grain absolute inset-0" style={{ opacity: 0.16 }} />
+      {!url && <div className="yap-grain absolute inset-0" style={{ opacity: 0.16 }} />}
     </div>
+  );
+}
+
+/**
+ * The pill above a cover: a glowing dot in the tone, then one or two labels in
+ * mono. The design's "הFAMבויז ממדגסקר · 8 suspects".
+ */
+export function Badge({
+  tone,
+  children,
+  delay = 0.05,
+}: {
+  tone: Tone;
+  children: ReactNode;
+  delay?: number;
+}) {
+  return (
+    <motion.div
+      {...upSm(delay)}
+      className="inline-flex max-w-full items-center gap-2 rounded-full border px-3 py-1.5 ps-2"
+      style={{
+        background: 'rgb(255 255 255 / 0.14)',
+        borderColor: 'rgb(255 255 255 / 0.18)',
+        backdropFilter: 'blur(10px)',
+      }}
+    >
+      <span
+        className="h-2 w-2 shrink-0 rounded-full"
+        style={{ background: NIGHT[tone], boxShadow: `0 0 12px ${NIGHT[tone]}` }}
+      />
+      {children}
+    </motion.div>
   );
 }
 

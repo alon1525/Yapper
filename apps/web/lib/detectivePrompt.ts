@@ -60,6 +60,13 @@ Fill \`quotes\` on these with their own lines, copied exactly. The writer can
 only quote what you cite, and a card about somebody with none of their own
 words on it reads like a horoscope.
 
+What the roast actually needs from you, per person, is the thing everyone in
+this group knows about them and nobody has typed out: the promise they keep
+making, the hour they always turn up, the two messages of theirs that cannot
+both be true, the word they cannot send a message without. Say it flat, cite
+it, and let the next pass be funny about it. A trait with no incident is not a
+finding; an incident with ids is.
+
 EVIDENCE
 
 Every finding must list the message ids that prove it, using the ids given to

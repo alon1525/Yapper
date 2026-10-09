@@ -156,4 +156,21 @@ describe('the register of analysis', () => {
     const verdict = verifySlideCopy(slide({ body: 'He asked for the data plan password. Twice.' }), ctx);
     expect(codes(verdict)).not.toContain('generic-phrasing');
   });
+
+  it('rejects the roast that takes itself back, and the machine’s own stock phrases', () => {
+    const { ctx } = context();
+    for (const body of [
+      'In true Person A fashion, he replied at 3am.',
+      'He never replies. In a good way.',
+      'Jokes aside, she carries this group.',
+      'Person B lives in this chat rent free.',
+      'אין ספק שהוא הכי מצחיק כאן.',
+      'בסופו של יום, זאת קבוצה של חברים.',
+    ]) {
+      expect(codes(verifySlideCopy(slide({ body }), ctx)), body).toContain('generic-phrasing');
+    }
+    // "fashion" on its own is a word people use.
+    const verdict = verifySlideCopy(slide({ body: 'He bought the jacket. Fashion week was three months ago.' }), ctx);
+    expect(codes(verdict)).not.toContain('generic-phrasing');
+  });
 });

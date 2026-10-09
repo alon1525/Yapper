@@ -49,6 +49,11 @@ only one gets the expensive model it should be the second.
 | `WRAPPED_WRITER_MODEL` | comedy | `claude-opus-5` |
 | `WRAPPED_PREMIUM_MODEL` | legacy single-shot report | `claude-opus-5` |
 
+The comedy pass is two calls to the writer's model: the draft, then an edit
+that reads it like a head writer an hour before the show and sends back a
+shorter, sharper deck (`apps/web/lib/editorPrompt.ts`). `WRAPPED_EDITOR=off`
+ships the draft as written.
+
 ## The shape of it
 
 **Landing → onboarding → deck.** The whole flow is one page and one component

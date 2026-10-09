@@ -16,6 +16,7 @@ import {
 import { DossierSlide } from './DossierSlide';
 import { Portrait } from './photos';
 import {
+  Badge,
   Bubble,
   Glass,
   GlassCard,
@@ -23,7 +24,6 @@ import {
   Mono,
   Narration,
   NIGHT,
-  NightGround,
   Note,
   Poster,
   Prose,
@@ -37,6 +37,7 @@ import {
   up,
   upSm,
   type BloomAt,
+  type Dress,
   type Tone,
 } from './ReportGround';
 import { AnimatedNumber, Eyebrow, posterFace, type Backdrop, type SlideAlign } from './Shell';
@@ -245,19 +246,7 @@ function OpeningSlide({
   return (
     <>
       {(group?.groupName || group?.participantCount) && (
-        <motion.div
-          {...upSm(0.05)}
-          className="inline-flex max-w-full items-center gap-2 rounded-full border px-3 py-1.5 ps-2"
-          style={{
-            background: 'rgb(255 255 255 / 0.14)',
-            borderColor: 'rgb(255 255 255 / 0.18)',
-            backdropFilter: 'blur(10px)',
-          }}
-        >
-          <span
-            className="h-2 w-2 shrink-0 rounded-full"
-            style={{ background: NIGHT[tone], boxShadow: `0 0 12px ${NIGHT[tone]}` }}
-          />
+        <Badge tone={tone}>
           {group.groupName && (
             <Mono className="truncate normal-case">{group.groupName}</Mono>
           )}
@@ -267,7 +256,7 @@ function OpeningSlide({
               {copy.t('report.suspects', { n: group.participantCount })}
             </Mono>
           ) : null}
-        </motion.div>
+        </Badge>
       )}
 
       {total && typeof total.value === 'number' && (
@@ -1148,21 +1137,11 @@ export interface Context {
   participantCount: number;
 }
 
-export interface ReportDeckSlide {
+export interface ReportDeckSlide extends Partial<Dress> {
   id: string;
   backdrop: Backdrop;
   align: SlideAlign;
-  /** The bloom, grain and photo under the column. Nothing for the dossier. */
-  ground: ReactNode;
   render: () => ReactNode;
-}
-
-interface Dress {
-  tone: Tone;
-  at: BloomAt;
-  align?: SlideAlign;
-  photo?: 'opener' | 'chaos' | 'verdict';
-  letterbox?: boolean;
 }
 
 /**
@@ -1214,7 +1193,6 @@ export function reportSlidesFor(
         id: slide.id,
         backdrop: 'paper',
         align: 'center',
-        ground: null,
         render: () => <ReportSlide slide={slide} exhibit={exhibit} />,
       });
       previous = null;
@@ -1239,12 +1217,12 @@ export function reportSlidesFor(
     }
     previous = dress.tone;
 
-    const { tone, at, photo, letterbox } = dress;
+    const { tone } = dress;
     out.push({
+      ...dress,
       id: slide.id,
       backdrop: 'night',
       align: dress.align ?? 'start',
-      ground: <NightGround tone={tone} at={at} photo={photo} letterbox={letterbox} />,
       render: () => <ReportSlide slide={slide} tone={tone} context={context} />,
     });
   }
@@ -1259,7 +1237,8 @@ export function reportSlidesFor(
       id: `dictionary-${page}`,
       backdrop: 'night',
       align: 'start',
-      ground: <NightGround tone={tone} at={page % 2 === 0 ? 'top' : 'right'} />,
+      tone,
+      at: page % 2 === 0 ? 'top' : 'right',
       render: () => <DictionarySlide entries={slice} tone={tone} />,
     });
   }

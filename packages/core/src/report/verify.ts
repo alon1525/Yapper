@@ -509,6 +509,21 @@ const BANNED_PHRASES: readonly RegExp[] = [
   /\bsays a lot about\b/i,
   /\bupon (?:closer )?(?:inspection|analysis)\b/i,
   /\b(?:our|the|this) analysis (?:shows|reveals|suggests|indicates|found)\b/i,
+  /\bserves as (?:a|an|the)\b/i,
+  /\bit(?:'s| is) no secret\b/i,
+  /\bit(?:'s| is) safe to say\b/i,
+  /\bneedless to say\b/i,
+  // The roast that takes itself back, and the phrases a model reaches for
+  // when it has been asked to be funny and has nothing specific to be funny
+  // about. "In true Person A fashion" is the one that turned up on every deck.
+  /\bin (?:a|the) (?:good|best|nicest?) (?:possible )?way\b/i,
+  /\b(?:all )?jokes? aside\b/i,
+  /\bin all seriousness\b/i,
+  /\bin true (?:\S+ ){1,3}fashion\b/i,
+  /\brent[- ]free\b/i,
+  /\bmain[- ]character energy\b/i,
+  /\bchef'?s kiss\b/i,
+  /\bliving (?:his|her|their|your) best life\b/i,
   // Hebrew: both registers.
   phrase('בכל קבוצה יש'),
   phrase('הדבק שמחזיק'),
@@ -520,6 +535,11 @@ const BANNED_PHRASES: readonly RegExp[] = [
   phrase('כפי ש(?:ניתן לראות|עולה מ|אפשר לראות)'),
   phrase('מבחינה סטטיסטית'),
   phrase('מה שמעיד על'),
+  phrase('אין ספק'),
+  phrase('לא ניתן להתעלם'),
+  phrase('בסופו של (?:דבר|יום)'),
+  phrase('מה שאומר הרבה'),
+  phrase('במילים אחרות'),
 ];
 
 /**

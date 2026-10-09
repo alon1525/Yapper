@@ -2,10 +2,10 @@
 
 import { motion } from 'framer-motion';
 import type { ChatStats } from '@wrapped/core';
-import type { GroupSlot } from '@/lib/brief';
 import type { Localised } from '@/lib/copy';
 import { GROUP_SLOT_BACKDROP, Portrait } from './photos';
 import { duration, day, hour, num, percent, shortName, span, spanLabel } from '@/lib/localFormat';
+import { Badge, Mono, Note, Stamp, type Dress } from './ReportGround';
 import {
   AnimatedNumber,
   BubbleBars,
@@ -19,15 +19,15 @@ import {
   type Backdrop,
 } from './Shell';
 
-export interface SlideDef {
+/**
+ * A statistics slide. The `Dress` half says how it sits on the night ground:
+ * its tone, where the bloom comes from, and which of the four group-photo
+ * slots lies under it. Only the slides the onboarding previews carry a photo —
+ * a photo on every slide would be a slideshow, and the deck is not a slideshow.
+ */
+export interface SlideDef extends Partial<Dress> {
   id: string;
   backdrop: Backdrop;
-  /**
-   * Takes a group photo behind the type when the reader supplied one for this
-   * slot. Only the four slides the onboarding previews carry one — a photo on
-   * every slide would be a slideshow, and the deck is not a slideshow.
-   */
-  photo?: GroupSlot;
   /** A slide that cannot be filled honestly is dropped rather than faked. */
   available: (s: ChatStats) => boolean;
   /**
@@ -69,23 +69,33 @@ const person = (s: ChatStats, name: string | null) =>
   s.people.find((p) => p.name === name) ?? null;
 
 /**
- * The colours are sequenced, not assigned. Consecutive slides never share a
- * ground, and the two dark ones (ink, navy) are spaced apart so the deck does
- * not go quiet in the middle — it is a story with a rhythm, and colour is how
- * that rhythm is felt.
+ * One ground, many tones. Every slide sits on the same near-black and brings
+ * its own colour as a bloom; consecutive slides never share a tone, so the
+ * deck keeps the rhythm the old rotation of flat grounds gave it — it is a
+ * story, and colour is how that rhythm is felt.
  */
 export const SLIDES: SlideDef[] = [
   {
     id: 'welcome',
     backdrop: GROUP_SLOT_BACKDROP.opener,
     photo: 'opener',
+    tone: 'lime',
+    at: 'bottom',
+    align: 'end',
     available: () => true,
     render: (s, l) => (
       <>
-        <Eyebrow>{spanLabel(l, s)}</Eyebrow>
-        <Headline>{s.groupName ?? l.t('welcome.fallbackName')}</Headline>
+        {/* The design's cover: a badge, the name, one word on a stamp. */}
+        <Badge tone="lime">
+          <Mono>{spanLabel(l, s)}</Mono>
+        </Badge>
+        <div className="mt-4">
+          <Headline>{s.groupName ?? l.t('welcome.fallbackName')}</Headline>
+        </div>
         <Poster size="md">
-          <span className="mt-2 block">{l.t('welcome.poster')}</span>
+          <span className="mt-2 block">
+            <Stamp>{l.t('welcome.poster')}</Stamp>
+          </span>
         </Poster>
         <Punchline>
           {l.t('welcome.punchline', {
@@ -99,14 +109,18 @@ export const SLIDES: SlideDef[] = [
 
   {
     id: 'total',
-    backdrop: 'pink',
+    backdrop: 'night',
+    tone: 'pink',
+    at: 'top',
     available: (s) => s.totalMessages > 0,
     render: (s, l) => (
       <>
         <Eyebrow>{l.t('total.eyebrow')}</Eyebrow>
-        <Poster>
-          <AnimatedNumber value={s.totalMessages} locale={l.locale} />
-        </Poster>
+        <div style={{ color: 'var(--slide-accent)' }}>
+          <Poster>
+            <AnimatedNumber value={s.totalMessages} locale={l.locale} />
+          </Poster>
+        </div>
         <Poster size="sm">
           <span className="mt-2 block">
             {l.t('total.unit', { people: num(l, s.people.length) })}
@@ -129,7 +143,9 @@ export const SLIDES: SlideDef[] = [
 
   {
     id: 'talker',
-    backdrop: 'purple',
+    backdrop: 'night',
+    tone: 'orange',
+    at: 'left',
     available: (s) => s.people.length >= 2,
     render: (s, l) => {
       const top = s.people[0]!;
@@ -148,18 +164,21 @@ export const SLIDES: SlideDef[] = [
               share: p.share,
             }))}
           />
-          <Punchline>
-            {l.t('talker.punchline', { share: percent(top.share) })}
-            {rest[0] && (
-              <>
-                {' '}
-                {l.t('talker.punchlineRunnerUp', {
-                  times: (top.messages / Math.max(1, rest[0].messages)).toFixed(1),
-                  name: shortName(rest[0].name),
-                })}
-              </>
-            )}
-          </Punchline>
+          {/* The design's board puts its verdict on a tilted note. */}
+          <div className="mt-5">
+            <Note tone="orange" delay={0.2 + (rest.length + 1) * 0.09}>
+              {l.t('talker.punchline', { share: percent(top.share) })}
+              {rest[0] && (
+                <>
+                  {' '}
+                  {l.t('talker.punchlineRunnerUp', {
+                    times: (top.messages / Math.max(1, rest[0].messages)).toFixed(1),
+                    name: shortName(rest[0].name),
+                  })}
+                </>
+              )}
+            </Note>
+          </div>
         </>
       );
     },
@@ -175,7 +194,9 @@ export const SLIDES: SlideDef[] = [
    */
   {
     id: 'hours',
-    backdrop: 'navy',
+    backdrop: 'night',
+    tone: 'teal',
+    at: 'right',
     available: (s) => s.totalMessages > 0,
     render: (s, l) => {
       const peakHour = s.busiestHour?.hour ?? 0;
@@ -262,7 +283,9 @@ export const SLIDES: SlideDef[] = [
 
   {
     id: 'fastest',
-    backdrop: 'teal',
+    backdrop: 'night',
+    tone: 'sun',
+    at: 'top',
     available: (s) => person(s, s.awards.fastestReplier) !== null,
     render: (s, l) => {
       const fast = person(s, s.awards.fastestReplier)!;
@@ -271,11 +294,13 @@ export const SLIDES: SlideDef[] = [
         <>
           <Eyebrow>{l.t('fastest.eyebrow')}</Eyebrow>
           <Named name={fast.name} />
-          <Poster size="md">
-            <span className="mt-2 block">
-              {duration(l, fast.medianResponseMs, s.timestampPrecisionMs)}
-            </span>
-          </Poster>
+          <div style={{ color: 'var(--slide-accent)' }}>
+            <Poster size="md">
+              <span className="mt-2 block">
+                {duration(l, fast.medianResponseMs, s.timestampPrecisionMs)}
+              </span>
+            </Poster>
+          </div>
           <Punchline>
             {l.t('fastest.punchline', { count: num(l, fast.responseSamples) })}
           </Punchline>
@@ -298,7 +323,9 @@ export const SLIDES: SlideDef[] = [
 
   {
     id: 'ghost',
-    backdrop: 'ink',
+    backdrop: 'night',
+    tone: 'violet',
+    at: 'top',
     available: (s) => {
       const g = person(s, s.awards.ghost);
       return g !== null && g.longestSilenceDays >= 7;
@@ -308,14 +335,14 @@ export const SLIDES: SlideDef[] = [
       return (
         <>
           <Eyebrow>{l.t('ghost.eyebrow')}</Eyebrow>
-          <div style={{ color: 'var(--slide-accent)' }}>
+          {/* The face in black and white, like a missing-person notice. The
+              violet is the bloom only: as type on black it fails contrast. */}
+          <div style={{ filter: 'grayscale(1)' }}>
             <Named name={ghost.name} />
           </div>
-          <div style={{ color: 'var(--slide-accent)' }}>
-            <Poster size="md">
-              <span className="mt-2 block">{span(l, ghost.longestSilenceDays)}</span>
-            </Poster>
-          </div>
+          <Poster size="md">
+            <span className="mt-2 block">{span(l, ghost.longestSilenceDays)}</span>
+          </Poster>
           <Punchline>
             {l.t('ghost.punchline')}{' '}
             {ghost.stillGone ? l.t('ghost.stillGone') : l.t('ghost.returned')}
@@ -336,7 +363,9 @@ export const SLIDES: SlideDef[] = [
 
   {
     id: 'emoji',
-    backdrop: 'purple',
+    backdrop: 'night',
+    tone: 'pink',
+    at: 'right',
     available: (s) => s.topEmoji.length >= 3,
     render: (s, l) => {
       const podium = s.topEmoji.slice(0, 3);
@@ -402,6 +431,8 @@ export const SLIDES: SlideDef[] = [
     id: 'chaos',
     backdrop: GROUP_SLOT_BACKDROP.chaos,
     photo: 'chaos',
+    tone: 'red',
+    at: 'top',
     available: (s) => s.busiestDay !== null && s.busiestDay.count > 20,
     render: (s, l) => {
       const busiest = s.busiestDay!;
@@ -436,7 +467,9 @@ export const SLIDES: SlideDef[] = [
 
   {
     id: 'streak',
-    backdrop: 'orange',
+    backdrop: 'night',
+    tone: 'orange',
+    at: 'bottom',
     available: (s) => (s.longestStreak?.days ?? 0) >= 5,
     render: (s, l) => {
       const streak = s.longestStreak!;
@@ -445,7 +478,9 @@ export const SLIDES: SlideDef[] = [
         <>
           <Eyebrow>{l.t('streak.eyebrow')}</Eyebrow>
           <Poster>
-            <AnimatedNumber value={streak.days} locale={l.locale} />
+            <span style={{ color: 'var(--slide-accent)' }}>
+              <AnimatedNumber value={streak.days} locale={l.locale} />
+            </span>
             <span className="ms-3 text-[0.28em] tracking-normal">{l.t('streak.days')}</span>
           </Poster>
           <Punchline>

@@ -18,6 +18,7 @@ import { useReport } from '@/lib/useReport';
 import { useStorySound } from '@/lib/useStorySound';
 import { PhotoProvider } from './cards/photos';
 import { slidesFor } from './cards/slides';
+import { NightGround, accentOf, type Dress } from './cards/ReportGround';
 import { BACKDROPS, Slide, type Backdrop } from './cards/Shell';
 import { WallSlide, WALL_BACKDROP } from './cards/WallSlide';
 import { reportSlidesFor } from './cards/ReportSlides';
@@ -199,6 +200,21 @@ export function Deck({
     'grid h-8 w-8 place-items-center rounded-full text-[13px] transition hover:opacity-100';
 
   /**
+   * The night ground under a slide, from how the slide said it should sit.
+   * Nothing for a slide with no tone — the dossier keeps its paper.
+   */
+  const groundFor = (dress: Partial<Dress>) =>
+    dress.tone ? (
+      <NightGround
+        tone={dress.tone}
+        at={dress.at ?? 'bottom'}
+        photo={dress.photo}
+        letterbox={dress.letterbox}
+      />
+    ) : undefined;
+  const accentFor = (dress: Partial<Dress>) => (dress.tone ? accentOf(dress.tone) : undefined);
+
+  /**
    * Tap left third to go back, the rest to go forward — except on anything the
    * reader could have meant to press.
    *
@@ -251,7 +267,14 @@ export function Deck({
       */}
       <AnimatePresence initial={false}>
         {current ? (
-          <Slide key={current.id} backdrop={current.backdrop} photo={current.photo}>
+          <Slide
+            key={current.id}
+            backdrop={current.backdrop}
+            photo={current.photo}
+            align={current.align}
+            ground={groundFor(current)}
+            accent={accentFor(current)}
+          >
             {current.render(stats, copy)}
           </Slide>
         ) : index === wallIndex ? (
@@ -269,8 +292,10 @@ export function Deck({
           <Slide
             key={paidSlide.id}
             backdrop={paidSlide.backdrop}
+            photo={paidSlide.photo}
             align={paidSlide.align}
-            ground={paidSlide.ground}
+            ground={groundFor(paidSlide)}
+            accent={accentFor(paidSlide)}
           >
             {paidSlide.render()}
           </Slide>
@@ -380,8 +405,14 @@ export function Deck({
       />
 
       <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex items-center justify-between px-5 pb-4"
-        style={{ fontFamily: 'var(--yap-mono)' }}
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex items-center justify-between px-5 pt-5 pb-4"
+        style={{
+          fontFamily: 'var(--yap-mono)',
+          // A fade under the counter on the night ground, so it stays legible
+          // over a photo. The paper dossier would only be smudged by it.
+          background:
+            backdrop === 'night' ? 'linear-gradient(0deg, rgb(0 0 0 / 0.45), transparent)' : undefined,
+        }}
       >
         <span dir="ltr" className="text-[10px] tracking-[0.12em] opacity-70">
           {String(index + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}

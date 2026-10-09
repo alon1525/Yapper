@@ -4,13 +4,16 @@ import { useState } from 'react';
 import type { ChatStats } from '@wrapped/core';
 import { useCopy } from '@/lib/copy';
 import { num, spanLabel } from '@/lib/localFormat';
+import { splitTitle } from '@/lib/reportLines';
 import { GROUP_SLOT_BACKDROP } from './photos';
+import { NightGround, Stamp, accentOf } from './ReportGround';
 import { SharePack } from './SharePack';
-import { DeckButton, Eyebrow, Headline, Punchline, Slide, type Backdrop } from './Shell';
+import { DeckButton, Eyebrow, Poster, Punchline, Slide, type Backdrop } from './Shell';
 
 /**
- * Closes on the same lime the deck opened on. Read from the photo table so the
- * onboarding's preview tile of this slide cannot be drawn on a different one.
+ * Closes on the night ground the deck opened on, with the design's closer in
+ * pink. Read from the photo table so the onboarding's preview tile of this
+ * slide cannot be drawn on a different one.
  */
 export const FINAL_BACKDROP: Backdrop = GROUP_SLOT_BACKDROP.verdict;
 
@@ -36,11 +39,27 @@ export function FinalSlide({
   const copy = useCopy();
   const [sharing, setSharing] = useState(false);
   const saving = save.status === 'saving';
+  // The design's closer sets the last beat of its headline on a tilted stamp.
+  const { head, tail } = splitTitle(copy.t('final.headline'));
 
   return (
-    <Slide backdrop={FINAL_BACKDROP} photo="verdict">
+    <Slide
+      backdrop={FINAL_BACKDROP}
+      photo="verdict"
+      align="end"
+      ground={<NightGround tone="pink" at="bottom" photo="verdict" />}
+      accent={accentOf('pink')}
+    >
       <Eyebrow>{copy.t('final.eyebrow')}</Eyebrow>
-      <Headline>{copy.t('final.headline')}</Headline>
+      <Poster size="md">
+        {head && (
+          <>
+            {head}
+            <br />
+          </>
+        )}
+        <Stamp tone="pink">{tail}</Stamp>
+      </Poster>
       <Punchline>
         {copy.t('final.punchline', {
           messages: num(copy, stats.totalMessages),

@@ -219,6 +219,7 @@ export function Slide({
   photo,
   align = 'center',
   ground,
+  accent,
   children,
 }: {
   backdrop: Backdrop;
@@ -226,11 +227,17 @@ export function Slide({
   photo?: GroupSlot;
   align?: SlideAlign;
   /**
-   * Anything drawn under the column at the slide's full size — the written
-   * deck's bloom, grain and drifting photo. The column is `max-w-lg`, so a
-   * layer rendered inside it would stop at the column's edge.
+   * Anything drawn under the column at the slide's full size — the night
+   * deck's bloom and grain. The column is `max-w-lg`, so a layer rendered
+   * inside it would stop at the column's edge.
    */
   ground?: ReactNode;
+  /**
+   * This slide's own accent, overriding the backdrop's. On the night ground
+   * the colour belongs to the slide rather than to the backdrop, and every
+   * widget that reaches for `--slide-accent` should get the slide's.
+   */
+  accent?: { color: string; on: string };
   children: ReactNode;
 }) {
   return (
@@ -240,7 +247,12 @@ export function Slide({
       exit={{ opacity: 0 }}
       transition={{ duration: 0.35 }}
       className={`yap-quiet-scroll absolute inset-0 flex flex-col ${ALIGN[align]} overflow-y-auto px-7 pt-24 pb-24 sm:px-14`}
-      style={slideVars(backdrop)}
+      style={{
+        ...slideVars(backdrop),
+        ...(accent
+          ? { ['--slide-accent' as string]: accent.color, ['--slide-on-accent' as string]: accent.on }
+          : null),
+      }}
     >
       {/* The ground is handed down rather than looked up, so the photo layer
           never has to know which slide it is on — it tints itself with whatever
@@ -403,7 +415,14 @@ export function Tag({ children }: { children: ReactNode }) {
 export function Stat({ label, value }: { label: string; value: string }) {
   const { rtl } = useCopy();
   return (
-    <div className="rounded-xl px-3.5 py-3" style={{ background: 'var(--slide-panel)' }}>
+    <div
+      className="rounded-2xl border px-3.5 py-3"
+      style={{
+        background: 'var(--slide-panel)',
+        borderColor: 'color-mix(in srgb, currentColor 14%, transparent)',
+        backdropFilter: 'blur(12px)',
+      }}
+    >
       <p
         className={`text-[9.5px] uppercase opacity-65 ${track(rtl, 'tracking-[0.15em]')}`}
         style={{ fontFamily: 'var(--yap-mono)' }}
@@ -496,43 +515,51 @@ export function Ranking({
   const topShare = Math.max(...rows.map((r) => r.share ?? 0), 0);
 
   return (
-    <div className="mt-6 flex flex-col gap-2.5">
+    <div className="mt-5 flex flex-col">
       {rows.map((row, i) => (
         <motion.div
           key={row.label}
           // Rows slide in from the edge they are read from.
-          initial={{ opacity: 0, x: rtl ? 10 : -10 }}
+          initial={{ opacity: 0, x: rtl ? 30 : -30 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.25 + i * 0.07, duration: 0.4 }}
-          className="flex flex-col gap-1.5"
-          style={{ opacity: i > 2 ? 0.62 : 1 }}
+          transition={{ delay: 0.2 + i * 0.09, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+          className={`flex flex-col gap-1.5 border-b ${i < 3 ? 'py-2' : 'py-1.5'}`}
+          style={{
+            opacity: i > 2 ? 0.62 : 1,
+            borderColor: 'color-mix(in srgb, currentColor 12%, transparent)',
+          }}
         >
-          <div className="flex items-center gap-3">
+          {/* The design's board: the rank small in mono, the name at a size
+              that falls with the rank, the count pinned to the trailing edge. */}
+          <div className="flex items-center gap-2.5">
             <span
-              className="w-7 shrink-0 text-center"
-              style={{
-                fontFamily: 'var(--yap-poster)',
-                fontSize: `${Math.max(18, 34 - i * 4)}px`,
-                color: i === 0 ? 'var(--slide-accent)' : undefined,
-              }}
+              dir="ltr"
+              className="min-w-[20px] shrink-0 text-[10px] opacity-50"
+              style={{ fontFamily: 'var(--yap-mono)' }}
             >
-              {i + 1}
+              {String(i + 1).padStart(2, '0')}
             </span>
-            <Portrait name={row.label} size={i === 0 ? 40 : 30} />
+            <Portrait name={row.label} size={i === 0 ? 34 : 26} />
             <span
               dir="auto"
               className="min-w-0 flex-1 truncate"
               style={{
                 ...posterFace(row.label, rtl),
-                fontSize: `${Math.max(15, 25 - i * 2)}px`,
-                lineHeight: 1.1,
+                fontSize: i === 0 ? 'clamp(30px,10vw,44px)' : i < 3 ? 'clamp(23px,7.5vw,32px)' : '19px',
+                lineHeight: 0.98,
+                color: i === 0 ? 'var(--slide-accent)' : undefined,
               }}
             >
               {row.label}
             </span>
             <span
-              className="shrink-0 text-xs tabular-nums opacity-75"
-              style={{ fontFamily: 'var(--yap-mono)' }}
+              dir="ltr"
+              className="shrink-0 text-xs tabular-nums"
+              style={{
+                fontFamily: 'var(--yap-mono)',
+                color: i === 0 ? 'var(--slide-accent)' : undefined,
+                opacity: i === 0 ? 1 : 0.75,
+              }}
             >
               {new Intl.NumberFormat(locale).format(row.value)}
             </span>
