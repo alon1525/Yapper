@@ -460,6 +460,63 @@ body.yap-locked {
   animation: psGrain 1.2s steps(2) infinite;
 }
 
+/* ── The written deck's ground ──────────────────────────────────────────
+   A photo under a report slide drifts rather than sits: the design's second
+   deck pans every background by a few percent over eighteen seconds, which is
+   what makes a still photograph read as footage. Oversized by 6% on every edge
+   so the pan never shows a border. */
+@keyframes yapDrift {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(4%, 6%) scale(1.08);
+  }
+}
+
+.yap-drift {
+  animation: yapDrift 18s ease-in-out infinite;
+}
+
+/* The breaking-news ticker. One copy of the text, repeated by the markup so
+   the loop has no seam, scrolled by half its own width. */
+@keyframes yapTicker {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.yap-ticker {
+  animation: yapTicker 14s linear infinite;
+}
+
+/* The "live" dot on the same slide. */
+@keyframes yapBlink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.yap-blink {
+  animation: yapBlink 1.1s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .yap-drift,
+  .yap-ticker,
+  .yap-blink {
+    animation: none;
+  }
+}
+
 /* ── Onboarding ──────────────────────────────────────────────────────────
    One question per screen, so each panel announces itself with the same
    short rise rather than each step inventing its own entrance. */

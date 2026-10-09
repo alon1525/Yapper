@@ -240,6 +240,9 @@ export const EN = {
   'report.msgs': '{n} msgs',
   'report.patchNotes': 'Patch notes',
   'report.noted': 'Noted',
+  'report.suspects': '{n} suspects',
+  'report.live': 'Live',
+  'report.roastedBy': 'Roasted by Reg · tag the suspects',
 
   // ── The onboarding, from the second question onwards ────────────────────
   // The language card itself stays English: it is the question that decides

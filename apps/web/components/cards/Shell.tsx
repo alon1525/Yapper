@@ -107,6 +107,19 @@ export const BACKDROPS = {
     onAccent: '#221600',
     panel: 'rgb(246 239 228 / 0.08)',
   },
+  /**
+   * The paid report's ground. The design's second deck sits every written
+   * slide on the same near-black and lets a per-slide bloom supply the colour,
+   * so the colour rotation lives in `ReportGround` rather than here. White type;
+   * lime for the one accented thing on a slide.
+   */
+  night: {
+    bg: '#0B0B0F',
+    fg: '#FFFFFF',
+    accent: '#C9F24D',
+    onAccent: '#10130E',
+    panel: 'rgb(255 255 255 / 0.10)',
+  },
 } as const;
 
 export type Backdrop = keyof typeof BACKDROPS;
@@ -161,7 +174,7 @@ function isHebrew(node: ReactNode): boolean {
  * condensed Latin face beside a Hebrew word in a wide one reads as two fonts
  * arguing, and the one thing a poster must not do is argue with itself.
  */
-function posterFace(text: ReactNode, rtl: boolean): CSSProperties {
+export function posterFace(text: ReactNode, rtl: boolean): CSSProperties {
   const hebrew = rtl || isHebrew(text);
   return {
     fontFamily: hebrew ? 'var(--yap-heb)' : 'var(--yap-poster)',
@@ -188,14 +201,36 @@ export function slideVars(backdrop: Backdrop): CSSProperties {
   };
 }
 
+/**
+ * Where the column sits on the slide. The statistics deck centres everything;
+ * the written deck reads top-down like a page and bottom-up on its cover, the
+ * way the design's second deck does.
+ */
+export type SlideAlign = 'start' | 'center' | 'end';
+
+const ALIGN: Record<SlideAlign, string> = {
+  start: 'justify-start',
+  center: 'justify-center',
+  end: 'justify-end',
+};
+
 export function Slide({
   backdrop,
   photo,
+  align = 'center',
+  ground,
   children,
 }: {
   backdrop: Backdrop;
   /** Renders the reader's own photo behind the type, graded into this ground. */
   photo?: GroupSlot;
+  align?: SlideAlign;
+  /**
+   * Anything drawn under the column at the slide's full size — the written
+   * deck's bloom, grain and drifting photo. The column is `max-w-lg`, so a
+   * layer rendered inside it would stop at the column's edge.
+   */
+  ground?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -204,13 +239,14 @@ export function Slide({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.35 }}
-      className="yap-quiet-scroll absolute inset-0 flex flex-col justify-center overflow-y-auto px-7 pt-24 pb-24 sm:px-14"
+      className={`yap-quiet-scroll absolute inset-0 flex flex-col ${ALIGN[align]} overflow-y-auto px-7 pt-24 pb-24 sm:px-14`}
       style={slideVars(backdrop)}
     >
       {/* The ground is handed down rather than looked up, so the photo layer
           never has to know which slide it is on — it tints itself with whatever
           colour this slide already is. */}
       {photo && <SlidePhoto slot={photo} ground={BACKDROPS[backdrop].bg} />}
+      {ground}
       {/*
         The design frames every slide inside a 368px phone. On a 1440px desktop
         the same type at the same measure would be a wall, so the column stays
@@ -222,11 +258,19 @@ export function Slide({
   );
 }
 
-/** Small caps label. Names the category so the big type does not have to. */
+/**
+ * Small caps label. Names the category so the big type does not have to.
+ *
+ * A `div`, not a `p`: the written deck puts a face beside the name in it, and
+ * a face is a block.
+ */
 export function Eyebrow({ children }: { children: ReactNode }) {
   const { rtl } = useCopy();
   return (
-    <motion.p
+    <motion.div
+      // The written deck puts a model-written subtitle here, which may be in
+      // the chat's script rather than the report's.
+      dir="auto"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.1 }}
@@ -234,7 +278,7 @@ export function Eyebrow({ children }: { children: ReactNode }) {
       style={{ fontFamily: 'var(--yap-mono)' }}
     >
       {children}
-    </motion.p>
+    </motion.div>
   );
 }
 

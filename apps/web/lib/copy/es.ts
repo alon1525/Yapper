@@ -355,4 +355,7 @@ export const ES: Partial<Copy> = {
   'report.msgs': '{n} msjs.',
   'report.patchNotes': 'Notas de la versión',
   'report.noted': 'Anotado',
+  'report.suspects': '{n} sospechosos',
+  'report.live': 'En directo',
+  'report.roastedBy': 'Asado por Reg · etiqueta a los sospechosos',
 };

@@ -30,6 +30,7 @@ export function Deck({
   saved = null,
   onRestart,
   startWithSound = false,
+  startAt = 0,
 }: {
   stats: ChatStats;
   /**
@@ -46,6 +47,8 @@ export function Deck({
   onRestart: () => void;
   /** The reader arrived via a button that promised sound, which is the gesture. */
   startWithSound?: boolean;
+  /** Which slide to open on. The dev preview uses it to land on the paid deck. */
+  startAt?: number;
 }) {
   /* The report's language, chosen on the first question of the onboarding.
      Every slide reads it from context rather than being handed it, because a
@@ -129,14 +132,17 @@ export function Deck({
   const paid = useMemo(
     () =>
       report.state.phase === 'ready'
-        ? reportSlidesFor(report.state.deck.slides, report.state.deck.dictionary)
+        ? reportSlidesFor(report.state.deck.slides, report.state.deck.dictionary, {
+            groupName: stats.groupName,
+            participantCount: stats.people.length,
+          })
         : [],
-    [report.state],
+    [report.state, stats.groupName, stats.people.length],
   );
 
   const slides = free;
   const total = slides.length + 2 + paid.length; // + the wall + paid + final
-  const [index, setIndex] = useState(0);
+  const [index, setIndex] = useState(() => Math.min(Math.max(0, startAt), total - 1));
 
   const go = useCallback(
     (delta: number) => setIndex((i) => Math.min(total - 1, Math.max(0, i + delta))),
@@ -260,7 +266,12 @@ export function Deck({
             onUnlock={() => void report.run()}
           />
         ) : paidSlide ? (
-          <Slide key={paidSlide.id} backdrop={paidSlide.backdrop}>
+          <Slide
+            key={paidSlide.id}
+            backdrop={paidSlide.backdrop}
+            align={paidSlide.align}
+            ground={paidSlide.ground}
+          >
             {paidSlide.render()}
           </Slide>
         ) : (

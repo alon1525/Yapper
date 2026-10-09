@@ -235,6 +235,9 @@ export const HE: Partial<Copy> = {
   'report.msgs': '{n} הודעות',
   'report.patchNotes': 'הערות גרסה',
   'report.noted': 'נרשם',
+  'report.suspects': '{n} חשודים',
+  'report.live': 'שידור חי',
+  'report.roastedBy': 'נצלה על ידי רג · תייגו את החשודים',
 
   // ── The onboarding, from the second question onwards ────────────────────
   'ob.header': 'מכינים את הדוח שלכם',

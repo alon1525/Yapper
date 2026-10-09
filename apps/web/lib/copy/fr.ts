@@ -357,4 +357,7 @@ export const FR: Partial<Copy> = {
   'report.msgs': '{n} msgs',
   'report.patchNotes': 'Notes de version',
   'report.noted': 'Noté',
+  'report.suspects': '{n} suspects',
+  'report.live': 'En direct',
+  'report.roastedBy': 'Grillé par Reg · taguez les suspects',
 };

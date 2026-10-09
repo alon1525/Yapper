@@ -364,4 +364,7 @@ export const RU: Partial<Copy> = {
   'report.msgs': '{n} сообщ.',
   'report.patchNotes': 'Список изменений',
   'report.noted': 'Отмечено',
+  'report.suspects': '{n} подозреваемых',
+  'report.live': 'Прямой эфир',
+  'report.roastedBy': 'Прожарено Регом · отметьте подозреваемых',
 };

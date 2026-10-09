@@ -354,4 +354,7 @@ export const JA: Partial<Copy> = {
   'report.msgs': '{n}件',
   'report.patchNotes': 'パッチノート',
   'report.noted': 'メモ',
+  'report.suspects': '容疑者{n}人',
+  'report.live': 'ライブ',
+  'report.roastedBy': 'レグによるロースト · 容疑者をタグ付け',
 };
