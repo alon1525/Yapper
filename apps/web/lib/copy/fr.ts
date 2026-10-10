@@ -158,7 +158,7 @@ export const FR: Partial<Copy> = {
   'ob.photosDone': 'Terminé, au tour de Reg',
   'ob.optional': 'Facultatif',
   'ob.trail.notes': '{kind} · facultatif',
-  'ob.trail.upload': 'Rien n’est envoyé — Reg lit tout dans votre navigateur.',
+  'ob.trail.upload': 'Rien n’est envoyé, Reg lit tout dans votre navigateur.',
   'ob.trail.people': '{merges} doublons possibles · {unnamed} sans nom',
   'ob.trail.photos': '{people} personnes · {faces} avec un visage',
 
@@ -187,14 +187,14 @@ export const FR: Partial<Copy> = {
   'ob.notes.q': 'Question 3 sur 3',
   'ob.notes.title': 'Quelque chose que Reg devrait savoir ?',
   'ob.notes.lede':
-    'Blagues internes, surnoms, qui sort avec qui, l’incident dont personne ne parle. Passez et Reg devinera — mal, mais avec assurance.',
+    'Blagues internes, surnoms, qui sort avec qui, l’incident dont personne ne parle. Passez et Reg devinera, mal, mais avec assurance.',
   'ob.notes.placeholder':
     'ex. Dave ne répond jamais parce qu’il travaille de nuit. Ne parlez pas du camping.',
   'ob.notes.hint1': 'Surnoms',
   'ob.notes.hint2': 'Qui sort avec qui',
   'ob.notes.hint3': 'Rester correct',
   'ob.notes.privacy':
-    'Ce qui est écrit ici y reste jusqu’à ce que vous demandiez à Reg d’écrire. Les lignes gratuites partent avec chaque nom remplacé par un jeton ; le rapport payant est la seule exception — il part avec les vrais noms de votre groupe, et c’est ce qui fait qu’il parle de vous.',
+    'Ce qui est écrit ici y reste jusqu’à ce que vous demandiez à Reg d’écrire. Les lignes gratuites partent avec chaque nom remplacé par un jeton ; le rapport payant est la seule exception, il part avec les vrais noms de votre groupe, et c’est ce qui fait qu’il parle de vous.',
 
   'ob.upload.eyebrow': 'La seule partie pénible',
   'ob.upload.title': 'Exportez la conversation, puis déposez-la ici.',
@@ -204,15 +204,15 @@ export const FR: Partial<Copy> = {
   'ob.upload.wa2': 'Exporter la discussion → Sans médias',
   'ob.upload.wa2n': 'iPhone : Plus → Exporter la discussion. Android : Menu → Plus → Exporter.',
   'ob.upload.wa3': 'Envoyez-le-vous, puis apportez-le ici',
-  'ob.upload.wa3n': 'Fichiers, mail, Drive — n’importe où d’où vous pouvez le récupérer.',
+  'ob.upload.wa3n': 'Fichiers, mail, Drive, n’importe où d’où vous pouvez le récupérer.',
   'ob.upload.line1': 'Ouvrez la conversation, touchez le menu ☰',
   'ob.upload.line1n': 'En haut à droite, à côté de la loupe.',
   'ob.upload.line2': 'Réglages ⚙ → Exporter l’historique',
   'ob.upload.line2n': 'LINE enregistre toute la conversation en .txt. Aucun choix de médias.',
   'ob.upload.line3': 'Envoyez-le-vous, puis apportez-le ici',
-  'ob.upload.line3n': 'Keep, mail, fichiers — d’où vous pourrez récupérer le .txt.',
+  'ob.upload.line3n': 'Keep, mail, fichiers, d’où vous pourrez récupérer le .txt.',
   'ob.upload.drop': 'Déposez {file} ou le .zip',
-  'ob.upload.browse': 'ou cliquez pour parcourir — rien n’est envoyé',
+  'ob.upload.browse': 'ou cliquez pour parcourir, rien n’est envoyé',
   'ob.upload.waHint': 'Choisissez Sans médias : c’est plus rapide et Reg ne lit que le texte.',
   'ob.upload.lineHint':
     'LINE n’exporte que le texte, ce qui est tout ce que Reg voulait. Déposez le .txt tel quel.',
@@ -247,7 +247,7 @@ export const FR: Partial<Copy> = {
   'ob.people.chief': 'Roi du bavardage',
   'ob.people.ok': 'OK',
   'ob.people.count': '{n} messages · depuis {month}',
-  'ob.people.who': '{name} — qui est-ce ?',
+  'ob.people.who': '{name}, qui est-ce ?',
   'ob.people.name': 'Nom',
   'ob.people.nameFor': 'Nom de {name}',
 
@@ -281,7 +281,7 @@ export const FR: Partial<Copy> = {
   'ob.done.messages': 'Messages',
   'ob.done.people': 'Personnes',
   'ob.done.peopleValue': '{n} · {m} avec photo',
-  'ob.done.play': 'Écris-moi l’histoire — avec le son ♪',
+  'ob.done.play': 'Écris-moi l’histoire, avec le son ♪',
   'ob.done.wait': 'Un instant…',
   'ob.done.retry': 'Essayer un autre export',
   'ob.done.free':
@@ -302,7 +302,7 @@ export const FR: Partial<Copy> = {
   'wall.turn': 'À Reg de jouer',
   'wall.pitch': 'Jusqu’ici, on a compté. Maintenant, Reg écrit.',
   'wall.previewLede':
-    'Ça, c’en était une. Reg a tout le reste — et cette fois, il connaît vos prénoms.',
+    'Ça, c’en était une. Reg a tout le reste, et cette fois, il connaît vos prénoms.',
   'wall.sellCards': 'Un dossier sur chaque personne de cette conversation, les discrets compris',
   'wall.cards': '{n} personnes dans cette conversation. {n} dossiers.',
   'wall.tryFree': 'D’abord une histoire, gratuite',

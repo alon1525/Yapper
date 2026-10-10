@@ -71,7 +71,7 @@ export const EN = {
   'emoji.punchline':
     '{emoji} was used {count} times. No serious conversation here ever survived long enough to need a second one.',
   'emoji.punchlineRunnerUp':
-    '{emoji} was used {count} times — {times}× more than {other}. No serious conversation here ever survived long enough to need a second one.',
+    '{emoji} was used {count} times, {times}× more than {other}. No serious conversation here ever survived long enough to need a second one.',
 
   'chaos.eyebrow': 'Peak chaos',
   'chaos.unit': '{count} messages in one day',
@@ -103,7 +103,7 @@ export const EN = {
   'share.open': 'Make a share card',
   'share.title': 'Pick what to post',
   'share.lede':
-    'Each one is a 9:16 card, built on your device. Nothing is uploaded — the picture is made here and handed straight to whichever app you choose.',
+    'Each one is a 9:16 card, built on your device. Nothing is uploaded. The picture is made here and handed straight to whichever app you choose.',
   'share.count': '{n} selected',
   'share.none': 'Pick at least one',
   'share.share': 'Share',
@@ -164,19 +164,19 @@ export const EN = {
   'wall.pitch': 'Everything so far was counted. Now Reg writes.',
   'wall.eyebrow': 'That was the preview',
   'wall.previewLede':
-    'That was one. Reg has the rest — and this time he knows your names.',
+    'That was one. Reg has the rest. And this time he knows your names.',
   'wall.names':
-    'The full report is the one request that goes out with your group’s real names — without them it stays generic. Privacy says exactly what is sent.',
+    'The full report is the one request that goes out with your group’s real names. Without them it stays generic. Privacy says exactly what is sent.',
   'wall.unlock': 'Unlock the full roast',
   'wall.sellStories': 'Five moments from your history, written up with receipts',
-  'wall.sellCards': 'A case file on everyone in this chat — including the quiet ones',
+  'wall.sellCards': 'A case file on everyone in this chat, including the quiet ones',
   'wall.sellAwards': 'The full awards ceremony, one winner each',
   'wall.sellEras': 'Your years, one line at a time',
   'wall.cards': '{n} people in this chat. {n} case files.',
   'wall.tryFree': 'Try one story free first',
   'wall.freeNote': 'Free, and every name is swapped for a token before it leaves your browser.',
   'wall.noPayment':
-    'No payment is set up yet — this unlock is free while the product is being built.',
+    'No payment is set up yet. This unlock is free while the product is being built.',
   'wall.working': 'Reg is on it',
   'wall.ready': 'Unlocked',
   'wall.readyProse': 'It\u2019s written. Keep tapping.',
@@ -257,10 +257,10 @@ export const EN = {
   'ob.continue': 'Continue',
   'ob.waiting': 'Waiting for your file',
   'ob.namesOk': 'Names look right',
-  'ob.photosDone': 'Done — brief Reg',
+  'ob.photosDone': 'Done. Brief Reg',
   'ob.optional': 'Optional',
   'ob.trail.notes': '{kind} · optional',
-  'ob.trail.upload': 'Nothing is uploaded — Reg reads it in your browser.',
+  'ob.trail.upload': 'Nothing is uploaded. Reg reads it in your browser.',
   'ob.trail.people': '{merges} possible duplicates · {unnamed} unnamed',
   'ob.trail.photos': '{people} people · {faces} with a face',
 
@@ -289,14 +289,14 @@ export const EN = {
   'ob.notes.q': 'Question 3 of 3',
   'ob.notes.title': 'Anything Reg should know?',
   'ob.notes.lede':
-    'Inside jokes, nicknames, who is dating who, the incident nobody talks about. Skip it and Reg will guess — badly, but confidently.',
+    'Inside jokes, nicknames, who is dating who, the incident nobody talks about. Skip it and Reg will guess, badly, but confidently.',
   'ob.notes.placeholder':
     'e.g. Dave never replies because he works nights. Do not mention the camping trip.',
   'ob.notes.hint1': 'Nicknames',
   'ob.notes.hint2': 'Who is dating who',
   'ob.notes.hint3': 'Keep it clean',
   'ob.notes.privacy':
-    'Typed here, stays here until you ask Reg to write. The free lines go out with every name swapped for a token; the paid report is the one exception — it goes with your group’s real names, which is what makes it about them.',
+    'Typed here, stays here until you ask Reg to write. The free lines go out with every name swapped for a token; the paid report is the one exception: it goes with your group’s real names, which is what makes it about them.',
 
   'ob.upload.eyebrow': 'The only fiddly part',
   'ob.upload.title': 'Export the chat, then drop it here.',
@@ -306,16 +306,16 @@ export const EN = {
   'ob.upload.wa2': 'Tap Export chat → Without media',
   'ob.upload.wa2n': 'iPhone: More → Export Chat. Android: Menu → More → Export chat.',
   'ob.upload.wa3': 'Send it to yourself, then bring it here',
-  'ob.upload.wa3n': 'Save to Files, Mail, Drive — anywhere you can grab the file from.',
+  'ob.upload.wa3n': 'Save to Files, Mail, Drive. Anywhere you can grab the file from.',
   'ob.upload.line1': 'Open the chat, tap the ☰ menu',
   'ob.upload.line1n': 'Top right of the chat, next to the search glass.',
   'ob.upload.line2': 'Settings ⚙ → Export chat history',
   'ob.upload.line2n': 'LINE saves the whole chat as a .txt. There is no media option to choose.',
   'ob.upload.line3': 'Send it to yourself, then bring it here',
-  'ob.upload.line3n': 'Keep, Mail, Files — anywhere you can get the .txt back from.',
+  'ob.upload.line3n': 'Keep, Mail, Files. Anywhere you can get the .txt back from.',
   'ob.upload.drop': 'Drop {file} or the .zip',
-  'ob.upload.browse': 'or click to browse — nothing is uploaded',
-  'ob.upload.waHint': 'Choose Without media — it is faster and Reg only reads text anyway.',
+  'ob.upload.browse': 'or click to browse. Nothing is uploaded',
+  'ob.upload.waHint': 'Choose Without media. It is faster and Reg only reads text anyway.',
   'ob.upload.lineHint':
     'LINE exports the text and nothing else, which is all Reg wanted anyway. Drop the .txt exactly as it came.',
 
@@ -334,9 +334,9 @@ export const EN = {
   'ob.people.found': '{n} people found',
   'ob.people.title': 'Who is who?',
   'ob.people.ledeWa':
-    'These are the names WhatsApp gave Reg. Tap any name to edit it — fix the ones that are wrong, name the phone numbers, and merge anyone who shows up twice.',
+    'These are the names WhatsApp gave Reg. Tap any name to edit it. Fix the ones that are wrong, name the phone numbers, and merge anyone who shows up twice.',
   'ob.people.ledeLine':
-    'These are the names LINE gave Reg. Tap any name to edit it — fix the ones that are wrong, name the phone numbers, and merge anyone who shows up twice.',
+    'These are the names LINE gave Reg. Tap any name to edit it. Fix the ones that are wrong, name the phone numbers, and merge anyone who shows up twice.',
   'ob.people.mergeTitle': 'Reg thinks these are the same person',
   'ob.people.different': 'Different',
   'ob.people.merge': 'Merge',
@@ -349,7 +349,7 @@ export const EN = {
   'ob.people.chief': 'Chief yapper',
   'ob.people.ok': 'OK',
   'ob.people.count': '{n} messages · since {month}',
-  'ob.people.who': '{name} — who is this?',
+  'ob.people.who': '{name}, who is this?',
   'ob.people.name': 'Name',
   'ob.people.nameFor': 'Name for {name}',
 
@@ -359,7 +359,7 @@ export const EN = {
   'ob.photos.eyebrow': 'Last thing',
   'ob.photos.title': 'Give it faces.',
   'ob.photos.lede':
-    'Photos make the slides much funnier. They stay on your device — never uploaded, and never seen by Reg, who works from text only. Skip it and everyone gets a drawn animal instead.',
+    'Photos make the slides much funnier. They stay on your device, never uploaded, and never seen by Reg, who works from text only. Skip it and everyone gets a drawn animal instead.',
   'ob.photos.group': 'Group photos → slide backgrounds',
   'ob.photos.groupNote':
     'Four slides get a full-bleed photo, colour-graded into the slide so the type still wins. Drop one per slide, or fill the first and leave the rest.',
@@ -383,7 +383,7 @@ export const EN = {
   'ob.done.messages': 'Messages',
   'ob.done.people': 'People',
   'ob.done.peopleValue': '{n} · {m} with photos',
-  'ob.done.play': 'Write my story — with sound ♪',
+  'ob.done.play': 'Write my story, with sound ♪',
   'ob.done.wait': 'One moment…',
   'ob.done.retry': 'Try another export',
   'ob.done.free':

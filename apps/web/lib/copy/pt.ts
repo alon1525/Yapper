@@ -49,7 +49,7 @@ export const PT: Partial<Copy> = {
   'emoji.punchline':
     '{emoji} foi usado {count} vezes. Nenhuma conversa séria aqui durou o suficiente pra precisar de um segundo.',
   'emoji.punchlineRunnerUp':
-    '{emoji} foi usado {count} vezes — {times} vezes mais que {other}. Nenhuma conversa séria aqui durou o suficiente pra precisar de um segundo.',
+    '{emoji} foi usado {count} vezes, {times} vezes mais que {other}. Nenhuma conversa séria aqui durou o suficiente pra precisar de um segundo.',
 
   'chaos.eyebrow': 'Caos máximo',
   'chaos.unit': '{count} mensagens em um dia',
@@ -72,7 +72,7 @@ export const PT: Partial<Copy> = {
   'share.open': 'Criar um card',
   'share.title': 'Escolha o que postar',
   'share.lede':
-    'Cada um é um card 9:16 feito no seu aparelho. Nada é enviado — a imagem é criada aqui e vai direto pro app que você escolher.',
+    'Cada um é um card 9:16 feito no seu aparelho. Nada é enviado, a imagem é criada aqui e vai direto pro app que você escolher.',
   'share.count': '{n} selecionados',
   'share.none': 'Escolha pelo menos um',
   'share.share': 'Compartilhar',
@@ -154,10 +154,10 @@ export const PT: Partial<Copy> = {
   'ob.continue': 'Continuar',
   'ob.waiting': 'Esperando seu arquivo',
   'ob.namesOk': 'Os nomes estão certos',
-  'ob.photosDone': 'Pronto — passar pro Reg',
+  'ob.photosDone': 'Pronto, passar pro Reg',
   'ob.optional': 'Opcional',
   'ob.trail.notes': '{kind} · opcional',
-  'ob.trail.upload': 'Nada é enviado — o Reg lê tudo no seu navegador.',
+  'ob.trail.upload': 'Nada é enviado, o Reg lê tudo no seu navegador.',
   'ob.trail.people': '{merges} possíveis duplicados · {unnamed} sem nome',
   'ob.trail.photos': '{people} pessoas · {faces} com rosto',
 
@@ -186,14 +186,14 @@ export const PT: Partial<Copy> = {
   'ob.notes.q': 'Pergunta 3 de 3',
   'ob.notes.title': 'Algo que o Reg precise saber?',
   'ob.notes.lede':
-    'Piadas internas, apelidos, quem está com quem, o episódio que ninguém comenta. Pule e o Reg vai chutar — errado, mas com muita confiança.',
+    'Piadas internas, apelidos, quem está com quem, o episódio que ninguém comenta. Pule e o Reg vai chutar, errado, mas com muita confiança.',
   'ob.notes.placeholder':
     'ex.: o Dave nunca responde porque trabalha à noite. Não fale do acampamento.',
   'ob.notes.hint1': 'Apelidos',
   'ob.notes.hint2': 'Quem está com quem',
   'ob.notes.hint3': 'Manter limpo',
   'ob.notes.privacy':
-    'O que você escrever aqui fica aqui até você pedir para o Reg escrever. As linhas gratuitas vão com cada nome trocado por uma ficha; o relatório pago é a única exceção — ele vai com os nomes reais do grupo, que é o que faz ele ser sobre vocês.',
+    'O que você escrever aqui fica aqui até você pedir para o Reg escrever. As linhas gratuitas vão com cada nome trocado por uma ficha; o relatório pago é a única exceção, ele vai com os nomes reais do grupo, que é o que faz ele ser sobre vocês.',
 
   'ob.upload.eyebrow': 'A única parte chata',
   'ob.upload.title': 'Exporte o chat e solte aqui.',
@@ -203,15 +203,15 @@ export const PT: Partial<Copy> = {
   'ob.upload.wa2': 'Exportar conversa → Sem mídia',
   'ob.upload.wa2n': 'iPhone: Mais → Exportar conversa. Android: Menu → Mais → Exportar conversa.',
   'ob.upload.wa3': 'Mande pra você e traga aqui',
-  'ob.upload.wa3n': 'Arquivos, e-mail, Drive — de onde der pra pegar de volta.',
+  'ob.upload.wa3n': 'Arquivos, e-mail, Drive, de onde der pra pegar de volta.',
   'ob.upload.line1': 'Abra o chat e toque no menu ☰',
   'ob.upload.line1n': 'Canto superior direito, do lado da lupa.',
   'ob.upload.line2': 'Configurações ⚙ → Exportar histórico',
   'ob.upload.line2n': 'O LINE salva o chat inteiro como .txt. Não há opção de mídia.',
   'ob.upload.line3': 'Mande pra você e traga aqui',
-  'ob.upload.line3n': 'Keep, e-mail, arquivos — de onde der pra pegar o .txt de volta.',
+  'ob.upload.line3n': 'Keep, e-mail, arquivos, de onde der pra pegar o .txt de volta.',
   'ob.upload.drop': 'Solte {file} ou o .zip',
-  'ob.upload.browse': 'ou clique pra procurar — nada é enviado',
+  'ob.upload.browse': 'ou clique pra procurar, nada é enviado',
   'ob.upload.waHint': 'Escolha Sem mídia: é mais rápido e o Reg só lê texto mesmo.',
   'ob.upload.lineHint':
     'O LINE exporta só o texto, que é tudo que o Reg queria. Solte o .txt do jeito que veio.',
@@ -246,7 +246,7 @@ export const PT: Partial<Copy> = {
   'ob.people.chief': 'Rei da tagarelice',
   'ob.people.ok': 'OK',
   'ob.people.count': '{n} mensagens · desde {month}',
-  'ob.people.who': '{name} — quem é?',
+  'ob.people.who': '{name}, quem é?',
   'ob.people.name': 'Nome',
   'ob.people.nameFor': 'Nome de {name}',
 
@@ -280,7 +280,7 @@ export const PT: Partial<Copy> = {
   'ob.done.messages': 'Mensagens',
   'ob.done.people': 'Pessoas',
   'ob.done.peopleValue': '{n} · {m} com foto',
-  'ob.done.play': 'Escreve a minha história — com som ♪',
+  'ob.done.play': 'Escreve a minha história, com som ♪',
   'ob.done.wait': 'Um momento…',
   'ob.done.retry': 'Tentar outra exportação',
   'ob.done.free':

@@ -54,7 +54,7 @@ export const JA: Partial<Copy> = {
   'emoji.punchline':
     '{emoji}が{count}回。ここで真面目な会話が二つ目を必要とするまで続いたことはない。',
   'emoji.punchlineRunnerUp':
-    '{emoji}が{count}回 — {other}の{times}倍。ここで真面目な会話が二つ目を必要とするまで続いたことはない。',
+    '{emoji}が{count}回, {other}の{times}倍。ここで真面目な会話が二つ目を必要とするまで続いたことはない。',
 
   'chaos.eyebrow': '最大の混沌',
   'chaos.unit': '1日で{count}件',
@@ -157,7 +157,7 @@ export const JA: Partial<Copy> = {
   'ob.continue': '次へ',
   'ob.waiting': 'ファイルを待っています',
   'ob.namesOk': '名前はこれでいい',
-  'ob.photosDone': '完了 — レグに渡す',
+  'ob.photosDone': '完了, レグに渡す',
   'ob.optional': '任意',
   'ob.trail.notes': '{kind} · 任意',
   'ob.trail.upload': 'アップロードはなし。レグはブラウザの中で読みます。',
@@ -205,15 +205,15 @@ export const JA: Partial<Copy> = {
   'ob.upload.wa2': '「チャットをエクスポート」→「メディアなし」',
   'ob.upload.wa2n': 'iPhone: その他 → チャットをエクスポート。Android: メニュー → その他 → エクスポート。',
   'ob.upload.wa3': '自分に送って、ここに持ってくる',
-  'ob.upload.wa3n': 'ファイル、メール、ドライブ — 取り出せる場所ならどこでも。',
+  'ob.upload.wa3n': 'ファイル、メール、ドライブ, 取り出せる場所ならどこでも。',
   'ob.upload.line1': 'トークを開いて ☰ メニュー',
   'ob.upload.line1n': 'トーク画面の右上、検索の隣。',
   'ob.upload.line2': '設定 ⚙ → トーク履歴を送信',
   'ob.upload.line2n': 'LINEはトーク全体を.txtで保存します。メディアの選択肢はありません。',
   'ob.upload.line3': '自分に送って、ここに持ってくる',
-  'ob.upload.line3n': 'Keep、メール、ファイル — .txtを取り戻せる場所ならどこでも。',
+  'ob.upload.line3n': 'Keep、メール、ファイル, .txtを取り戻せる場所ならどこでも。',
   'ob.upload.drop': '{file} か .zip をここに',
-  'ob.upload.browse': 'クリックして選択 — アップロードはされません',
+  'ob.upload.browse': 'クリックして選択, アップロードはされません',
   'ob.upload.waHint': '「メディアなし」を選んでください。速いし、レグはどのみち文字しか読みません。',
   'ob.upload.lineHint':
     'LINEは文字だけを書き出します。レグが欲しいのもそれだけ。.txtをそのまま置いてください。',
@@ -248,7 +248,7 @@ export const JA: Partial<Copy> = {
   'ob.people.chief': 'おしゃべり王',
   'ob.people.ok': 'OK',
   'ob.people.count': '{n}件 · {month}から',
-  'ob.people.who': '{name} — これは誰?',
+  'ob.people.who': '{name}, これは誰?',
   'ob.people.name': '名前',
   'ob.people.nameFor': '{name} の名前',
 
@@ -282,7 +282,7 @@ export const JA: Partial<Copy> = {
   'ob.done.messages': 'メッセージ',
   'ob.done.people': '人数',
   'ob.done.peopleValue': '{n}人 · 写真あり{m}人',
-  'ob.done.play': '物語を書いてもらう — 音つき ♪',
+  'ob.done.play': '物語を書いてもらう, 音つき ♪',
   'ob.done.wait': '少々お待ちを…',
   'ob.done.retry': '別のファイルを試す',
   'ob.done.free':

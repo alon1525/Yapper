@@ -49,7 +49,7 @@ export const DE: Partial<Copy> = {
   'emoji.punchline':
     '{emoji} wurde {count}-mal benutzt. Kein ernstes Gespräch hat hier je lange genug gehalten, um ein zweites zu brauchen.',
   'emoji.punchlineRunnerUp':
-    '{emoji} wurde {count}-mal benutzt — {times}-mal so oft wie {other}. Kein ernstes Gespräch hat hier je lange genug gehalten, um ein zweites zu brauchen.',
+    '{emoji} wurde {count}-mal benutzt, {times}-mal so oft wie {other}. Kein ernstes Gespräch hat hier je lange genug gehalten, um ein zweites zu brauchen.',
 
   'chaos.eyebrow': 'Maximales Chaos',
   'chaos.unit': '{count} Nachrichten an einem Tag',
@@ -73,7 +73,7 @@ export const DE: Partial<Copy> = {
   'share.open': 'Karte erstellen',
   'share.title': 'Wähl aus, was du postest',
   'share.lede':
-    'Jede ist eine 9:16-Karte, gebaut auf deinem Gerät. Nichts wird hochgeladen — das Bild entsteht hier und geht direkt an die App, die du auswählst.',
+    'Jede ist eine 9:16-Karte, gebaut auf deinem Gerät. Nichts wird hochgeladen, das Bild entsteht hier und geht direkt an die App, die du auswählst.',
   'share.count': '{n} ausgewählt',
   'share.none': 'Wähl mindestens eine aus',
   'share.share': 'Teilen',
@@ -156,10 +156,10 @@ export const DE: Partial<Copy> = {
   'ob.continue': 'Weiter',
   'ob.waiting': 'Wartet auf eure Datei',
   'ob.namesOk': 'Die Namen stimmen',
-  'ob.photosDone': 'Fertig — Reg briefen',
+  'ob.photosDone': 'Fertig, Reg briefen',
   'ob.optional': 'Optional',
   'ob.trail.notes': '{kind} · optional',
-  'ob.trail.upload': 'Nichts wird hochgeladen — Reg liest es in eurem Browser.',
+  'ob.trail.upload': 'Nichts wird hochgeladen, Reg liest es in eurem Browser.',
   'ob.trail.people': '{merges} mögliche Dopplungen · {unnamed} ohne Namen',
   'ob.trail.photos': '{people} Leute · {faces} mit Gesicht',
 
@@ -188,14 +188,14 @@ export const DE: Partial<Copy> = {
   'ob.notes.q': 'Frage 3 von 3',
   'ob.notes.title': 'Sollte Reg etwas wissen?',
   'ob.notes.lede':
-    'Insider, Spitznamen, wer mit wem, der Vorfall, über den keiner redet. Überspringt es, und Reg rät — falsch, aber überzeugt.',
+    'Insider, Spitznamen, wer mit wem, der Vorfall, über den keiner redet. Überspringt es, und Reg rät, falsch, aber überzeugt.',
   'ob.notes.placeholder':
     'z. B. Dave antwortet nie, weil er nachts arbeitet. Die Campingsache bitte nicht erwähnen.',
   'ob.notes.hint1': 'Spitznamen',
   'ob.notes.hint2': 'Wer mit wem',
   'ob.notes.hint3': 'Jugendfrei bleiben',
   'ob.notes.privacy':
-    'Was hier steht, bleibt hier, bis ihr Reg ums Schreiben bittet. Die kostenlosen Zeilen gehen mit Platzhaltern statt Namen raus; der bezahlte Report ist die einzige Ausnahme — er geht mit den echten Namen eurer Gruppe raus, und genau das macht ihn zu einem Report über euch.',
+    'Was hier steht, bleibt hier, bis ihr Reg ums Schreiben bittet. Die kostenlosen Zeilen gehen mit Platzhaltern statt Namen raus; der bezahlte Report ist die einzige Ausnahme, er geht mit den echten Namen eurer Gruppe raus, und genau das macht ihn zu einem Report über euch.',
 
   'ob.upload.eyebrow': 'Der einzige fummelige Teil',
   'ob.upload.title': 'Chat exportieren, dann hier ablegen.',
@@ -205,15 +205,15 @@ export const DE: Partial<Copy> = {
   'ob.upload.wa2': 'Chat exportieren → Ohne Medien',
   'ob.upload.wa2n': 'iPhone: Mehr → Chat exportieren. Android: Menü → Mehr → Chat exportieren.',
   'ob.upload.wa3': 'An euch selbst schicken und hierher bringen',
-  'ob.upload.wa3n': 'Dateien, Mail, Drive — überall, wo ihr sie wieder herbekommt.',
+  'ob.upload.wa3n': 'Dateien, Mail, Drive, überall, wo ihr sie wieder herbekommt.',
   'ob.upload.line1': 'Chat öffnen, auf das ☰ Menü tippen',
   'ob.upload.line1n': 'Oben rechts im Chat, neben der Lupe.',
   'ob.upload.line2': 'Einstellungen ⚙ → Chatverlauf exportieren',
   'ob.upload.line2n': 'LINE speichert den ganzen Chat als .txt. Eine Medienoption gibt es nicht.',
   'ob.upload.line3': 'An euch selbst schicken und hierher bringen',
-  'ob.upload.line3n': 'Keep, Mail, Dateien — überall, wo ihr die .txt wiederfindet.',
+  'ob.upload.line3n': 'Keep, Mail, Dateien, überall, wo ihr die .txt wiederfindet.',
   'ob.upload.drop': '{file} oder die .zip hier ablegen',
-  'ob.upload.browse': 'oder klicken zum Auswählen — nichts wird hochgeladen',
+  'ob.upload.browse': 'oder klicken zum Auswählen, nichts wird hochgeladen',
   'ob.upload.waHint': 'Nehmt Ohne Medien: schneller, und Reg liest ohnehin nur Text.',
   'ob.upload.lineHint':
     'LINE exportiert nur den Text, und mehr wollte Reg nie. Legt die .txt genau so ab, wie sie kam.',
@@ -248,7 +248,7 @@ export const DE: Partial<Copy> = {
   'ob.people.chief': 'Quasselkönig',
   'ob.people.ok': 'OK',
   'ob.people.count': '{n} Nachrichten · seit {month}',
-  'ob.people.who': '{name} — wer ist das?',
+  'ob.people.who': '{name}, wer ist das?',
   'ob.people.name': 'Name',
   'ob.people.nameFor': 'Name für {name}',
 
@@ -258,7 +258,7 @@ export const DE: Partial<Copy> = {
   'ob.photos.eyebrow': 'Eine letzte Sache',
   'ob.photos.title': 'Gebt dem Ganzen Gesichter.',
   'ob.photos.lede':
-    'Fotos machen die Slides deutlich lustiger. Sie bleiben auf eurem Gerät — nie hochgeladen und nie von Reg gesehen, der nur mit Text arbeitet. Überspringt es, und alle bekommen stattdessen ein gezeichnetes Tier.',
+    'Fotos machen die Slides deutlich lustiger. Sie bleiben auf eurem Gerät, nie hochgeladen und nie von Reg gesehen, der nur mit Text arbeitet. Überspringt es, und alle bekommen stattdessen ein gezeichnetes Tier.',
   'ob.photos.group': 'Gruppenfotos → Slide-Hintergründe',
   'ob.photos.groupNote':
     'Vier Slides bekommen ein randloses Foto, in die Farbe des Slides eingefärbt, damit die Schrift trotzdem gewinnt. Eins pro Slide, oder nur das erste.',
@@ -282,7 +282,7 @@ export const DE: Partial<Copy> = {
   'ob.done.messages': 'Nachrichten',
   'ob.done.people': 'Leute',
   'ob.done.peopleValue': '{n} · {m} mit Foto',
-  'ob.done.play': 'Schreib mir die Geschichte — mit Ton ♪',
+  'ob.done.play': 'Schreib mir die Geschichte, mit Ton ♪',
   'ob.done.wait': 'Einen Moment…',
   'ob.done.retry': 'Anderen Export versuchen',
   'ob.done.free':
@@ -298,18 +298,18 @@ export const DE: Partial<Copy> = {
   'final.saving': 'Wird gespeichert…',
   'final.saved': 'Auf diesem Gerät behalten. Du findest ihn auf der Startseite unter My reports.',
   'final.saveFailed':
-    'Konnte nicht gespeichert werden — dieser Browser blockiert den Speicher der Seite.',
+    'Konnte nicht gespeichert werden, dieser Browser blockiert den Speicher der Seite.',
 
   'wall.turn': 'Reg ist dran',
   'wall.pitch': 'Bis hierhin wurde gezählt. Jetzt schreibt Reg.',
-  'wall.previewLede': 'Das war eine. Reg hat den Rest — und diesmal kennt er eure Namen.',
-  'wall.sellCards': 'Eine Akte über jede Person in diesem Chat — auch die stillen',
+  'wall.previewLede': 'Das war eine. Reg hat den Rest, und diesmal kennt er eure Namen.',
+  'wall.sellCards': 'Eine Akte über jede Person in diesem Chat, auch die stillen',
   'wall.cards': '{n} Leute in diesem Chat. {n} Akten.',
   'wall.tryFree': 'Erst eine Geschichte gratis',
   'wall.freeNote':
     'Kostenlos, und jeder Name wird durch einen Platzhalter ersetzt, bevor etwas den Browser verlässt.',
   'wall.noPayment':
-    'Es ist noch keine Bezahlung eingerichtet — solange das Produkt gebaut wird, ist das Freischalten gratis.',
+    'Es ist noch keine Bezahlung eingerichtet, solange das Produkt gebaut wird, ist das Freischalten gratis.',
   'wall.working': 'Reg ist dabei',
   'wall.ready': 'Freigeschaltet',
   'wall.readyProse': 'Steht geschrieben. Weitertippen.',

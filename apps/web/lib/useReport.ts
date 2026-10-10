@@ -26,6 +26,7 @@ import {
   type WrittenDeck,
 } from '@wrapped/core';
 import type { Brief } from './brief';
+import { plainCopy, plainSlide } from './reportLines';
 import { buildDetectivePayload } from './detectivePayload';
 import type { Analysis } from './useAnalyzer';
 
@@ -351,9 +352,14 @@ export function useReport(
 
       const deck: ReportDeck = {
         // Names go back on here, in the browser. The server never held the map.
-        // The verdicts are thinned first: see `dedupeVerdicts`.
-        slides: restoreDeep(dedupeVerdicts(slides), pseudonymizer),
-        dictionary: restoreDeep(dictionary.kept, pseudonymizer),
+        // The verdicts are thinned first: see `dedupeVerdicts`. Reg's own lines
+        // lose their dashes last; see `plainSlide`.
+        slides: restoreDeep(dedupeVerdicts(slides), pseudonymizer).map(plainSlide),
+        dictionary: restoreDeep(dictionary.kept, pseudonymizer).map((entry) => ({
+          ...entry,
+          definition: plainCopy(entry.definition),
+          origin: plainCopy(entry.origin),
+        })),
         audit: {
           suppressed: plan.suppressed,
           rejectedFindings,

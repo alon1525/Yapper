@@ -1,3 +1,5 @@
+import type { Slide } from '@wrapped/core';
+
 /**
  * Reading the writer's `body` back into the pieces a slide draws.
  *
@@ -8,6 +10,32 @@
  * back out here is the cheaper half of that trade, and it is pure so it can be
  * tested without a renderer.
  */
+
+/**
+ * Copy without the long dash.
+ *
+ * The writer is told not to use one and uses one anyway: it is the single
+ * most recognisable tell of a model's prose, and readers named it. So every
+ * line Reg writes goes through this on the way to the screen. A dash between
+ * two numbers is a range and becomes a hyphen; a dash opening a line was a
+ * bullet and goes; any other is a pause, and a comma is what a person would
+ * have typed. Line breaks are kept, because several formats are one item per
+ * line. Quotes never come through here: those are the group's own words.
+ */
+export function plainCopy(text: string): string {
+  return text
+    .split('\n')
+    .map((line) =>
+      line
+        .replace(/(\d)\s*[—–]\s*(\d)/g, '$1-$2')
+        .replace(/^\s*[—–]\s*/, '')
+        .replace(/\s*[—–]\s*$/, '')
+        .replace(/\s*[—–]+\s*/g, ', ')
+        .replace(/,\s*([.,!?:;])/g, '$1')
+        .replace(/,\s*,/g, ','),
+    )
+    .join('\n');
+}
 
 /** Splits a body into its non-empty lines. */
 export function lines(body: string): string[] {
@@ -166,4 +194,21 @@ export function timelineLines(body: string): { date: string | null; beat: string
     const { label, value } = splitLabel(line);
     return { date: label, beat: value };
   });
+}
+
+/**
+ * Every line Reg wrote on a slide, without the long dash. The quotes and the
+ * verdict values are left exactly as they are: the quotes are the group's own
+ * words, and a value like `45–700` is a range the joke depends on.
+ */
+export function plainSlide(slide: Slide): Slide {
+  return {
+    ...slide,
+    title: plainCopy(slide.title),
+    subtitle: plainCopy(slide.subtitle),
+    body: plainCopy(slide.body),
+    closer: plainCopy(slide.closer ?? ''),
+    shareCaption: plainCopy(slide.shareCaption),
+    jokeScores: (slide.jokeScores ?? []).map((v) => ({ ...v, label: plainCopy(v.label) })),
+  };
 }

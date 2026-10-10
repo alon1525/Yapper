@@ -4,10 +4,12 @@ import { motion } from 'framer-motion';
 import { Fragment, useState, type ReactNode } from 'react';
 import type { DictionaryEntry, Quote, Slide as SlideModel } from '@wrapped/core';
 import { useCopy } from '@/lib/copy';
+import { day } from '@/lib/localFormat';
 import {
   courtLines,
   lines,
   orgLines,
+  plainSlide,
   rankingLines,
   receiptLine,
   splitLabel,
@@ -113,12 +115,10 @@ function Receipts({ quotes }: { quotes: Quote[] }) {
         >
           {quotes.map((quote, i) => (
             <Fragment key={`${quote.messageId}-${quote.text.slice(0, 12)}`}>
+              <Said quote={quote} side={i % 2 ? 'end' : 'start'} />
               <Bubble side={i % 2 ? 'end' : 'start'} delay={0.05 * i}>
-                {quote.text}
+                “{quote.text}”
               </Bubble>
-              <Mono dir="ltr" className={`text-[9px] opacity-50 ${i % 2 ? 'self-end' : 'self-start'}`}>
-                {quote.speaker} · {quote.date}
-              </Mono>
             </Fragment>
           ))}
         </motion.div>
@@ -127,7 +127,28 @@ function Receipts({ quotes }: { quotes: Quote[] }) {
   );
 }
 
-/** One quotation as a message bubble, with who sent it underneath. */
+/**
+ * Who said it and when, above the words. Their face, their name and a date a
+ * person would write, so nobody has to work out whose line this is. It used
+ * to be a mono stamp under the bubble, `TURTLE · 2023-09-03`, which read as
+ * metadata rather than as somebody talking.
+ */
+function Said({ quote, side = 'start' }: { quote: Quote; side?: 'start' | 'end' }) {
+  const copy = useCopy();
+  return (
+    <div
+      className={`flex items-center gap-1.5 text-[12px] opacity-75 ${side === 'end' ? 'self-end' : 'self-start'}`}
+    >
+      <Portrait name={quote.speaker} size={18} />
+      <span dir="auto" className="font-semibold">
+        {quote.speaker}
+      </span>
+      <span className="opacity-70">· {day(copy, quote.date)}</span>
+    </div>
+  );
+}
+
+/** One quotation as a message bubble, with who sent it above. */
 function PulledQuote({
   quote,
   tone,
@@ -140,16 +161,11 @@ function PulledQuote({
   delay?: number;
 }) {
   return (
-    <div className="mt-4 flex flex-col gap-1">
-      <Bubble side={side} tone={side === 'end' ? tone : 'glass'} delay={delay}>
-        {quote.text}
+    <div className="mt-4 flex flex-col gap-1.5">
+      <Said quote={quote} side={side} />
+      <Bubble side={side} tone={side === 'end' ? tone : 'glass'} delay={delay} className="text-[14px]">
+        “{quote.text}”
       </Bubble>
-      <Mono
-        dir="ltr"
-        className={`text-[9px] opacity-50 ${side === 'end' ? 'self-end' : 'self-start'}`}
-      >
-        {quote.speaker} · {quote.date}
-      </Mono>
     </div>
   );
 }
@@ -1289,7 +1305,9 @@ export function reportSlidesFor(
   let previous: Tone | null = null;
   let rotation = 0;
 
-  for (const slide of slides) {
+  // Reg's lines without the long dash, for decks saved before it was taken
+  // out on the way in. See `plainCopy`.
+  for (const slide of slides.map(plainSlide)) {
     if (slide.format === 'profile') {
       const exhibit = { n: ++dossier, of: dossiers };
       out.push({

@@ -2,12 +2,30 @@ import { describe, expect, it } from 'vitest';
 import {
   courtLines,
   orgLines,
+  plainCopy,
   rankingLines,
   receiptLine,
   splitLabel,
   splitTitle,
   timelineLines,
 } from '@/lib/reportLines';
+
+describe('plainCopy', () => {
+  it('turns a pause dash into a comma and a range into a hyphen', () => {
+    expect(plainCopy('He said he was coming — he was not.')).toBe('He said he was coming, he was not.');
+    expect(plainCopy('Nine years—and counting')).toBe('Nine years, and counting');
+    expect(plainCopy('From 2017–2026')).toBe('From 2017-2026');
+  });
+
+  it('drops a dash used as a bullet or a trailing flourish, and keeps the lines', () => {
+    expect(plainCopy('— first\n– second —')).toBe('first\nsecond');
+    expect(plainCopy('Wait for it —.')).toBe('Wait for it.');
+  });
+
+  it('leaves an ordinary hyphen alone', () => {
+    expect(plainCopy('A read-only member')).toBe('A read-only member');
+  });
+});
 
 describe('splitLabel', () => {
   it('reads a short label off the front of a line', () => {

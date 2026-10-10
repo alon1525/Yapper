@@ -283,7 +283,7 @@ describe('the writer is boxed in', () => {
         ],
         evidence: {},
       }),
-    ).toContain('no figures for this slide — do not introduce any.');
+    ).toContain('no figures for this slide, do not introduce any.');
   });
 
   it('is handed the measurements as material, and the register it was asked for', () => {
