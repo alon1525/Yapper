@@ -111,7 +111,7 @@ export function Landing({
   onCancel: () => void;
   stats: ChatStats | null;
   freeCount: number;
-  /** Reports kept in this browser. The strip and its nav link exist only when there are some. */
+  /** Reports kept in this browser. The shelf says so when there are none. */
   saved?: SavedReportSummary[];
   onOpenSaved?: (id: string) => void;
   onDeleteSaved?: (id: string) => void;
@@ -196,32 +196,33 @@ export function Landing({
             by Reg
           </div>
         </div>
+        {/* Two things, because a returning reader wants exactly two things:
+            what they already made, and to make another. The pitch sections
+            are still on the page; they are not in the nav. */}
         <div
           style={{ display: 'flex', alignItems: 'center', gap: 22, fontSize: 13, color: '#5E5344' }}
         >
-          {saved.length > 0 && (
-            <a className="yap-nav-links" href="#reports">
-              My reports
-            </a>
-          )}
-          <a className="yap-nav-links" href="#how">
-            How it works
+          <a className="yap-nav-links" href="#reports">
+            My reports
           </a>
-          <a className="yap-nav-links" href="#preview">
-            See a sample
-          </a>
-          <a
-            href="#upload"
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="yap-press"
             style={{
+              border: 0,
+              cursor: 'pointer',
               background: '#1D3A2A',
               color: '#F3EADA',
+              fontFamily: 'var(--yap-sans)',
+              fontSize: 13,
               padding: '9px 18px',
               borderRadius: 999,
               fontWeight: 500,
             }}
           >
             Get yapped →
-          </a>
+          </button>
         </div>
       </div>
 
@@ -369,7 +370,8 @@ export function Landing({
       {/* ── My reports ─────────────────────────────────────────────────── */}
       {/* Under the hero and above the pitch: a returning reader came back for
           this, and should not have to scroll past how the product works to
-          find what they already made. Renders nothing when nothing is kept. */}
+          find what they already made. With nothing kept it says where a report
+          would come from, so the nav link always lands somewhere. */}
       <MyReports
         reports={saved}
         onOpen={(id) => onOpenSaved?.(id)}

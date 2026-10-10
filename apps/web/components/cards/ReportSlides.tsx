@@ -8,10 +8,12 @@ import {
   courtLines,
   lines,
   orgLines,
+  rankingLines,
   receiptLine,
   splitLabel,
   splitTitle,
   timelineLines,
+  unbullet,
 } from '@/lib/reportLines';
 import { DossierSlide } from './DossierSlide';
 import { Portrait } from './photos';
@@ -242,6 +244,7 @@ function OpeningSlide({
 }) {
   const copy = useCopy();
   const total = slide.stats.find((s) => typeof s.value === 'number');
+  const beats = lines(slide.body).map(unbullet).map((l) => l.replace(/^\d+[.)]\s*/, ''));
 
   return (
     <>
@@ -275,11 +278,111 @@ function OpeningSlide({
         <Title title={slide.title} tone="white" size="md" stamp delay={0.35} />
       </div>
 
-      {slide.body && (
-        <Prose delay={0.7} className="mt-5 max-w-[28ch] text-[15.5px]">
-          {slide.body}
-        </Prose>
+      {/* The executive summary: three numbered lines, for the ones who will
+          not read the rest. A single-line body is still just the line. */}
+      {beats.length > 1 ? (
+        <ol className="mt-5 flex flex-col gap-2">
+          {beats.map((beat, i) => (
+            <motion.li key={i} {...upSm(0.6 + i * 0.15)} className="flex gap-2.5">
+              <span
+                dir="ltr"
+                className="shrink-0 pt-[2px] text-[13px] leading-none"
+                style={{ fontFamily: 'var(--yap-poster)', color: NIGHT[tone] }}
+              >
+                {i + 1}
+              </span>
+              <span dir="auto" className="text-[14.5px] leading-[1.45]" style={{ textWrap: 'pretty' }}>
+                {beat}
+              </span>
+            </motion.li>
+          ))}
+        </ol>
+      ) : (
+        slide.body && (
+          <Prose delay={0.7} className="mt-5 max-w-[28ch] text-[15.5px]">
+            {slide.body}
+          </Prose>
+        )
       )}
+      {slide.closer && (
+        <Narration size="sm" delay={0.7 + beats.length * 0.15} className="mt-4 opacity-80">
+          {slide.closer}
+        </Narration>
+      )}
+    </>
+  );
+}
+
+/**
+ * The final rankings. Everyone on a podium the writer built, one line each,
+ * and the key takeaway on a note. The last slide, and the one they argue
+ * about in the chat afterwards.
+ */
+function RankingsSlide({ slide, tone }: { slide: SlideModel; tone: Tone }) {
+  const copy = useCopy();
+  const rows = rankingLines(slide.body);
+  const isPerson = (name: string | null) => name !== null && slide.people.includes(name);
+
+  return (
+    <>
+      <Eyebrow>{copy.t('report.rankings')}</Eyebrow>
+      <motion.div {...up(0.1)}>
+        <Poster size="md">{slide.title}</Poster>
+      </motion.div>
+
+      <ol className="mt-4 flex flex-col">
+        {rows.map((row, i) => (
+          <motion.li
+            key={i}
+            {...slideIn(0.25 + i * 0.09, copy.rtl)}
+            className="flex items-start gap-2.5 border-b py-2"
+            style={{ borderColor: 'rgb(255 255 255 / 0.12)' }}
+          >
+            <span
+              dir="ltr"
+              className="w-7 shrink-0 pt-[1px] text-[22px] leading-none"
+              style={{
+                fontFamily: 'var(--yap-poster)',
+                color: i === 0 ? NIGHT[tone] : 'rgb(255 255 255 / 0.45)',
+              }}
+            >
+              {i + 1}
+            </span>
+            {isPerson(row.name) && (
+              <span className="pt-[1px]">
+                <Portrait name={row.name!} size={i === 0 ? 30 : 24} />
+              </span>
+            )}
+            <div className="min-w-0 flex-1">
+              {row.name && (
+                <div
+                  dir="auto"
+                  className="truncate text-[18px] leading-none"
+                  style={{ ...posterFace(row.name, copy.rtl), color: i === 0 ? NIGHT[tone] : undefined }}
+                >
+                  {row.name}
+                </div>
+              )}
+              <p
+                dir="auto"
+                className={`${row.name ? 'mt-1' : ''} text-[13.5px] leading-[1.4] opacity-85`}
+                style={{ textWrap: 'pretty' }}
+              >
+                {row.line}
+              </p>
+            </div>
+          </motion.li>
+        ))}
+      </ol>
+
+      {slide.closer && (
+        <div className="mt-4">
+          <Note tone="orange" delay={0.3 + rows.length * 0.09}>
+            {slide.closer}
+          </Note>
+        </div>
+      )}
+      <Receipts quotes={slide.quotes} />
     </>
   );
 }
@@ -1095,6 +1198,7 @@ export function ReportSlide({
   context?: Context;
 }) {
   if (slide.format === 'profile') return <DossierSlide slide={slide} exhibit={exhibit} />;
+  if (slide.format === 'rankings') return <RankingsSlide slide={slide} tone={tone} />;
   if (slide.type === 'opening') return <OpeningSlide slide={slide} tone={tone} group={context} />;
   if (slide.type === 'finale') return <FinaleSlide slide={slide} tone={tone} />;
 
@@ -1161,6 +1265,7 @@ const DRESS: Partial<Record<SlideModel['format'], Dress>> = {
   leaderboard: { tone: 'orange', at: 'left' },
   timeline: { tone: 'violet', at: 'right' },
   receipt: { tone: 'lime', at: 'bottom' },
+  rankings: { tone: 'sun', at: 'left' },
 };
 
 const BLOOM_AT: readonly BloomAt[] = ['bottom', 'top', 'right', 'left'];
@@ -1202,6 +1307,8 @@ export function reportSlidesFor(
     let dress: Dress;
     if (slide.type === 'opening') {
       dress = { tone: 'lime', at: 'bottom', align: 'end', photo: 'opener' };
+    } else if (slide.format === 'rankings') {
+      dress = { ...DRESS.rankings! };
     } else if (slide.type === 'finale') {
       dress = { tone: 'pink', at: 'bottom', align: 'end', photo: 'verdict' };
     } else if (DRESS[slide.format]) {

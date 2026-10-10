@@ -384,34 +384,45 @@ function arrivalThread(t: Transcript, claims: readonly number[], budget: number)
  * deck is wearing, and the starting point rotates per chat so two groups do not
  * get the same costume on the same slide.
  */
+/*
+  Four costumes are no longer on any menu: the court case, the scientific
+  report, the org chart and the patch notes. Each one was a fill-in-the-blanks
+  form ("Charge:", "Evidence:", "Verdict:", "Fixed:", "CEO:") and a form is
+  the thing readers meant when they said the deck read like a template. The
+  shapes that survive are frames for a line in somebody's own voice, not
+  slots for labels. The formats still exist in the schema and the renderer,
+  so a deck saved in one of them still plays.
+*/
 const STAT_SHAPES: Record<string, SlideFormat[]> = {
   'stat-opening': ['plain'],
   'stat-ghost': ['eulogy', 'breaking_news', 'documentary', 'plain'],
-  'stat-night-owl': ['documentary', 'scientific_report', 'plain'],
-  'stat-reply-speed': ['scientific_report', 'breaking_news', 'plain'],
-  'stat-killer': ['court_case', 'eulogy', 'plain'],
-  'stat-monologue': ['court_case', 'documentary', 'receipt', 'timeline'],
-  'stat-ping-pong': ['documentary', 'plain', 'scientific_report'],
-  'stat-media': ['receipt', 'patch_notes'],
-  'stat-deleted': ['court_case', 'breaking_news', 'eulogy'],
+  'stat-night-owl': ['documentary', 'plain'],
+  'stat-reply-speed': ['breaking_news', 'documentary', 'plain'],
+  'stat-killer': ['eulogy', 'receipt', 'plain'],
+  'stat-monologue': ['documentary', 'receipt', 'timeline'],
+  'stat-ping-pong': ['documentary', 'plain'],
+  'stat-duo': ['leaderboard', 'plain'],
+  'stat-media': ['receipt', 'plain'],
+  'stat-deleted': ['breaking_news', 'eulogy', 'receipt'],
   'stat-chaos-day': ['breaking_news', 'timeline', 'receipt'],
   'stat-silence': ['eulogy', 'breaking_news', 'plain'],
   'stat-signatures': ['dictionary_entry'],
-  'stat-arrivals': ['documentary', 'timeline', 'court_case'],
+  'stat-arrivals': ['documentary', 'timeline', 'receipt'],
+  'stat-rankings': ['rankings'],
 };
 
 /** Which shapes suit which kind of finding, best fit first. */
 const SHAPES_FOR_KIND: Record<string, SlideFormat[]> = {
-  group_identity: ['plain', 'scientific_report'],
-  recurring_topic: ['plain', 'scientific_report', 'receipt'],
+  group_identity: ['plain', 'documentary'],
+  recurring_topic: ['plain', 'receipt'],
   member_persona: ['plain'],
   inside_joke: ['dictionary_entry'],
-  contradiction: ['court_case', 'breaking_news', 'plain'],
-  failed_plan: ['timeline', 'eulogy', 'patch_notes'],
+  contradiction: ['breaking_news', 'timeline', 'plain'],
+  failed_plan: ['timeline', 'eulogy', 'receipt'],
   legendary_moment: ['breaking_news', 'documentary', 'plain'],
   nostalgic_moment: ['timeline', 'documentary'],
   prediction_aged_badly: ['documentary', 'breaking_news', 'plain'],
-  relationship_dynamic: ['company_structure', 'documentary', 'plain'],
+  relationship_dynamic: ['documentary', 'plain'],
   custom_slide: ['plain'],
 };
 
@@ -526,10 +537,14 @@ function statSlides(input: PlanInput, t: Transcript | null): Candidate[] {
       type: 'opening',
       angle:
         'The first slide after they paid, and it has to prove the whole chat was read. ' +
-        'Say what this group is actually for in practice — take it from THIS GROUP above, ' +
-        'the way the investigation read it — in a line the members would recognise as theirs. ' +
-        'The totals are the punchline, not the content: hang them off the observation. ' +
-        'Not a dashboard, not a summary, no "this group is more than".',
+        'An executive summary for the ones who will not read the rest: `title` is one line ' +
+        'saying what this group is actually for in practice, taken from THIS GROUP above the ' +
+        'way the investigation read it, in words the members would recognise as theirs. ' +
+        '`body` is three numbered lines, one sentence each, each the single most damning true ' +
+        'thing about a named person or about the group, from the findings quoted below where ' +
+        'there are any and from the figures where there are not. `closer` is one line saying ' +
+        'everything that follows is the working. ' +
+        'Not a dashboard, not a summary of the chat, no "this group is more than".',
       stats: [
         { label: 'Messages', value: stats.totalMessages },
         { label: 'Days spoken on', value: stats.span.activeDays },
@@ -756,7 +771,64 @@ function statSlides(input: PlanInput, t: Transcript | null): Candidate[] {
       strength: 0.8,
       quoteBudget: 14,
     },
-    thin ?? (!pair ? 'no pair talks mainly to each other' : null),
+    thin ??
+      (!pair
+        ? 'no pair talks mainly to each other'
+        : people.length === 2
+          ? 'the pair is the whole chat'
+          : null),
+  );
+
+  /* --- the two of them ---------------------------------------------- */
+  /*
+    A chat of two has no group to rank anyone against, and the slides above
+    that compare a person to the rest of the room compare them to one other
+    person. What a couple, or two best friends, actually want to know is the
+    balance: who opens, who waits, who sends the second message when the
+    first got nothing. The figures for that already exist per person; this is
+    the slide that puts the two side by side.
+  */
+  const duo = people.length === 2 ? ([people[0]!, people[1]!] as const) : null;
+  const minutes = (ms: number | null) => (ms === null ? null : Math.round(ms / 60000));
+  const waited = (a: PersonStats, b: PersonStats): Stat[] => {
+    // How long A waited is how long B took to reply.
+    const wait = minutes(b.medianResponseMs);
+    return wait === null ? [] : [{ label: `How long ${token(a.name)} usually waited for a reply, minutes`, value: wait }];
+  };
+  add(
+    {
+      id: 'stat-duo',
+      type: 'stat',
+      angle: duo
+        ? `${token(duo[0].name)} and ${token(duo[1].name)} are the whole chat, so the only question is the balance between them: who opens the conversation, who is left waiting, who sends the second message when the first got no answer. The figures below are that balance. Say who is carrying this and what it costs them, in their own words where the material has them.`
+        : 'More than two people here.',
+      stats: duo
+        ? [
+            { label: `Conversations ${token(duo[0].name)} opened`, value: duo[0].conversationsStarted },
+            { label: `Conversations ${token(duo[1].name)} opened`, value: duo[1].conversationsStarted },
+            ...waited(duo[0], duo[1]),
+            ...waited(duo[1], duo[0]),
+            { label: `Times ${token(duo[0].name)} double-texted`, value: duo[0].doubleTexts },
+            { label: `Times ${token(duo[1].name)} double-texted`, value: duo[1].doubleTexts },
+          ]
+        : [],
+      people: duo ? [token(duo[0].name), token(duo[1].name)] : [],
+      // The quickest replies in the chat, so the writer has the texture of
+      // the fast one answering the slow one, or the other way round.
+      evidenceMessageIds:
+        duo && t
+          ? quickReplies(
+              t,
+              (duo[0].medianResponseMs ?? Infinity) <= (duo[1].medianResponseMs ?? Infinity)
+                ? duo[0].name
+                : duo[1].name,
+              6,
+            )
+          : [],
+      strength: 0.85,
+      quoteBudget: 6,
+    },
+    thin ?? (!duo ? 'not a two-person chat' : null),
   );
 
   /* --- media -------------------------------------------------------- */
@@ -1222,6 +1294,7 @@ export function planDeck(input: PlanInput, options: PlanOptions = {}): DeckPlan 
   const personaCandidates = personaSlides(input, maxPersonaSlides);
   const customCandidates = customSlides(input, floor);
   foldFindingsIntoDossiers(personaCandidates, customCandidates, input.findings);
+  const findingOf = new Map(input.findings.map((f) => [`custom-${f.finding.id}`, f.finding]));
 
   const stats = keep(statSlides(input, transcript), maxStatSlides);
   const personas = keep(personaCandidates, maxPersonaSlides);
@@ -1231,12 +1304,70 @@ export function planDeck(input: PlanInput, options: PlanOptions = {}): DeckPlan 
   const events = stats.filter((s) => s.type !== 'opening');
 
   /*
+    The opener is an executive summary, and a summary needs the findings it
+    summarises. The three strongest discovered slides lend it their claims and
+    a couple of lines of evidence each, so the three numbered beats are written
+    from incidents rather than from the totals. With nothing discovered it
+    stays what it was: the totals, hung off what the group is for.
+  */
+  const summarised = customs.slice(0, 3);
+  for (const brief of opener) {
+    if (summarised.length === 0) break;
+    brief.angle +=
+      ' The findings to summarise, strongest first: ' +
+      summarised
+        .map((c) => findingOf.get(c.id)?.claim ?? c.angle)
+        .map((claim, i) => `(${i + 1}) ${claim}`)
+        .join(' ');
+    brief.evidenceMessageIds = summarised.flatMap((c) => c.evidenceMessageIds.slice(0, 2));
+    brief.quoteBudget = 6;
+    brief.targetLength = 300;
+  }
+
+  /*
+    The last slide: everyone ranked. The writer invents the axis — aura,
+    respect, chaos, whatever this group's material earns — and places every
+    person who got a card on it, one line each, then the key takeaway as the
+    closer. Only when there are at least two people to rank; one person on a
+    podium is not a ranking.
+  */
+  const ranked = personas.flatMap((p) => p.people);
+  const finale: SlideBrief[] =
+    ranked.length >= 2
+      ? [
+          {
+            id: 'stat-rankings',
+            type: 'finale',
+            format: 'rankings',
+            angle:
+              'The final rankings, and the last thing they read. Invent the one axis this group ' +
+              'would actually argue about (aura, respect, who is carrying this, whatever the material ' +
+              'earns) and place every person below on it, in order: one line each, their token, a ' +
+              'colon, then whether they are up or down or steady and the single thing that put them ' +
+              'there, in under fifteen words. Then `closer`: the key takeaway, one sentence, a callback ' +
+              'to a line from earlier in the deck.',
+            stats: ranked.map((token) => {
+              const person = input.stats.people.find((p) => input.tokenOf(p.name) === token);
+              return { label: `${token}, messages`, value: person?.messages ?? 0 };
+            }),
+            scoreAxes: [],
+            people: ranked,
+            evidenceMessageIds: [],
+            findingIds: [],
+            sensitivity: 'low',
+            strength: 1,
+            targetLength: Math.min(640, 70 * ranked.length + 80),
+            quoteBudget: 0,
+          },
+        ]
+      : [];
+
+  /*
     Costumes, deck-wide. Discovered slides first so they keep their best fit;
     the statistic slides take what is left, from a starting point that differs
     per chat. Seeded on the chat's size rather than on anything random, so a
     saved report and a regenerated one wear the same clothes.
   */
-  const findingOf = new Map(input.findings.map((f) => [`custom-${f.finding.id}`, f.finding]));
   dress(
     [...customs, ...events],
     (brief) =>
@@ -1256,7 +1387,7 @@ export function planDeck(input: PlanInput, options: PlanOptions = {}): DeckPlan 
     person's own card is what they screenshot, and the end of the deck is where
     they stop to do it.
   */
-  const briefs = [...opener, ...interleave(customs, events), ...personas];
+  const briefs = [...opener, ...interleave(customs, events), ...personas, ...finale];
 
   return { briefs, suppressed };
 }

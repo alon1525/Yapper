@@ -578,6 +578,9 @@ const BODY_BUDGET: Record<string, number> = {
   eulogy: 260,
   dictionary_entry: 420,
   leaderboard: 420,
+  // One line per person, and a chat can have a dozen. Each line is short or
+  // the slide does not fit; the writer is told so.
+  rankings: 700,
   timeline: 460,
   receipt: 420,
 };

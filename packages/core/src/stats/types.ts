@@ -51,6 +51,12 @@ export interface PersonStats {
 
   /** Messages that opened a conversation after a long lull. */
   conversationsStarted: number;
+  /**
+   * Messages sent while their own previous message was still the last thing
+   * in the chat, ten minutes or more later: the nudge after no reply. In a
+   * two-person chat this is the balance of the relationship in one number.
+   */
+  doubleTexts: number;
 
   /** Longest stretch with no message from this person, in days. */
   longestSilenceDays: number;

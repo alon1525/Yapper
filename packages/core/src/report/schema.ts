@@ -246,6 +246,12 @@ export const SlideFormat = z.enum([
   'leaderboard',
   'timeline',
   'receipt',
+  /**
+   * The final rankings: everyone in the chat, placed by the writer on an axis
+   * it invents for this group, one line each, and a key takeaway as the
+   * closer. The last slide of a deck, and the one the group argues about.
+   */
+  'rankings',
 ]);
 export type SlideFormat = z.infer<typeof SlideFormat>;
 

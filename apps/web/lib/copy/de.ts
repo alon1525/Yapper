@@ -359,5 +359,6 @@ export const DE: Partial<Copy> = {
   'report.noted': 'Notiert',
   'report.suspects': '{n} Verdächtige',
   'report.live': 'Live',
-  'report.roastedBy': 'Geröstet von Reg · markiert die Verdächtigen',
+  'report.roastedBy': 'Geröstet von Reg · markiert die Verdächtigen',
+  'report.rankings': 'Die Endwertung',
 };

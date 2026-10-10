@@ -30,6 +30,8 @@ import type {
 } from './types';
 
 const DAY_MS = 86_400_000;
+/** A second message from the same person this long after the first is a nudge. */
+const DOUBLE_TEXT_MS = 10 * 60 * 1000;
 const DEFAULT_REPLY_WINDOW_MS = 2 * 60 * 60 * 1000;
 const DEFAULT_CONVERSATION_GAP_MS = 3 * 60 * 60 * 1000;
 
@@ -103,6 +105,7 @@ interface Acc {
   earlyMessages: number;
   responses: number[];
   conversationsStarted: number;
+  doubleTexts: number;
   days: Set<DayKey>;
   firstTs: number;
   lastTs: number;
@@ -134,6 +137,7 @@ function newAcc(name: string, m: Message): Acc {
     earlyMessages: 0,
     responses: [],
     conversationsStarted: 0,
+    doubleTexts: 0,
     days: new Set(),
     firstTs: m.ts.getTime(),
     lastTs: m.ts.getTime(),
@@ -274,6 +278,11 @@ export function computeStats(parsed: ParseResult, options: StatsOptions = {}): C
       if (prev.sender !== sender && gap >= 0 && gap <= replyWindowMs) {
         acc.responses.push(gap);
       }
+      // Their own message, still unanswered after ten minutes, and here is
+      // another. Under ten it is one thought in two bubbles, not a nudge.
+      if (prev.sender === sender && gap >= DOUBLE_TEXT_MS && gap < conversationGapMs) {
+        acc.doubleTexts++;
+      }
       if (gap >= conversationGapMs) {
         acc.conversationsStarted++;
         if (gap >= DAY_MS) {
@@ -357,6 +366,7 @@ export function computeStats(parsed: ParseResult, options: StatsOptions = {}): C
         meanResponseMs: meanResponse,
         responseSamples: a.responses.length,
         conversationsStarted: a.conversationsStarted,
+        doubleTexts: a.doubleTexts,
         longestSilenceDays: a.longestSilenceMs / DAY_MS,
         longestSilenceFrom: a.longestSilenceMs > 0 ? dayKeyFromEpoch(a.silenceFrom) : null,
         longestSilenceTo: a.longestSilenceMs > 0 ? dayKeyFromEpoch(a.silenceTo) : null,

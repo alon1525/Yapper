@@ -359,5 +359,6 @@ export const FR: Partial<Copy> = {
   'report.noted': 'Noté',
   'report.suspects': '{n} suspects',
   'report.live': 'En direct',
-  'report.roastedBy': 'Grillé par Reg · taguez les suspects',
+  'report.roastedBy': 'Grillé par Reg · taguez les suspects',
+  'report.rankings': 'Le classement final',
 };

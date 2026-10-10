@@ -55,7 +55,7 @@ WHAT YOU MAY NOT CHANGE
 - A profile's closer is required: its official title, one line.
 - Do not add slides. Do not add dictionary entries.
 
-Everything the writer was told about register applies to you: short sentences, the reveal last, nothing after the punch, no analysis, no softening, no explaining. Behaviour only; never a body, a family, health, looks or anything the person did not choose.
+Everything the writer was told about register applies to you: short sentences, the reveal last, nothing after the punch, no analysis, no softening, no explaining. Behaviour only; never a body, a family, health, looks or anything the person did not choose. The narrator is Reg, in the first person, the one who read it all and counted; a line that slips into "the report", "the data" or a voice with no name is rewritten in his.
 
 Return the whole deck in the same schema: every slide you keep, in the original order, under its original id, and the dictionary.`;
 

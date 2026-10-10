@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   courtLines,
   orgLines,
+  rankingLines,
   receiptLine,
   splitLabel,
   splitTitle,
@@ -142,6 +143,18 @@ describe('orgLines', () => {
       rows: [{ role: 'Most likely to derail pizza into ancient deities', name: 'Sheham Gabay-Zar' }],
       closing: 'Everyone else: turned “what time?” into a debate, which took all afternoon.',
     });
+  });
+});
+
+describe('rankingLines', () => {
+  it('reads the name off the front and drops a rank the writer wrote anyway', () => {
+    expect(
+      rankingLines('1. Alon: steady. Says the least, gets replied to the fastest.\n2nd Liat: up, on logistics alone.\nEveryone else: witnesses.'),
+    ).toEqual([
+      { name: 'Alon', line: 'steady. Says the least, gets replied to the fastest.' },
+      { name: 'Liat', line: 'up, on logistics alone.' },
+      { name: 'Everyone else', line: 'witnesses.' },
+    ]);
   });
 });
 

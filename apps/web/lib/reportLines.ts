@@ -146,6 +146,20 @@ export function orgLines(body: string): { rows: { role: string; name: string }[]
   return { rows, closing };
 }
 
+/**
+ * The final rankings: `Person: the line that put them there`, in order. The
+ * name is short and comes first, so the first colon is the split; a line with
+ * no name is kept as a line about nobody in particular, which the card draws
+ * without a face.
+ */
+export function rankingLines(body: string): { name: string | null; line: string }[] {
+  return lines(body).map((line) => {
+    const clean = unbullet(line).replace(/^\d+(?:st|nd|rd|th)?[.)]?\s*/i, '');
+    const { label, value } = splitLabel(clean, 40);
+    return { name: label, line: value };
+  });
+}
+
 /** Dated beats: the date is the label when the line has one. */
 export function timelineLines(body: string): { date: string | null; beat: string }[] {
   return lines(body).map((line) => {

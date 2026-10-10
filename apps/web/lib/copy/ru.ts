@@ -366,5 +366,6 @@ export const RU: Partial<Copy> = {
   'report.noted': 'Отмечено',
   'report.suspects': '{n} подозреваемых',
   'report.live': 'Прямой эфир',
-  'report.roastedBy': 'Прожарено Регом · отметьте подозреваемых',
+  'report.roastedBy': 'Прожарено Регом · отметьте подозреваемых',
+  'report.rankings': 'Итоговый рейтинг',
 };

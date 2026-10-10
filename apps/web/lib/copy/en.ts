@@ -242,7 +242,8 @@ export const EN = {
   'report.noted': 'Noted',
   'report.suspects': '{n} suspects',
   'report.live': 'Live',
-  'report.roastedBy': 'Roasted by Reg · tag the suspects',
+  'report.roastedBy': 'Roasted by Reg · tag the suspects',
+  'report.rankings': 'The final rankings',
 
   // ── The onboarding, from the second question onwards ────────────────────
   // The language card itself stays English: it is the question that decides

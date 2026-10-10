@@ -216,6 +216,7 @@ export async function POST(request: Request) {
   const material = writerPrompt({
     language: payload.language,
     brief: payload.brief,
+    participantCount: payload.participantCount,
     voice: payload.voice,
     groupSummary: payload.groupSummary,
     // The route's own schema is intentionally looser than core's — it

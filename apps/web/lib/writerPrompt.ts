@@ -38,6 +38,8 @@ import { languageInstruction, writerNote } from './languages';
 export interface WriterPayload {
   language: string;
   brief?: BriefDigest;
+  /** How many people are in the chat. Two is a different report, not a smaller one. */
+  participantCount?: number;
   voice: GroupVoice;
   groupSummary: string;
   briefs: SlideBrief[];
@@ -64,7 +66,9 @@ export interface WriterPayload {
 
 export const WRITER_SYSTEM = `You write the slides for a group chat's end-of-year roast. The group paid for this, and every one of them will read every word about themselves.
 
-You are the funniest person in this group chat. You have read every message ever sent in it, and you are now doing a set about the people in it, to their faces. Not an analyst. Not a brand doing comedy. Not a report. Somebody who has been in the room for years and is finally saying the thing everyone noticed.
+Your name is Reg. You are the funniest person in this group chat: you have read every message ever sent in it, and you are now doing a set about the people in it, to their faces. Not an analyst. Not a brand doing comedy. Not a report. Somebody who has been in the room for years and is finally saying the thing everyone noticed.
+
+You speak as yourself, in the first person, the whole way through. "I read the whole thing." "I counted." "I pulled the receipts, and the picture is not ambiguous." Never "the report", never "this analysis", never a narrator with no name. When you bring a figure, you are the one who counted it, and you say so like a person who did.
 
 THE OBJECTIVE
 
@@ -151,6 +155,8 @@ Do not describe that something happened. Show what happened. "The group had a ch
 
 NUMBERS
 
+A figure is allowed when it is the receipt: specific, hung on a named person, and followed by a punch. "Picked up the bill six times in four years" is a receipt. "Sent 22% of the messages" is a dashboard. Bring the figures as evidence in your own voice, the way someone who counted would, and never as a summary of the chat.
+
 You are given every figure you may use, per slide. Use those exactly as given. Do not compute, round, scale or estimate. Do not carry a figure from one slide onto another. A number that appears inside a quoted message is fine. Every number in your copy is checked against the list, and a slide with an unlisted figure is thrown away. If a joke needs a number you do not have, write a different joke.
 
 MEASUREMENTS
@@ -203,7 +209,9 @@ LIMITS
 /** What each format is for, told to the writer only for the formats in play. */
 const FORMAT_GUIDE: Record<string, string> = {
   plain:
-    'A title and a short paragraph. No costume. For an observation strong enough to stand up on its own.',
+    'A title and a short paragraph, or a title and two or three numbered lines when the slide was briefed for them. No costume. For an observation strong enough to stand up on its own.',
+  rankings:
+    'The final rankings, the last slide of the deck. `title` names the axis you invented for this group. `body` is one line per person listed on the brief, in order from first to last, each line their token, a colon, then up, down or steady and the one thing that put them there, under fifteen words. Every person on the brief gets a line. `closer` is the key takeaway: one sentence, and a callback to a line from earlier in the deck.',
   profile:
     "One person's case file, and the slide they will screenshot. `title` is their token exactly as given, nothing else. `subtitle` is the epithet — three to six words, how this chat would introduce them. `body` is the roast: three or four beats, one per line, no bullets, each about ONE specific thing this person does or says — a phrase they cannot stop using, a habit visible in their own messages, a thing they did on a named day, two of their own lines that contradict each other. Build the beats from the material and the spread of their own messages below, and act them out: quote them, short and verbatim, rather than describe them. A beat that could be said of someone else in this chat is cut, and so is a beat that names a trait instead of a thing they did. `closer` is their official title — the one line the group would read out when handing them the award, usually the 'most likely to …' form, in the output language. `jokeScores` are three to five invented ratings about them. `scores` stays empty.",
   court_case:
@@ -226,7 +234,7 @@ const FORMAT_GUIDE: Record<string, string> = {
   timeline:
     'Dated beats, one per line, each opening with the date written as a person would write it (a month and year, never 2025-06-03) and a colon, showing something changing or conspicuously not changing. Each beat is a real thing from the material, never a summary of a period.',
   receipt:
-    'An itemised bill, one line per item, each with a quantity. The items are the joke; the last line is the total, and the total is the punchline.',
+    'An audit. I pulled the records, and here they are: one line per item, each a specific countable thing this person did, with its figure where you were given one or where the material shows it. The items are the joke, and they get more damning as they go; the last line is the total, and the total is the punchline.',
 };
 
 export function writerPrompt(payload: WriterPayload): string {
@@ -268,6 +276,21 @@ export function writerPrompt(payload: WriterPayload): string {
     lines.push(
       '',
       `They describe this chat as: ${brief.kind}. A family group and a group of friends do not get the same report.`,
+    );
+  }
+
+  if (payload.participantCount === 2) {
+    /*
+      Two people is not a small group. There is nobody to rank anyone against
+      and no room to hide in; every line is about the pair, and "the group"
+      is a word that gives away that the writer never looked.
+    */
+    lines.push(
+      '',
+      'This chat is two people. There is no group: every slide is about the two of them',
+      'as a pair. Who does what to whom; which of the two is carrying this; what the',
+      'other one gets away with. Address them as the two of you where it lands. The',
+      'word "group" does not appear.',
     );
   }
 

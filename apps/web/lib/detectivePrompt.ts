@@ -42,6 +42,10 @@ fill in:
 - Something the group keeps referring back to
 - A role somebody has silently been assigned: the organiser, the sceptic,
   the one who always says no, the one nobody replies to
+- Something countable that one person keeps doing and nobody has tallied:
+  who paid, who cancelled, who was late, who said sorry, who asked "what
+  time?". Count it from the messages and cite every instance, because a
+  tally with ids is the single best thing the next pass can be handed
 - Anything strange that fits none of these
 
 THE PEOPLE
@@ -131,6 +135,24 @@ export function detectivePrompt(payload: DetectivePayload): string {
 
   if (brief?.kind) {
     lines.push(`They describe this chat as: ${brief.kind}.`, '');
+  }
+
+  if (payload.participantCount === 2) {
+    /*
+      A chat of two is read for the balance between them, not for group
+      dynamics it cannot have. The list is a prompt for attention, like the
+      one in the system prompt: these are the things the two of them would
+      actually recognise about each other.
+    */
+    lines.push(
+      'This chat is two people. Read it for the balance between them: who opens the',
+      'day and who ends it, who apologises first and how long after, who makes the',
+      'plan and who turns up, who sends the second message when the first got',
+      'nothing, the longest sulk and what started it, the pet names and when they',
+      'appear and when they stop, the thing they keep saying they will do. Every',
+      'finding is about the pair or about one of the two against the other.',
+      '',
+    );
   }
 
   if (brief?.notes) {

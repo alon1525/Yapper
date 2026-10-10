@@ -355,5 +355,6 @@ export const PT: Partial<Copy> = {
   'report.noted': 'Anotado',
   'report.suspects': '{n} suspeitos',
   'report.live': 'Ao vivo',
-  'report.roastedBy': 'Assado por Reg · marque os suspeitos',
+  'report.roastedBy': 'Assado por Reg · marque os suspeitos',
+  'report.rankings': 'A classificação final',
 };

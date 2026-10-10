@@ -7,11 +7,12 @@ import { formatNumber } from '@/lib/format';
 /**
  * The reports kept on this device, listed on the front page.
  *
- * Rendered only when there is at least one: a "My reports" heading over an
- * empty shelf is a promise the product does not make, since nothing is saved
- * unless the reader asks on the last slide. Styled as the rest of the landing
- * is — parchment, serif, mono labels — because this is still the front page,
- * not the deck.
+ * It used to render nothing when nothing was kept, on the grounds that an
+ * empty shelf promises something the product does not do by itself. The nav
+ * now links here whether or not anything is kept, and a link to nowhere is
+ * worse than a shelf that says where a report would come from: the last slide,
+ * on request. Styled as the rest of the landing is — parchment, serif, mono
+ * labels — because this is still the front page, not the deck.
  *
  * Everything here was read from the browser's own storage, so the copy says
  * so in as many words. A list of past reports is exactly the thing the
@@ -61,7 +62,32 @@ export function MyReports({
   // may have paid for, and the only place they exist.
   const [confirming, setConfirming] = useState<string | null>(null);
 
-  if (reports.length === 0) return null;
+  if (reports.length === 0) {
+    return (
+      <div id="reports" style={{ maxWidth: 1240, margin: '0 auto', padding: '0 24px 40px' }}>
+        <div
+          style={{
+            border: '1px dashed #CDB994',
+            borderRadius: 18,
+            padding: '18px 20px',
+            display: 'flex',
+            alignItems: 'baseline',
+            justifyContent: 'space-between',
+            gap: 16,
+            flexWrap: 'wrap',
+          }}
+        >
+          <div style={{ fontFamily: 'var(--yap-serif)', fontSize: 22, lineHeight: 1.1 }}>
+            My reports
+          </div>
+          <div style={{ fontSize: 14, color: '#5E5344', maxWidth: '52ch' }}>
+            Nothing kept on this device yet. On the last slide of a report, tap{' '}
+            <em>Keep this report on this device</em> and it lands here.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div id="reports" style={{ maxWidth: 1240, margin: '0 auto', padding: '0 24px 56px' }}>

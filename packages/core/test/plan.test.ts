@@ -172,7 +172,7 @@ describe('discovered slides', () => {
 
     const format = (id: string) => plan.briefs.find((b) => b.id === id)?.format;
     expect(format('custom-joke')).toBe('dictionary_entry');
-    expect(format('custom-liar')).toBe('court_case');
+    expect(format('custom-liar')).toBe('breaking_news');
     expect(format('custom-old')).toBe('timeline');
   });
 });

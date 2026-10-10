@@ -159,10 +159,25 @@ describe('material for the writer', () => {
 
     expect(brief(plan, 'custom-scene').quoteBudget).toBe(14);
     expect(brief(plan, 'custom-claim').quoteBudget).toBe(6);
-    expect(brief(plan, 'stat-opening').quoteBudget).toBe(0);
+    // The opener summarises the strongest findings, so with any to summarise
+    // it borrows a couple of their lines each.
+    expect(brief(plan, 'stat-opening').quoteBudget).toBe(6);
+    expect(brief(plan, 'stat-opening').angle).toContain('(1)');
     for (const b of plan.briefs.filter((b) => b.format === 'profile')) {
       expect(b.quoteBudget).toBe(8);
     }
+    // The last slide ranks everyone who got a card, and asks for no lines.
+    const rankings = brief(plan, 'stat-rankings');
+    expect(rankings.format).toBe('rankings');
+    expect(rankings.quoteBudget).toBe(0);
+    expect(plan.briefs[plan.briefs.length - 1]!.id).toBe('stat-rankings');
+  });
+
+  it('keeps the opener to the totals when nothing was discovered', () => {
+    const { input } = build(chat(), []);
+    const plan = planDeck(input);
+    expect(brief(plan, 'stat-opening').quoteBudget).toBe(0);
+    expect(brief(plan, 'stat-opening').angle).not.toContain('(1)');
   });
 });
 
@@ -188,9 +203,11 @@ describe('costumes', () => {
     ]);
     const plan = planDeck(input);
 
-    expect(brief(plan, 'custom-c1').format).toBe('court_case');
-    // The killer's first choice is also a court case; it must have stepped aside.
-    expect(brief(plan, 'stat-killer').format).not.toBe('court_case');
+    expect(brief(plan, 'custom-c1').format).toBe('breaking_news');
+    // Every statistic slide that also wanted the front page stepped aside.
+    for (const b of plan.briefs) {
+      if (b.id !== 'custom-c1') expect(b.format, b.id).not.toBe('breaking_news');
+    }
   });
 
   it('alternates discovered and measured slides after the opener', () => {
