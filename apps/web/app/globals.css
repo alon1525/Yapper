@@ -339,6 +339,120 @@ body.yap-locked {
   }
 }
 
+/* ── Briefing Reg on a phone ────────────────────────────────────────────
+   The sheet is drawn at the design's measure, inline, and on a phone every
+   question ran past the fold: eight language cards in one column, a 500px
+   illustration above the file button. These rules take the same markup and
+   make each step fit one screen. `!important` because the sizes they override
+   are inline, which is also why they are only ever about size and visibility,
+   never colour or copy. */
+@media (max-width: 560px) {
+  .yap-ob-head {
+    padding: 8px 14px !important;
+  }
+
+  .yap-ob-head-label {
+    display: none !important;
+  }
+
+  .yap-ob-tick {
+    width: 12px !important;
+  }
+
+  .yap-ob-body {
+    /* The footer is sticky inside the same scroller, so no room is kept
+       under the content for it. */
+    padding: 10px 16px 14px !important;
+  }
+
+  .yap-ob-q {
+    font-size: 24px !important;
+    margin-top: 6px !important;
+  }
+
+  .yap-ob-lede {
+    font-size: 14px !important;
+    line-height: 1.45 !important;
+    margin-top: 8px !important;
+  }
+
+  .yap-ob-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    margin-top: 12px !important;
+  }
+
+  .yap-ob-card {
+    padding: 11px 12px 10px !important;
+    border-radius: 14px !important;
+  }
+
+  .yap-ob-card-title {
+    font-size: 19px !important;
+  }
+
+  .yap-ob-kind-title {
+    font-size: 14.5px !important;
+    margin-top: 6px !important;
+  }
+
+  .yap-ob-card-note {
+    font-size: 11px !important;
+    line-height: 1.3 !important;
+    margin-top: 3px !important;
+  }
+
+  .yap-ob-card svg {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  /* The "Arabic is next" aside, the kind cards' one-line notes and the
+     export hint under the drop zone are the lines that pushed each step past
+     the fold. None of them is needed to answer the question. */
+  .yap-ob-aside,
+  .yap-ob-kind-note,
+  .yap-ob-hint {
+    display: none !important;
+  }
+
+  .yap-ob-section {
+    margin-top: 14px !important;
+  }
+
+  .yap-ob-drop-title {
+    font-size: 20px !important;
+  }
+
+  .yap-ob-textarea {
+    min-height: 64px !important;
+    font-size: 15px !important;
+  }
+
+  .yap-ob-fine {
+    font-size: 11px !important;
+    line-height: 1.4 !important;
+    margin-top: 10px !important;
+  }
+
+  .yap-ob-phone {
+    display: none !important;
+  }
+
+  .yap-ob-steps {
+    gap: 8px !important;
+  }
+
+  .yap-ob-drop {
+    margin-top: 14px !important;
+    padding: 18px 14px !important;
+  }
+
+  .yap-ob-foot {
+    padding: 10px 14px !important;
+  }
+}
+
 @media (max-width: 420px) {
   .yap-phone {
     --ps: 0.62;

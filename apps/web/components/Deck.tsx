@@ -213,6 +213,16 @@ export function Deck({
       />
     ) : undefined;
   const accentFor = (dress: Partial<Dress>) => (dress.tone ? accentOf(dress.tone) : undefined);
+  /**
+   * The cover and the closer sit at the foot of the frame because the design
+   * puts a photograph above them. With no photo there is nothing above them
+   * but black, and type at the bottom of an empty frame reads as having
+   * slipped; so without one they centre like everything else.
+   */
+  const alignFor = (dress: Partial<Dress>) =>
+    dress.align === 'end' && !(dress.photo && brief.groupPhotos[dress.photo])
+      ? 'center'
+      : dress.align;
 
   /**
    * Tap left third to go back, the rest to go forward — except on anything the
@@ -271,7 +281,7 @@ export function Deck({
             key={current.id}
             backdrop={current.backdrop}
             photo={current.photo}
-            align={current.align}
+            align={alignFor(current)}
             ground={groundFor(current)}
             accent={accentFor(current)}
           >
@@ -293,7 +303,7 @@ export function Deck({
             key={paidSlide.id}
             backdrop={paidSlide.backdrop}
             photo={paidSlide.photo}
-            align={paidSlide.align}
+            align={alignFor(paidSlide)}
             ground={groundFor(paidSlide)}
             accent={accentFor(paidSlide)}
           >

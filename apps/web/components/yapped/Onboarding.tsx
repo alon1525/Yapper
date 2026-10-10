@@ -701,7 +701,6 @@ export function Onboarding({
      and fixing a spelling must not orphan the face that was already picked. */
   const [faces, setFaces] = useState<Record<string, string>>({});
 
-  const fileInput = useRef<HTMLInputElement>(null);
   const sheet = useRef<HTMLDivElement>(null);
 
   const index = STEPS.indexOf(step);
@@ -983,6 +982,12 @@ export function Onboarding({
       // left-to-right — it is asked in English, before there is an answer.
       lang={copy.language}
       dir={copy.rtl ? 'rtl' : 'ltr'}
+      // The `yap-ob-*` classes carry nothing at desktop size. They are hooks
+      // for the phone rules in `globals.css`: this sheet is drawn at the
+      // design's 720px measure, and on a phone every step ran past the fold,
+      // which is a scroll bar wrapped around a question. See "Briefing Reg on
+      // a phone" there.
+      className="yap-ob"
       style={{
         position: 'fixed',
         inset: 0,
@@ -997,6 +1002,7 @@ export function Onboarding({
     >
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <div
+        className="yap-ob-head"
         style={{
           position: 'sticky',
           top: 0,
@@ -1020,6 +1026,7 @@ export function Onboarding({
           />
           <div style={{ fontFamily: 'var(--yap-serif)', fontSize: 21 }}>Yapped</div>
           <div
+            className="yap-ob-head-label"
             style={mono({
               fontSize: 10,
               letterSpacing: '.14em',
@@ -1035,6 +1042,7 @@ export function Onboarding({
             {Array.from({ length: COUNTED_STEPS }, (_, k) => (
               <div
                 key={k}
+                className="yap-ob-tick"
                 style={{
                   width: 26,
                   height: 4,
@@ -1073,18 +1081,24 @@ export function Onboarding({
         </div>
       </div>
 
-      <div style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: '44px 24px 70px' }}>
+      <div
+        className="yap-ob-body"
+        style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: '44px 24px 70px' }}
+      >
         <div style={{ width: '100%', maxWidth: 720 }}>
           {/* ── 1 · Language ─────────────────────────────────────────────── */}
           {step === 'lang' && (
             <div dir="ltr" style={{ animation: 'obPop .35s ease' }}>
               <div style={eyebrowFor(false)}>Question 1 of 3</div>
-              <h1 style={question}>Which language should Reg write in?</h1>
-              <p style={lede}>
+              <h1 className="yap-ob-q" style={question}>
+                Which language should Reg write in?
+              </h1>
+              <p className="yap-ob-lede" style={lede}>
                 Your chat can be in any language — this is just the language of the report Reg
                 writes about it.
               </p>
               <div
+                className="yap-ob-grid"
                 style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))',
@@ -1100,6 +1114,7 @@ export function Onboarding({
                       type="button"
                       onClick={() => onBrief({ language: language.code as ReportLanguage })}
                       aria-pressed={on}
+                      className="yap-ob-card"
                       style={{
                         textAlign: 'start',
                         cursor: 'pointer',
@@ -1121,6 +1136,7 @@ export function Onboarding({
                       >
                         <div
                           dir="auto"
+                          className="yap-ob-card-title"
                           style={{ fontFamily: 'var(--yap-serif)', fontSize: 26, lineHeight: 1 }}
                         >
                           {language.name}
@@ -1142,6 +1158,7 @@ export function Onboarding({
                         </div>
                       </div>
                       <div
+                        className="yap-ob-card-note"
                         style={monoFor(false)({
                           fontSize: 10.5,
                           letterSpacing: '.08em',
@@ -1154,7 +1171,7 @@ export function Onboarding({
                   );
                 })}
               </div>
-              <div style={monoFor(false)({ marginTop: 14 })}>
+              <div className="yap-ob-aside" style={monoFor(false)({ marginTop: 14 })}>
                 Arabic is next on Reg&apos;s desk. Ask for yours and he&apos;ll move it up.
               </div>
             </div>
@@ -1164,9 +1181,14 @@ export function Onboarding({
           {step === 'kind' && (
             <div style={{ animation: 'obPop .35s ease' }}>
               <div style={eyebrow}>{t('ob.kind.q')}</div>
-              <h1 style={question}>{t('ob.kind.title')}</h1>
-              <p style={lede}>{t('ob.kind.lede')}</p>
+              <h1 className="yap-ob-q" style={question}>
+                {t('ob.kind.title')}
+              </h1>
+              <p className="yap-ob-lede" style={lede}>
+                {t('ob.kind.lede')}
+              </p>
               <div
+                className="yap-ob-grid"
                 style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))',
@@ -1183,6 +1205,7 @@ export function Onboarding({
                       type="button"
                       onClick={() => onBrief({ kind: kind.name })}
                       aria-pressed={on}
+                      className="yap-ob-card"
                       style={{
                         textAlign: 'start',
                         cursor: 'pointer',
@@ -1202,10 +1225,14 @@ export function Onboarding({
                         // the one thing on an unselected card that is not text.
                         color={on ? '#C9F24D' : '#C2571F'}
                       />
-                      <div style={{ fontWeight: 500, fontSize: 16, marginTop: 10 }}>
+                      <div
+                        className="yap-ob-kind-title"
+                        style={{ fontWeight: 500, fontSize: 16, marginTop: 10 }}
+                      >
                         {t(`kind.${kind.icon}` as CopyKey)}
                       </div>
                       <div
+                        className="yap-ob-card-note yap-ob-kind-note"
                         style={{
                           fontSize: 12.5,
                           lineHeight: 1.4,
@@ -1232,11 +1259,12 @@ export function Onboarding({
                 Defaults to the roast, and says so plainly, because the softened
                 report is the one that reads like a horoscope.
               */}
-              <div style={{ marginTop: 26 }}>
+              <div className="yap-ob-section" style={{ marginTop: 26 }}>
                 <div style={eyebrow}>{t('ob.tone.q')}</div>
                 <div
                   role="group"
                   aria-label={t('ob.tone.q')}
+                  className="yap-ob-grid"
                   style={{
                     display: 'grid',
                     gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))',
@@ -1252,6 +1280,7 @@ export function Onboarding({
                         type="button"
                         onClick={() => onBrief({ tone })}
                         aria-pressed={on}
+                        className="yap-ob-card"
                         style={{
                           textAlign: 'start',
                           cursor: 'pointer',
@@ -1263,10 +1292,11 @@ export function Onboarding({
                           transition: 'all .18s ease',
                         }}
                       >
-                        <div style={{ fontWeight: 500, fontSize: 16 }}>
+                        <div className="yap-ob-kind-title" style={{ fontWeight: 500, fontSize: 16 }}>
                           {t(`ob.tone.${tone}` as CopyKey)}
                         </div>
                         <div
+                          className="yap-ob-card-note"
                           style={{
                             fontSize: 12.5,
                             lineHeight: 1.4,
@@ -1291,8 +1321,12 @@ export function Onboarding({
                 <div style={eyebrow}>{t('ob.notes.q')}</div>
                 <div style={optionalPill}>{t('ob.optional')}</div>
               </div>
-              <h1 style={question}>{t('ob.notes.title')}</h1>
-              <p style={{ ...lede, maxWidth: '50ch' }}>{t('ob.notes.lede')}</p>
+              <h1 className="yap-ob-q" style={question}>
+                {t('ob.notes.title')}
+              </h1>
+              <p className="yap-ob-lede" style={{ ...lede, maxWidth: '50ch' }}>
+                {t('ob.notes.lede')}
+              </p>
               <div
                 style={{
                   ...panel,
@@ -1307,6 +1341,7 @@ export function Onboarding({
                   onChange={(e) => onBrief({ notes: e.target.value.slice(0, NOTES_LIMIT) })}
                   placeholder={t('ob.notes.placeholder')}
                   aria-label={t('ob.notes.title')}
+                  className="yap-ob-textarea"
                   style={{
                     width: '100%',
                     minHeight: 150,
@@ -1362,7 +1397,9 @@ export function Onboarding({
                   </div>
                 </div>
               </div>
-              <div style={mono({ marginTop: 12, lineHeight: 1.5 })}>{t('ob.notes.privacy')}</div>
+              <div className="yap-ob-fine" style={mono({ marginTop: 12, lineHeight: 1.5 })}>
+                {t('ob.notes.privacy')}
+              </div>
             </div>
           )}
 
@@ -1370,7 +1407,9 @@ export function Onboarding({
           {step === 'upload' && (
             <div style={{ animation: 'obPop .35s ease' }}>
               <div style={eyebrow}>{t('ob.upload.eyebrow')}</div>
-              <h1 style={question}>{t('ob.upload.title')}</h1>
+              <h1 className="yap-ob-q" style={question}>
+                {t('ob.upload.title')}
+              </h1>
 
               {/* Which app, asked before the steps rather than after them. Reg
                   reads either file and works out which is which on his own, so
@@ -1421,10 +1460,19 @@ export function Onboarding({
               </div>
 
               <div className="yap-export" style={{ marginTop: 20 }}>
-                {source === 'line' ? <LinePhone /> : <ExportPhone />}
+                {/* The demonstration is for a desktop reader exporting from
+                    the phone in their other hand. On the phone itself it is
+                    a 500px illustration between the reader and the one
+                    button they came for, so the phone rules hide it. */}
+                <div className="yap-ob-phone">
+                  {source === 'line' ? <LinePhone /> : <ExportPhone />}
+                </div>
 
                 <div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div
+                    className="yap-ob-steps"
+                    style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+                  >
                     {EXPORT_STEPS[source].map((exportStep) => (
                       <div
                         key={exportStep.n}
@@ -1459,26 +1507,18 @@ export function Onboarding({
                     ))}
                   </div>
 
-                  <input
-                    ref={fileInput}
-                    type="file"
-                    accept=".txt,.zip,text/plain,application/zip"
-                    style={{ position: 'absolute', width: 1, height: 1, opacity: 0 }}
-                    onChange={(e) => {
-                      pickFile(e.target.files?.[0]);
-                      e.target.value = '';
-                    }}
-                  />
-
-                  <div
-                    className="yap-drop"
+                  {/*
+                    A label around the input, like the photo tiles, rather
+                    than a div that calls `.click()` on a hidden input. The
+                    programmatic click is a hop the browser has to trust, and
+                    on a phone it was sometimes trusted seconds late; the label
+                    is the platform's own way of opening a picker, and it is
+                    reachable by keyboard without a handler. The input stays
+                    focusable (opacity, not display) so Enter and Space work.
+                  */}
+                  <label
+                    className="yap-drop yap-ob-drop"
                     data-dragging={dragging}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => fileInput.current?.click()}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') fileInput.current?.click();
-                    }}
                     onDragOver={(e) => {
                       e.preventDefault();
                       setDragging(true);
@@ -1490,6 +1530,8 @@ export function Onboarding({
                       pickFile(e.dataTransfer.files[0]);
                     }}
                     style={{
+                      display: 'block',
+                      position: 'relative',
                       marginTop: 20,
                       border: '1.5px dashed #CDB994',
                       borderRadius: 18,
@@ -1499,7 +1541,27 @@ export function Onboarding({
                       cursor: 'pointer',
                     }}
                   >
-                    <div style={{ fontFamily: 'var(--yap-serif)', fontSize: 25, lineHeight: 1.15 }}>
+                    <input
+                      type="file"
+                      accept=".txt,.zip,text/plain,application/zip"
+                      aria-label={t('ob.upload.browse')}
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        width: '100%',
+                        height: '100%',
+                        opacity: 0,
+                        cursor: 'pointer',
+                      }}
+                      onChange={(e) => {
+                        pickFile(e.target.files?.[0]);
+                        e.target.value = '';
+                      }}
+                    />
+                    <div
+                      className="yap-ob-drop-title"
+                      style={{ fontFamily: 'var(--yap-serif)', fontSize: 25, lineHeight: 1.15 }}
+                    >
                       {(() => {
                         const [before = '', after = ''] = t('ob.upload.drop').split('{file}');
                         return (
@@ -1516,7 +1578,7 @@ export function Onboarding({
                     <div style={mono({ fontSize: 10.5, marginTop: 7 })}>
                       {t('ob.upload.browse')}
                     </div>
-                  </div>
+                  </label>
 
                   {error && (
                     <p
@@ -1537,6 +1599,7 @@ export function Onboarding({
                   )}
 
                   <div
+                    className="yap-ob-hint"
                     style={{ fontSize: 12.5, color: '#8A7B63', marginTop: 10, lineHeight: 1.5 }}
                   >
                     {t(source === 'line' ? 'ob.upload.lineHint' : 'ob.upload.waHint')}
@@ -2337,6 +2400,7 @@ export function Onboarding({
           nothing yet is a button people press twice. */}
       {step !== 'scan' && step !== 'done' && (
         <div
+          className="yap-ob-foot"
           style={{
             position: 'sticky',
             bottom: 0,

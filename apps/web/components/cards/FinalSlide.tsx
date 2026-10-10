@@ -5,7 +5,7 @@ import type { ChatStats } from '@wrapped/core';
 import { useCopy } from '@/lib/copy';
 import { num, spanLabel } from '@/lib/localFormat';
 import { splitTitle } from '@/lib/reportLines';
-import { GROUP_SLOT_BACKDROP } from './photos';
+import { GROUP_SLOT_BACKDROP, useGroupPhoto } from './photos';
 import { NightGround, Stamp, accentOf } from './ReportGround';
 import { SharePack } from './SharePack';
 import { DeckButton, Eyebrow, Poster, Punchline, Slide, type Backdrop } from './Shell';
@@ -41,12 +41,15 @@ export function FinalSlide({
   const saving = save.status === 'saving';
   // The design's closer sets the last beat of its headline on a tilted stamp.
   const { head, tail } = splitTitle(copy.t('final.headline'));
+  // At the foot of the frame under the reader's photo; centred when there is
+  // none, for the reason `Deck` gives.
+  const photo = useGroupPhoto('verdict');
 
   return (
     <Slide
       backdrop={FINAL_BACKDROP}
       photo="verdict"
-      align="end"
+      align={photo ? 'end' : 'center'}
       ground={<NightGround tone="pink" at="bottom" photo="verdict" />}
       accent={accentOf('pink')}
     >
