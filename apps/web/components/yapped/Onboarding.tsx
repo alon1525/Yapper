@@ -1460,15 +1460,14 @@ export function Onboarding({
               </div>
 
               <div className="yap-export" style={{ marginTop: 20 }}>
-                {/* The demonstration is for a desktop reader exporting from
-                    the phone in their other hand. On the phone itself it is
-                    a 500px illustration between the reader and the one
-                    button they came for, so the phone rules hide it. */}
+                {/* On a phone the phone rules shrink this to a thumbnail
+                    beside the steps, so it never pushes the file button
+                    below the fold. */}
                 <div className="yap-ob-phone">
                   {source === 'line' ? <LinePhone /> : <ExportPhone />}
                 </div>
 
-                <div>
+                <div className="yap-ob-export-main">
                   <div
                     className="yap-ob-steps"
                     style={{ display: 'flex', flexDirection: 'column', gap: 12 }}

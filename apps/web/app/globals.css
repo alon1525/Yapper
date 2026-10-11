@@ -435,8 +435,28 @@ body.yap-locked {
     margin-top: 10px !important;
   }
 
+  /* The demo phone stays, shrunk to a thumbnail beside the steps rather than
+     500px above them: readers on a phone missed the animation, and this way
+     it costs no extra height. The column holding the steps dissolves into the
+     grid so the drop zone under them still spans the full width. `zoom`
+     rather than `transform` so the layout shrinks with the phone. */
+  .yap-export {
+    grid-template-columns: 116px minmax(0, 1fr);
+    justify-items: stretch;
+    align-items: center;
+    gap: 0 14px;
+  }
+
   .yap-ob-phone {
-    display: none !important;
+    zoom: 0.41;
+  }
+
+  .yap-ob-export-main {
+    display: contents;
+  }
+
+  .yap-ob-export-main > :not(.yap-ob-steps) {
+    grid-column: 1 / -1;
   }
 
   .yap-ob-steps {
