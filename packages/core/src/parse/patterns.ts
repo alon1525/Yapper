@@ -103,6 +103,23 @@ export const ATTACHMENT_PATTERNS: ReadonlyArray<{
   { pattern: /\(קובץ מצורף\)$/, type: 'unknown' },
 ];
 
+/**
+ * The marker WhatsApp appends to a message that was edited after sending.
+ *
+ * It is a *suffix on the body*, not a message of its own, which is why it has to
+ * be stripped rather than classified: left in place it lands in the word counts,
+ * wins "longest message" for anyone who edits, and — because it is written in
+ * the phone's UI language — turns "edited" into one of the group's top words.
+ *
+ * The `‎` around it in real exports is U+200E, already gone by the time any of
+ * this runs. Kept anchored to the end so a message that merely quotes the phrase
+ * is not mistaken for one.
+ */
+export const EDITED_PATTERNS: readonly RegExp[] = [
+  /\s*<This message was edited>\s*$/i,
+  /\s*<הודעה זו נערכה>\s*$/,
+];
+
 export const DELETED_PATTERNS: readonly RegExp[] = [
   /^This message was deleted\.?$/i,
   /^You deleted this message\.?$/i,

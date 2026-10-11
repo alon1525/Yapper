@@ -69,6 +69,22 @@ export const STOPWORDS = new Set([
 const WORD_RE = /[\p{L}\p{N}']+/gu;
 
 /**
+ * The words ICU finds in a run of text with no spaces in it.
+ *
+ * `isWordLike` is what separates 寿司 from 、 and from the space either side of
+ * an English brand name — punctuation segments come back with the flag unset,
+ * and dropping them here means the caller's length floor and stopword list see
+ * only real candidates.
+ */
+function segmentWords(text: string, segmenter: Intl.Segmenter): string[] {
+  const out: string[] = [];
+  for (const piece of segmenter.segment(text)) {
+    if (piece.isWordLike) out.push(piece.segment);
+  }
+  return out;
+}
+
+/**
  * Lowercased content words, stopwords and very short tokens removed.
  *
  * The stopword set and the length floor both depend on the chat's language —
@@ -79,8 +95,17 @@ export function extractWords(
   text: string,
   stopwords: ReadonlySet<string> = STOPWORDS,
   minLength = 3,
+  /**
+   * Supplied only for languages that do not put spaces between words — see
+   * `wordSegmenterFor`. Passed in rather than chosen here so this module keeps
+   * knowing nothing about languages, and so the segmenter is built once per
+   * export instead of once per message.
+   */
+  segmenter: Intl.Segmenter | null = null,
 ): string[] {
-  const matches = text.toLowerCase().match(WORD_RE);
+  const matches = segmenter
+    ? segmentWords(text.toLowerCase(), segmenter)
+    : text.toLowerCase().match(WORD_RE);
   if (!matches) return [];
 
   const out: string[] = [];
@@ -94,8 +119,15 @@ export function extractWords(
   return out;
 }
 
-/** Rough word count for "who writes essays" — counts everything, no filtering. */
-export function countWords(text: string): number {
+/**
+ * Rough word count for "who writes essays" — counts everything, no filtering.
+ *
+ * Takes the segmenter for the same reason `extractWords` does: without it a
+ * three-sentence Japanese message counts as three words, and the person who
+ * writes the most in the group looks like the one who writes the least.
+ */
+export function countWords(text: string, segmenter: Intl.Segmenter | null = null): number {
+  if (segmenter) return segmentWords(text, segmenter).length;
   return text.match(WORD_RE)?.length ?? 0;
 }
 
@@ -111,6 +143,18 @@ const LAUGH_RE =
 
 export function countLaughter(text: string): number {
   return text.match(LAUGH_RE)?.length ?? 0;
+}
+
+/**
+ * The same text with every laugh removed.
+ *
+ * Laughter is the one token that is simultaneously the strongest signal a
+ * moment was funny and the weakest signal a *message* said anything. Scoring
+ * wants to count it; anything asking "is there content here" wants it gone
+ * first, or `חחחחח` reads as a five-character contribution.
+ */
+export function stripLaughter(text: string): string {
+  return text.replace(LAUGH_RE, ' ');
 }
 
 /** Top-N by count, ties broken alphabetically so results are deterministic. */

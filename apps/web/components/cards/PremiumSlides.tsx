@@ -17,7 +17,20 @@ import { Eyebrow, Headline, Panel, Poster, RegProse, type Backdrop } from './She
  * markup sit on lime and on navy without a second look.
  */
 
-const CARDS_PER_SLIDE = 4;
+/*
+  Both paginations are set by what fits a phone, not by what looks balanced in
+  a schema. Measured on a 430×932 screen with the column at its real 366px
+  measure: four character cards run 1,084px against 740px of usable height, and
+  eight awards run 1,088px. A slide in this deck does not scroll — it is tapped
+  — so anything past the fold is simply not read.
+
+  Character cards are much the taller of the two — five fields each, three of
+  them prose — so they page in twos and awards in fours. Three cards still ran
+  106px past the fold on a real report, and the card is the piece each person
+  screenshots for themselves, so it is the last thing that should be clipped.
+*/
+const CARDS_PER_SLIDE = 2;
+const AWARDS_PER_SLIDE = 4;
 
 export interface PremiumSlide {
   id: string;
@@ -113,11 +126,23 @@ function CharacterSlide({
   );
 }
 
-function AwardsSlide({ awards }: { awards: PremiumReport['awards'] }) {
+function AwardsSlide({
+  awards,
+  page,
+  pages,
+}: {
+  awards: PremiumReport['awards'];
+  page: number;
+  pages: number;
+}) {
   return (
     <>
-      <Eyebrow>The awards</Eyebrow>
-      <Headline>Nobody asked for these</Headline>
+      <Eyebrow>
+        The awards{pages > 1 ? ` · ${page + 1} of ${pages}` : ''}
+      </Eyebrow>
+      {/* The headline is the joke, and a joke does not get told twice — later
+          pages go straight to the winners. */}
+      {page === 0 && <Headline>Nobody asked for these</Headline>}
       <div className="mt-5 flex flex-col gap-3.5">
         {awards.map((award, i) => (
           <motion.div
@@ -146,7 +171,7 @@ function AwardsSlide({ awards }: { awards: PremiumReport['awards'] }) {
   );
 }
 
-function ErasSlide({ eras, narrative }: { eras: PremiumReport['eras']; narrative: string }) {
+function ErasSlide({ eras }: { eras: PremiumReport['eras'] }) {
   return (
     <>
       <Eyebrow>Your years, charted</Eyebrow>
@@ -176,16 +201,23 @@ function ErasSlide({ eras, narrative }: { eras: PremiumReport['eras']; narrative
           </motion.div>
         ))}
       </div>
-      <motion.p
-        dir="auto"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.5 }}
-        className="mt-6 pt-5 text-[15px] leading-relaxed italic opacity-80"
-        style={{ borderTop: '1px solid color-mix(in srgb, currentColor 18%, transparent)' }}
-      >
-        {narrative}
-      </motion.p>
+    </>
+  );
+}
+
+/**
+ * The closing paragraph, alone on its ground.
+ *
+ * It used to sit under the years, which made the deck's last word a footnote to
+ * a table — and on a phone it was the part that fell off the bottom. It is the
+ * one piece of the report written about the group as a whole, so it gets the
+ * screen.
+ */
+function NarrativeSlide({ narrative }: { narrative: string }) {
+  return (
+    <>
+      <Eyebrow>What it all adds up to</Eyebrow>
+      <RegProse>{narrative}</RegProse>
     </>
   );
 }
@@ -237,19 +269,30 @@ export function premiumSlidesFor(report: PremiumReport, demo = false): PremiumSl
     });
   }
 
-  slides.push({
-    id: 'premium-awards',
-    backdrop: 'orange',
-    render: () => <AwardsSlide awards={report.awards} />,
-  });
+  const awardPages = Math.ceil(report.awards.length / AWARDS_PER_SLIDE);
+  const awardGrounds: Backdrop[] = ['orange', 'red'];
+  for (let page = 0; page < awardPages; page++) {
+    const slice = report.awards.slice(page * AWARDS_PER_SLIDE, (page + 1) * AWARDS_PER_SLIDE);
+    slides.push({
+      id: `premium-awards-${page}`,
+      backdrop: awardGrounds[page % awardGrounds.length]!,
+      render: () => <AwardsSlide awards={slice} page={page} pages={awardPages} />,
+    });
+  }
 
   if (report.eras.length > 1) {
     slides.push({
       id: 'premium-eras',
       backdrop: 'teal',
-      render: () => <ErasSlide eras={report.eras} narrative={report.narrative} />,
+      render: () => <ErasSlide eras={report.eras} />,
     });
   }
+
+  slides.push({
+    id: 'premium-narrative',
+    backdrop: 'paper',
+    render: () => <NarrativeSlide narrative={report.narrative} />,
+  });
 
   return slides;
 }

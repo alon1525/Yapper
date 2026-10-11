@@ -1,10 +1,15 @@
-import Anthropic from '@anthropic-ai/sdk';
-import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { REPORT_LANGUAGE_CODES } from '@/lib/languages';
 import { demoReport } from '@/lib/demoReport';
 import { chatFingerprint, signingSecret, verify } from '@/lib/entitlement';
-import { PREMIUM_SYSTEM, PremiumSchema, premiumPrompt } from '@/lib/premiumPrompt';
+import { loadFixture } from '@/lib/fixture';
+import { failureBody, generateStructured } from '@/lib/generate';
+import { modelConfigured, modelFor, modelMissingMessage } from '@/lib/providers';
+import { crossSite, excerptChars, forbiddenCrossSite, payloadTooLarge } from '@/lib/guard';
+import { PremiumSchema, premiumPrompt, premiumSystem } from '@/lib/premiumPrompt';
+import { RequestSchema } from '@/lib/premiumRequest';
+import { checkRate, tooManyRequests } from '@/lib/rateLimit';
 
 /**
  * The paid generation.
@@ -17,82 +22,49 @@ import { PREMIUM_SYSTEM, PremiumSchema, premiumPrompt } from '@/lib/premiumPromp
  */
 
 export const runtime = 'nodejs';
-export const maxDuration = 120;
 
-const MODEL = process.env.WRAPPED_PREMIUM_MODEL ?? 'claude-opus-5';
+/**
+ * Five minutes, raised from two when the payload grew.
+ *
+ * This request now sends roughly 3,400 messages rather than 360, and can still
+ * ask for up to 24,000 output tokens — a report with a card for every member of
+ * an eighteen-person group is not short. `generateStructured` also takes a
+ * second turn when the first reply fails validation, which doubles the worst
+ * case rather than adding to it.
+ *
+ * A timeout here is the most expensive failure in the product: the model has
+ * been paid for, the work is done, and the reader sees an error. The host may
+ * clamp this to whatever the plan allows, which is the correct behaviour — it
+ * cannot be lower than the old value, so asking is free.
+ */
+export const maxDuration = 300;
 
-const SENDER_TOKEN = /^Person [A-Z]+$/;
-
-const RequestSchema = z.object({
-  token: z.string().max(500),
-  language: z.enum(['en', 'he', 'other']),
-  participantCount: z.number().int().min(1).max(500),
-  fingerprint: z.object({
-    totalMessages: z.number().int().min(1),
-    spanLabel: z.string().max(120),
-    participantCount: z.number().int().min(1).max(500),
-  }),
-  digest: z.object({
-    totalMessages: z.number(),
-    spanLabel: z.string().max(120),
-    perDay: z.number(),
-    activeDays: z.number(),
-    topEmoji: z.array(z.object({ value: z.string(), count: z.number() })).max(10),
-    busiestDay: z.object({ day: z.string().max(20), count: z.number() }).nullable(),
-    longestStreakDays: z.number(),
-    longestSilenceDays: z.number(),
-  }),
-  people: z
-    .array(
-      z.object({
-        sender: z.string().max(40),
-        share: z.number(),
-        messages: z.number(),
-        nightShare: z.number(),
-        medianResponseMinutes: z.number().nullable(),
-        longestSilenceDays: z.number(),
-        stillGone: z.boolean(),
-        consistency: z.number(),
-        laughsPerMessage: z.number(),
-        topEmoji: z.array(z.string().max(20)).max(5),
-        distinctiveWords: z.array(z.string().max(60)).max(10),
-        meanLength: z.number(),
-        questionShare: z.number(),
-        oneWordShare: z.number(),
-        longestMessage: z.string().max(600).nullable(),
-      }),
-    )
-    .max(60),
-  eras: z
-    .array(
-      z.object({
-        year: z.number().int(),
-        messages: z.number(),
-        busiestMonth: z.string().max(20).nullable(),
-      }),
-    )
-    .max(30),
-  moments: z
-    .array(
-      z.object({
-        id: z.string().max(40),
-        reasons: z.array(z.string().max(200)).max(10),
-        participants: z.number(),
-        messages: z
-          .array(
-            z.object({
-              sender: z.string().max(40),
-              time: z.string().max(10),
-              text: z.string().max(4000),
-            }),
-          )
-          .max(60),
-      }),
-    )
-    .max(20),
-});
+/**
+ * Ceiling on excerpt text per request.
+ *
+ * The paid payload is the one request in this product that carries real names
+ * and a substantial slice of the chat: up to 120 bursts of fifty messages, plus
+ * thirty of each person's own lines. On a real 25,812-message export that is
+ * 3,400 messages and about 75,000 characters of excerpt.
+ *
+ * This ceiling is a backstop against a hostile client, not a budget — the
+ * honest client counts its own characters and sends less material rather than
+ * risk this (`MOMENT_CHAR_BUDGET` in `premiumPayload.ts`, currently 400k plus
+ * 80k of per-person lines). It sits above that and far below what the per-field
+ * bounds alone would permit, which is 160 windows of sixty 4,000-character
+ * messages: thirty-eight megabytes, from a payload that validates.
+ *
+ * Measured, not guessed. `npx vite-node scripts/ai-dry-run.ts` prints the
+ * premium prompt size for a real export; re-run it before moving this.
+ */
+const MAX_EXCERPT_CHARS = 600_000;
 
 export async function POST(request: Request) {
+  if (crossSite(request)) return forbiddenCrossSite();
+
+  const rate = await checkRate('premium', request);
+  if (!rate.ok) return tooManyRequests(rate.retryAfter);
+
   const secret = signingSecret();
   if (!secret) {
     return NextResponse.json({ error: 'Payments are not configured on this server.' }, { status: 503 });
@@ -121,6 +93,29 @@ export async function POST(request: Request) {
     );
   }
 
+  // The entitlement binds to `fingerprint`, but the report is written from
+  // `digest`, `people` and `moments` — and until this check existed, those were
+  // separate fields the client filled in independently. Declaring a constant
+  // fingerprint while swapping the content underneath produced a token that
+  // validated against every chat in turn, which is exactly the replay the
+  // fingerprint is there to stop.
+  //
+  // The client already derives both from the same analysis, so agreement costs
+  // an honest caller nothing. Checked after the entitlement so a caller with no
+  // token learns nothing about the payload rules.
+  if (
+    payload.fingerprint.totalMessages !== payload.digest.totalMessages ||
+    payload.fingerprint.spanLabel !== payload.digest.spanLabel ||
+    payload.fingerprint.participantCount !== payload.participantCount
+  ) {
+    return NextResponse.json(
+      { error: 'This unlock does not match the report being requested.' },
+      { status: 402 },
+    );
+  }
+
+  if (excerptChars(payload) > MAX_EXCERPT_CHARS) return payloadTooLarge();
+
   // Only after the entitlement holds. An unentitled caller learns nothing
   // about how this server is configured, and the check that costs money is
   // never reached by someone who has not passed the check that gates it.
@@ -128,7 +123,21 @@ export async function POST(request: Request) {
   // With no key configured, return the deterministic report rather than an
   // error: the paid deck is then walkable end to end while the product is
   // being built, and the response says plainly that it is a sample.
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!modelConfigured()) {
+    // A hand-written report, when one is configured, is closer to the thing
+    // being designed for than the deterministic sample is — so it wins, and it
+    // is not labelled a demo, because the point of it is to be read as the
+    // real output would be.
+    const written = loadFixture('premium');
+    if (written) {
+      const parsed = PremiumSchema.safeParse(written);
+      if (!parsed.success) {
+        console.error('[premium] fixture failed the schema', parsed.error.issues);
+        return NextResponse.json({ error: 'The report fixture is not valid.' }, { status: 500 });
+      }
+      return NextResponse.json(parsed.data, { headers: { 'Cache-Control': 'no-store' } });
+    }
+
     // Validated like any other report. A deterministic builder is exactly the
     // thing that looks obviously correct and quietly returns four fewer
     // memories than the schema requires on a chat with no scoreable bursts —
@@ -143,64 +152,44 @@ export async function POST(request: Request) {
     });
   }
 
-  // Defence in depth, extended to cover the per-person section — which the
-  // preview route never had, and which carries names in more places than the
-  // moment excerpts do.
-  for (const person of payload.people) {
-    if (!SENDER_TOKEN.test(person.sender)) {
-      return NextResponse.json(
-        { error: 'Request rejected: people must be anonymised before sending.' },
-        { status: 400 },
-      );
-    }
+  /*
+    This route used to refuse any sender that was not `Person A`, and that check
+    is deliberately gone rather than accidentally missing.
+
+    The paid report is now written from real names. It is the only route in the
+    product that is — the preview, the detective and the writer all still
+    pseudonymise, and all three still enforce it — because a model that has only
+    ever seen `Person E` cannot repeat the joke this group makes about somebody's
+    name, cannot tell that two nicknames belong to one person, and writes the
+    could-be-anyone prose the paid deck was being refunded for.
+
+    What still stands between a chat and this endpoint: the entitlement, which is
+    minted per-chat and checked first; the fingerprint agreement check, so a
+    token cannot be replayed against different content; the rate limiter; the
+    cross-site check; and the excerpt ceiling. `/privacy` §3 states plainly that
+    this one request carries names, and the onboarding says so before the reader
+    unlocks. If you are adding a *second* route that sends real names, that
+    paragraph is the thing to update first.
+  */
+
+  const model = modelFor('premium');
+  if (!model) {
+    console.error(`[premium] ${modelMissingMessage('premium')}`);
+    return NextResponse.json({ error: 'AI is not configured on this server.' }, { status: 503 });
   }
-  for (const moment of payload.moments) {
-    for (const message of moment.messages) {
-      if (!SENDER_TOKEN.test(message.sender)) {
-        return NextResponse.json(
-          { error: 'Request rejected: senders must be anonymised before sending.' },
-          { status: 400 },
-        );
-      }
-    }
+
+  const report = await generateStructured({
+    model,
+    system: premiumSystem(payload.brief?.tone ?? 'roast'),
+    prompt: premiumPrompt(payload),
+    schema: PremiumSchema,
+    maxTokens: 24000,
+    stage: 'premium',
+  });
+
+  if (!report.ok) {
+    return NextResponse.json(failureBody(report), { status: report.status });
   }
 
-  const client = new Anthropic();
-
-  try {
-    const response = await client.beta.messages.create({
-      model: MODEL,
-      max_tokens: 24000,
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
-      system: PREMIUM_SYSTEM,
-      output_config: { format: zodOutputFormat(PremiumSchema) },
-      messages: [{ role: 'user', content: premiumPrompt(payload) }],
-    });
-
-    if (response.stop_reason === 'refusal') {
-      return NextResponse.json(
-        { error: 'The AI declined to write about this chat. Your statistics are all still here.' },
-        { status: 422 },
-      );
-    }
-
-    const text = response.content.find((b) => b.type === 'text');
-    if (!text || text.type !== 'text') {
-      return NextResponse.json({ error: 'Empty response from the model.' }, { status: 502 });
-    }
-
-    const report = PremiumSchema.parse(JSON.parse(text.text));
-
-    return NextResponse.json(report, { headers: { 'Cache-Control': 'no-store' } });
-  } catch (error) {
-    if (error instanceof Anthropic.RateLimitError) {
-      return NextResponse.json(
-        { error: 'Too many requests right now. Try again in a minute.' },
-        { status: 429 },
-      );
-    }
-    console.error('[premium] generation failed', error);
-    return NextResponse.json({ error: 'Could not write your report.' }, { status: 502 });
-  }
+  return NextResponse.json(report.value, { headers: { 'Cache-Control': 'no-store' } });
 }

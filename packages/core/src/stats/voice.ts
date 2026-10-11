@@ -1,7 +1,7 @@
 import type { Counted } from './types';
 import type { ParseResult } from '../types';
 import type { ChatLanguage } from '../lang/language';
-import { minWordLength, stopwordsFor } from '../lang/language';
+import { minWordLength, stopwordsFor, wordSegmenterFor } from '../lang/language';
 import { extractWords, increment } from './text';
 
 /**
@@ -43,6 +43,7 @@ export function computeVoiceProfiles(
 ): VoiceProfile[] {
   const stopwords = stopwordsFor(language);
   const floor = minWordLength(language);
+  const segmenter = wordSegmenterFor(language);
 
   const perPerson = new Map<string, Map<string, number>>();
   const groupCounts = new Map<string, number>();
@@ -53,7 +54,7 @@ export function computeVoiceProfiles(
   for (const message of parsed.messages) {
     if (message.kind !== 'text' || message.sender === null) continue;
 
-    const words = extractWords(message.body, stopwords, floor);
+    const words = extractWords(message.body, stopwords, floor, segmenter);
 
     let counts = perPerson.get(message.sender);
     if (!counts) perPerson.set(message.sender, (counts = new Map()));

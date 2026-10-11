@@ -4,15 +4,18 @@ Drop in a WhatsApp export and get your group chat back as a story: the top
 yapper, the certified ghost, the night it all went sideways, and awards nobody
 asked for.
 
-Every statistic is computed **in your browser**. AI is optional, consent-gated,
-and only ever sees an anonymised copy. Nothing is stored — close the tab and it
-is gone.
+Every statistic is computed **in your browser**. AI is optional and
+consent-gated. The free writing only ever sees an anonymised copy; the paid
+report is the one exception, and it says so at the till. Nothing is stored on
+the server — close the tab and it is gone — unless the reader chooses, on the
+last slide, to keep a finished report in their own browser.
 
 ```
-packages/core   Pure TypeScript engine — parse, stats, moments, anonymise.
-                Zero DOM dependencies, so a future Expo app can import it as-is.
-apps/web        Next.js 15 app. The landing page, the deck, a Web Worker,
-                and four server routes.
+packages/core   Pure TypeScript engine — parse, stats, sessions, patterns,
+                planning, verification, anonymise. Zero DOM dependencies, so a
+                future Expo app can import it as-is.
+apps/web        Next.js app. The landing page, the deck, a Web Worker, and the
+                server routes.
 ```
 
 ## Running it
@@ -21,7 +24,7 @@ apps/web        Next.js 15 app. The landing page, the deck, a Web Worker,
 npm install
 cp apps/web/.env.example apps/web/.env.local   # then fill in the signing secret
 npm run dev                                    # http://localhost:3000
-npm test                                       # 82 unit tests across both workspaces
+npm test                                       # 160 unit tests across both workspaces
 ```
 
 Nothing in `.env.local` is required to see the app — the landing page, the
@@ -32,23 +35,65 @@ you; the short version:
 | Variable | Without it |
 |---|---|
 | `WRAPPED_SIGNING_SECRET` | Premium unlock 503s. Set any random 16+ char string. |
-| `ANTHROPIC_API_KEY` | AI slide unavailable; premium report falls back to a deterministic sample, labelled as one. |
+| `ANTHROPIC_API_KEY` | AI slide unavailable; the detective returns no findings, so the deck is its deterministic half — every statistic slide, no discovered ones. |
+
+Model choice per stage is configurable, because the two stages want different
+things: the detective reads a great deal and returns a little structured output,
+while the comedy pass reads little and writes the thing people actually see. If
+only one gets the expensive model it should be the second.
+
+| Variable | Stage | Default |
+|---|---|---|
+| `WRAPPED_AI_MODEL` | free preview | `claude-opus-5` |
+| `WRAPPED_DETECTIVE_MODEL` | investigation | `claude-opus-5` |
+| `WRAPPED_WRITER_MODEL` | comedy | `claude-opus-5` |
+| `WRAPPED_PREMIUM_MODEL` | legacy single-shot report | `claude-opus-5` |
+
+The comedy pass is two calls to the writer's model: the draft, then an edit
+that reads it like a head writer an hour before the show and sends back a
+shorter, sharper deck (`apps/web/lib/editorPrompt.ts`). `WRAPPED_EDITOR=off`
+ships the draft as written.
 
 ## The shape of it
 
-**Landing → modal → deck.** The whole flow is one page. Uploading, parsing and
-naming all happen inside a modal rather than on screens of their own, and the
-deck only takes over the viewport when the reader presses play. Routing between
-pages would mean serialising the conversation into storage somewhere, and *your
-chat never leaves your device* is easier to keep true when there is nowhere for
-it to be left behind.
+**Landing → onboarding → deck.** The whole flow is one page and one component
+tree. Routing between pages would mean serialising the conversation into storage
+somewhere, and *your chat never leaves your device* is easier to keep true when
+there is nowhere for it to be left behind.
 
-The modal's three steps are **derived from the analyzer**, never stored
-separately — there is one answer to "what is happening" rather than two that
-can drift apart. A fourth state exists that the design could not know about:
-an export names anyone missing from the exporter's address book by phone number
-only, so sometimes it has to stop and ask who that is. It shares step two's
-progress bar, because from the reader's side it is still "working on it".
+The onboarding is seven steps and it takes the page rather than floating above
+it — a modal is a detour from whatever you were reading, and this is the thing
+you came to do:
+
+```
+lang    Which language should Reg write in?   (not the chat's language — the report's)
+kind    What kind of chat is this?            (sets the register of the roast)
+notes   Anything Reg should know?             (optional, scrubbed before it is sent)
+upload  Export the chat, then drop it here
+scan    Reading, on the device                (real message count, real progress)
+people  Who is who?                           (rename, identify numbers, merge duplicates)
+photos  Give it faces                         (optional, never leaves the browser)
+```
+
+The three steps the analyzer owns — scan, people, and the transition out of
+upload — are **derived from the analyzer**, never stored separately, so there is
+one answer to "what is happening" rather than two that can drift apart. The
+reader's answers are one `Brief` value (`lib/brief.ts`), held in `Experience`
+because it is written by a screen that unmounts before the deck that reads it.
+
+**The parse always stops to ask who is who.** Two things are invisible in the
+statistics and unfixable after them: an export names anyone missing from the
+exporter's address book by phone number only, and a contact renamed partway
+through a nine-year group sits on the leaderboard twice with half their messages
+each. `suggestMerges` proposes the pairs — same name modulo punctuation, and it
+says *renamed 2019* rather than *overlapping activity* when the two people's
+active windows do not overlap — but only the reader can confirm them. The step
+appears for every chat, including the ones with nothing to fix: a step that
+shows up for some chats and not others is a step nobody trusts.
+
+A merge is expressed as two names aliased to one. There is no separate merge
+path, because "these two rows are the same person" and "this row is called
+something else" are the same edit as far as the messages are concerned.
 
 ### Design system
 
@@ -69,6 +114,33 @@ Every pair in that palette clears WCAG AA (4.5:1 body, 3:1 accent). Two of the
 source design's colours did not and were adjusted: `#FF2E2E` behind body copy
 is 3.4:1, and the ember `#C2571F` under white button text is 4.2:1. Both are
 fine at poster size in the original and unreadable at 15px here.
+
+### Photos
+
+Optional, local, and never sent. Four slides can take a full-bleed photo and
+every member can have a face; both are object URLs pointing at bytes the browser
+already holds, revoked when the reader starts over. No payload builder reads
+them and neither AI route accepts an image — leaving the field out of the
+payload type is a stronger guarantee than remembering not to fill it in.
+
+The grading is the whole trick. A photograph is the loudest thing that can be
+put on a page, and the deck is flat grounds with one idea per screen — so the
+photo is desaturated, dropped to roughly a third, and buried under two layers of
+the slide's *own* ground. The first version graded each photo into its slide's
+hue and left the luminance alone, which looked right on a 120px preview tile and
+made the opener's headline unreadable at full size. Detail behind type is the
+problem, not colour.
+
+The onboarding's preview tiles and the deck read the same `photoLayers()` and
+the same slot→ground table, because a photo that looks one way while you are
+choosing it and another way in the story is a bug the reader has no way to
+report. That table lives in `cards/photos.tsx` and the slides import their
+backdrop *from* it; pointing that arrow the other way produced a real circular
+import and a 500 on the whole page.
+
+A missing photo renders nothing at all — no initials disc, no placeholder ring.
+Most decks will not have photos, and a fallback avatar means adding a circle to
+every slide of every chat to serve the ones that filled the step in.
 
 ### Sound
 
@@ -98,6 +170,89 @@ It asserts the invariant that matters: **every line in the file is classified as
 exactly one of header / continuation / orphan, with zero orphans.** WhatsApp
 exposes no message count to compare against, so this is the check that catches
 a parser bug.
+
+## How the report is built
+
+The report is a pipeline, not a prompt. The thing it is trying not to be is a
+dashboard, and the thing that stops it being one is that **no stage both
+discovers a fact and jokes about it**.
+
+```
+1  statistics        deterministic          parse → stats → phrases, interactions,
+                                            commitments, stalled plans
+2  segmentation      deterministic          the chat cut into conversations
+3  candidates        deterministic          scored, ranked, capped
+4  detective         model, structured      findings + message ids. No jokes.
+5  verification      deterministic, local   every claim checked against the real
+                                            messages. Rejects.
+6  planning          deterministic          which slides this group has earned
+7  comedy            model, structured      copy only. Cannot introduce a number.
+8  quality control   deterministic, local   invented figures, banned phrasing,
+                                            length, duplicates
+```
+
+Stages 5 and 8 run **in the browser**, and that is not where they ended up by
+convenience. The server was only ever sent an anonymised excerpt, so the server
+cannot tell a quote that was said from one that was invented. The browser still
+holds every message the excerpt was cut from, so it can — and it is the browser
+that throws findings away.
+
+**Message ids are the spine.** `AnonymizedMessage` carries `Message.id`, the
+prompt renders every line as `m1234 [2023-03-14 10:42] Person A: …`, and the
+model is told — truthfully — that a program checks each citation and discards
+what does not match. An id is an index into an array the model never sees, so it
+identifies nobody; without it, `evidence_message_ids` is decoration and every
+stage after stage 4 is unverifiable. The property that makes this work is that
+`applyAliases` rewrites the sender field in place and preserves order, so an id
+collected before the reader renamed anybody still points at the same message
+after.
+
+**The writer is never asked for a figure.** Statistics are computed in
+TypeScript and handed to it as the only numbers it may use; `verifySlideCopy`
+rejects any figure in the prose that is not in that list, not in a verified
+quote, and not small enough to be rhetoric. "Never state a statistic, interpret
+it" was already the instruction — this is the version that is enforced rather
+than requested.
+
+**The planner's real job is saying no.** Every guaranteed slide declares the
+condition under which it earns its place, and the ones that fail are dropped
+with a recorded reason. A night-owl slide in a group that keeps one schedule, a
+leaderboard where nobody is ahead, a reply-time slide on an export that only
+records minutes — each is true, and each is a rounding error with a name on it.
+`plan.suppressed` keeps the list, because "why is there no ghost slide" has a
+better answer than the slide would have been.
+
+**Verification repairs before it rejects.** A model reading a forty-line window
+routinely attaches the right quote to the id one row above it. That is a
+clerical slip, not an invention, so a quote is searched for in the finding's own
+evidence and a four-message neighbourhood, and repaired to the true speaker and
+date. Widened past that it would stop being repair and start laundering
+fabrications into verified quotes, which is why the radius is small and tested.
+
+### What a text export does not contain
+
+Stated here because the obvious assumption is wrong in both cases. WhatsApp `.txt`
+exports carry **no reply metadata and no reactions** — both exist in the app and
+neither is written to the file. So there is no `reactions` field anywhere in this
+codebase, and what can be recovered from adjacency is named `inferredReplies`
+rather than `replies`. A field that is structurally always empty is worse than an
+absent one.
+
+Edited messages *are* recoverable — WhatsApp appends `<This message was edited>`
+— and the marker is stripped from the body rather than left in it. Left in, it
+lands in the word counts, wins "longest message" for anyone who edits, and,
+because it is written in the phone's UI language, turns "edited" into one of the
+group's most-used words.
+
+### `\b` does not work in Hebrew
+
+JavaScript defines `\b` on `[A-Za-z0-9_]`, so it never fires between two Hebrew
+letters. `/\bמתי\b/` is not a stricter match — it is a match that cannot
+succeed. Written the obvious way, every Hebrew pattern in the commitment,
+question, plan and conflict lexicons silently found nothing: no error, no
+warning, just a Hebrew group getting an empty report section. They all use
+letter/digit lookarounds and the glued single-letter prefixes instead, exactly
+as the pseudonymiser does. A test caught this; nothing else would have.
 
 ## Things that are true and non-obvious
 
@@ -157,12 +312,40 @@ Both directories are named in `outputFileTracingIncludes`. They sit outside
 `public/` and outside the module graph, so without that the route works in
 `next dev` and 500s in production.
 
+**The report's language is not the chat's language.** Detection answers "what
+language is this group speaking", which drives stopwords and layout. The
+onboarding asks a different question — what language should the report be in —
+and a Hebrew group asking for English is asking for something they can send to
+someone who does not read Hebrew. The brief's answer wins in both prompts;
+detection is only the fallback when there is no brief.
+
 ## Tiers and the paywall
 
 | Tier | What the reader gets |
 |---|---|
 | Free | Every statistic slide, plus **one** AI memory — the hook. |
 | Premium | 4–6 memories, a character card for **every** member, an awards list, a line per year, a closing paragraph. |
+
+Both are offered from **one slide**, the wall (`cards/WallSlide.tsx`). There
+used to be two in a row — the free story behind one gate, the report behind
+the next — each with Reg's face, a serif question and an amber button, each
+followed by a wait. Read in sequence they were the same slide twice. Now the
+report is the primary action, the free pseudonymised story is the smaller one
+under it, and once that story is written it is shown on the wall in place of
+the pitch: a story the reader just laughed at sells the rest better than a
+bulleted list does.
+
+While the report is written the wall shows the work: the same film of the chat
+scrolling under a scanner that the onboarding used while the file was read, a
+bar that creeps rather than fills (the server reports nothing back until it is
+done), and a caption that changes every few seconds in Reg's voice. None of
+those captions is tied to a real sub-step. They exist because a two-minute wait
+with a changing caption is a wait with somebody in it, and a screen where
+nothing moves is a screen that has crashed. The report hook also yields to the
+browser before each stretch of synchronous work (`yieldToPaint`), because
+`setState` schedules a paint and does not perform one — building the payload
+used to start in the same tick as the state change announcing it, so the
+announcement painted after the work.
 
 Premium is gated on **generation, not display**. `/api/premium` writes nothing
 without a valid entitlement, so the paid slides do not exist anywhere the
@@ -186,10 +369,47 @@ far more than the rest of the group, by share not by count. Plain "top words"
 produces the same list for everyone in a group and therefore the same card;
 the ratio is what makes a card impossible to swap with someone else's.
 
+**The dossier is beats, not bars.** The staged pipeline's case file used to
+show five measured axes with a renamed label beside each — `Explanation
+addiction ——— 97` — which were honest and which nobody reading the card could
+parse: a number out of a hundred, of what, against whom. The axes still exist
+(`scores.ts`) and still reach the writer, but as *material*: "writes much
+longer messages than anyone else here: 97/100", from which it is asked for
+three or four beats about specific things this person does or says, quoting
+their own lines, and an official title in its own `closer` field. The
+detective's findings about one person are folded into that person's dossier by
+the planner (`foldFindingsIntoDossiers`) rather than becoming a separate slide,
+so the card is written from the investigation and not from a message count.
+A court case, for the same reason, is titled by the charge — "Ended 61
+conversations single-handedly" — with the defendant named on the eyebrow,
+because "The Group v. Person E" told the reader there was a case and nothing
+about what it was for.
+
+## My reports
+
+The one thing that outlives the tab, and it is the reader's choice. The last
+slide offers to keep the report on this device; pressing it writes the finished
+slides (names already restored), the statistics, the free story if it was
+written, and the brief minus its photos into IndexedDB (`lib/savedReports.ts`).
+Not the export, and not a message beyond those quoted on a slide. The front
+page lists what is kept, read from the browser rather than from any server,
+and opens one as a deck with no chat behind it: the slides play as they were,
+and the wall says plainly that writing more needs the export again. Photos
+are object URLs the browser has long since released, so a reopened report
+draws the animals. Saving twice updates the same record — the common case
+being a reader who kept the statistics, then unlocked, and wants the saved
+copy to have the report too.
+
+This was deliberately kept local rather than becoming a database. A table of
+finished reports on a server would hold real names and jokes about real people,
+which is the thing the privacy page says is never kept. If share links are ever
+built, they should store the report encrypted in the browser with the key in
+the URL fragment, so the server cannot read what it hosts.
+
 ## Testing the AI without paying for it
 
 ```bash
-npx vite-node scripts/ai-dry-run.ts -- "<export.txt>" <outDir>   # builds both prompts, gates both
+npx vite-node scripts/ai-dry-run.ts -- "<export.txt>" <outDir>   # builds all three prompts, gates all three
 npx vite-node scripts/ai-restore.ts -- <mapping.json> <reply.json>
 npx vite-node scripts/premium-restore.ts -- <mapping.json> <report.json>
 ```
@@ -212,10 +432,59 @@ than a promise:
 | Tier | What leaves the device |
 |---|---|
 | Free | Nothing. Parse, stats and moment detection all run in a Web Worker. |
-| AI preview | Opt-in only. An anonymised digest plus the top few conversation windows. |
-| Premium | Opt-in, entitlement-gated. The same anonymised copy, plus a per-person digest. |
+| AI preview | Opt-in only. An anonymised digest, the top few conversation windows, and the brief. |
+| Premium | Opt-in, entitlement-gated, and **the one tier that sends real names**. A few thousand messages: the top conversations, at least one window per year, and a spread of each person's own lines, plus a per-person digest. |
 
-Anonymisation replaces senders with `Person A`, then sweeps message bodies for
+**The detective payload is the widest surface in the product**, and nearly every
+field on it is *derived from* message bodies rather than quoted from them —
+which is the category the note on distinctive words already flags as the
+likeliest leak. Repeated n-grams are worse than single words: a two- or
+three-word phrase carries a nickname far more often than one word does, and
+"phrases this group repeats" is a metric built to surface exactly the language
+outsiders would not understand. Session keywords, session summaries,
+stalled-plan topics and signature phrases are all in the same category. Every
+one goes through `scrub()` in the payload builder, and `ai-dry-run` walks all of
+them — the gate inspects payload *contents*, so a new field that skips the
+scrubber fails the gate rather than shipping.
+
+**Message ids leave the device and that is fine.** An id is an index into the
+reader's own message array. It resolves to a message only for the browser that
+produced it, and it is what makes every claim in the report checkable.
+
+**Dates leave the device now, and that is a deliberate reversal.** They used to
+be withheld — `anonymizeMessages` carried the time of day and no calendar. A
+dated report is most of what the product is for: "May 2023: everyone believed
+the trip was happening" is the nostalgia slide, and a prophecy that aged badly
+cannot be told without knowing when it was made. Withholding the date did not
+stop a model writing those; it made it guess, and a confidently wrong date is
+worse than none. The payload already carried the span label, the busiest day and
+a per-year breakdown, and the message text is far more identifying than the day
+it was sent on. What is still withheld is the name.
+
+**The notes box is the one field the reader types names *at* the model.**
+Everywhere else names arrive through `anonymizeMessages`; here somebody writes
+"תמיר never replies because he works nights" directly into a prompt. So the
+brief goes through `briefDigest()`, which runs the same `scrub()` as any message
+body — the tokens in the notes then match the tokens in the excerpts, which is
+both the private answer and the useful one, since Reg's reply restores cleanly.
+`scripts/ai-dry-run.ts` builds a deliberately hostile brief naming every
+participant in the export and fails the same gate as everything else. Notes are
+also fenced in the prompt and framed as untrusted: it is a box marked "anything
+Reg should know", and people type instructions into those.
+
+**The paid report is deliberately outside all of this.** `/api/premium` sends
+real display names, as senders and inside message bodies, and sends roughly ten
+times the material the free tier does. That is not an oversight in the scrubber;
+it is the fix for a paid deck that read like a horoscope. A model shown only
+`Person E` cannot repeat the joke a group makes about somebody's name, cannot
+tell that two nicknames are one person, and writes copy that would fit any group
+chat. `scripts/ai-dry-run.ts` asserts the *presence* of names on that payload for
+the same reason it asserts their absence everywhere else — a premium payload that
+comes back anonymised means the pseudonymiser has crept back in, and that failure
+is silent. Privacy §3(b) and the unlock screen both state it before anyone pays.
+
+Anonymisation, for the three free AI routes, replaces senders with `Person A`,
+then sweeps message bodies for
 those same display names, phone numbers and emails — because people address each
 other by name constantly, and redacting only the sender column would leak every
 name anyway. Hebrew glues prepositions onto names (`לנדב`, `ונדב`), so those are
@@ -241,7 +510,8 @@ message bodies — including Hebrew's glued prefixes. Verified end to end:
 **What redaction cannot reach:** only WhatsApp *display names* are derivable from
 an export. Groups address each other by invented nicknames that appear nowhere in
 the participant list, and no regex recovers those. The landing copy must not
-claim otherwise.
+claim otherwise — and the notes box is where the reader can hand them over
+deliberately, which is most of what it is for.
 
 This is the normal case, not an edge case. In the real export used to build this,
 the participant list reads `בבלי`, `פקולה`, `גבוה`, `Turtle` — while inside the
@@ -265,8 +535,20 @@ guard in a ref instead, which closes synchronously.
 
 ## Not built yet
 
+**The legacy single-shot path is still in the tree and no longer wired up.**
+`/api/premium`, `lib/premiumPayload.ts`, `lib/premiumPrompt.ts`,
+`lib/usePremium.ts` and `cards/PremiumSlides.tsx` still work and are still
+gated, tested and dry-run-able; the deck now runs the staged pipeline instead.
+They are kept because `scripts/premium-restore.ts` and the fixture path depend
+on them, and deleting a working paid route in the same change that adds two new
+ones is one rollback away from having neither.
+
+
+
 Stripe itself (the seam is built — `/api/checkout` mints without charging) ·
-video / TikTok export · media upload and AI photo memories · voice notes ·
-share links · HD download · premium share cards · translated Hebrew UI copy
-(layout is RTL-safe, the strings are still English) · a display name that is a
-phone number is shown verbatim on its character card.
+video / TikTok export · AI photo memories (photos are collected and rendered
+locally; no model ever sees one) · photos on the premium character cards and the
+share card · voice notes · share links · HD download · premium share cards ·
+translated Hebrew UI copy (layout is RTL-safe, the strings are still English) ·
+a display name that is a phone number is shown verbatim on its character card ·
+photos are not carried across a restart, by design — nothing is stored.

@@ -102,13 +102,14 @@ const bubble = (mine: boolean, maxWidth: string): CSSProperties => ({
   color: '#E9EDEF',
   borderRadius: mine ? '8px 8px 2px 8px' : '8px 8px 8px 2px',
   padding: '6px 8px 4px',
-  fontFamily: 'var(--yap-heb)',
+  fontFamily: 'var(--yap-sans)',
   fontSize: 10.5,
   lineHeight: 1.35,
 });
 
+/* Trailing edge of the bubble, which is where WhatsApp puts the clock. */
 const stamp = (dim: number): CSSProperties => ({
-  textAlign: 'left',
+  textAlign: 'right',
   fontSize: 8,
   color: `rgba(233,237,239,${dim})`,
   marginTop: 2,
@@ -192,18 +193,17 @@ export function Steps() {
             <div style={{ width: 26, height: 26, borderRadius: 999, background: '#C9F24D' }} />
             <div style={{ flex: 1 }}>
               <div
-                dir="rtl"
                 style={{
-                  fontFamily: 'var(--yap-heb)',
+                  fontFamily: 'var(--yap-sans)',
                   fontWeight: 700,
                   fontSize: 11,
                   color: '#E9EDEF',
                 }}
               >
-                League of Virgins
+                Pizza Tonight?
               </div>
               <div style={{ fontSize: 8.5, color: 'rgba(233,237,239,.45)', marginTop: 2 }}>
-                בבלי, עומר, פקולה, +15
+                Bagel, Ginger, Mitzi, +15
               </div>
             </div>
           </div>
@@ -222,26 +222,26 @@ export function Steps() {
               justifyContent: 'flex-end',
             }}
           >
-            <div dir="rtl" style={bubble(false, '76%')}>
+            <div style={bubble(false, '76%')}>
               <div style={{ color: '#C9F24D', fontWeight: 700, fontSize: 9.5, marginBottom: 2 }}>
-                בבלי
+                Bagel
               </div>
-              מישהו זורק את הצ׳אט הזה ל־Yapped?
+              someone put this chat through Yapped
               <div style={stamp(0.45)}>23:14</div>
             </div>
-            <div dir="rtl" style={bubble(true, '60%')}>
-              כבר עושה
+            <div style={bubble(true, '60%')}>
+              already doing it
               <div style={stamp(0.5)}>23:14 ✓✓</div>
             </div>
-            <div dir="rtl" style={bubble(false, '82%')}>
+            <div style={bubble(false, '82%')}>
               <div style={{ color: '#F5B324', fontWeight: 700, fontSize: 9.5, marginBottom: 2 }}>
-                עומר סמורו
+                Ginger
               </div>
-              רגע אל תעשה זה יגלה כמה אני מדבר
+              wait no it&apos;ll show how much I talk
               <div style={stamp(0.45)}>23:15</div>
             </div>
-            <div dir="rtl" style={bubble(true, '52%')}>
-              מאוחר מדי 👀
+            <div style={bubble(true, '52%')}>
+              too late 👀
               <div style={stamp(0.5)}>23:16 ✓✓</div>
             </div>
           </div>
@@ -306,15 +306,14 @@ export function Steps() {
           >
             <div style={{ width: 50, height: 50, borderRadius: 999, background: '#C9F24D' }} />
             <div
-              dir="rtl"
               style={{
-                fontFamily: 'var(--yap-heb)',
-                fontWeight: 900,
+                fontFamily: 'var(--yap-sans)',
+                fontWeight: 700,
                 fontSize: 14,
                 color: '#E9EDEF',
               }}
             >
-              League of Virgins
+              Pizza Tonight?
             </div>
             <div
               style={{
@@ -407,15 +406,14 @@ export function Steps() {
             >
               <div style={{ width: 42, height: 42, borderRadius: 999, background: '#C9F24D' }} />
               <div
-                dir="rtl"
                 style={{
-                  fontFamily: 'var(--yap-heb)',
-                  fontWeight: 900,
+                  fontFamily: 'var(--yap-sans)',
+                  fontWeight: 700,
                   fontSize: 12,
                   color: '#E9EDEF',
                 }}
               >
-                League of Virgins
+                Pizza Tonight?
               </div>
               <div style={{ fontSize: 9, color: 'rgba(233,237,239,.45)' }}>Group · 18 members</div>
             </div>

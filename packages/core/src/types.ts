@@ -50,13 +50,31 @@ export interface Message {
   kind: MessageKind;
   attachmentType?: AttachmentType;
 
+  /**
+   * True when WhatsApp marked this message as edited after sending. The marker
+   * itself is stripped from `body` — it is written in the phone's UI language,
+   * so leaving it in makes "edited" one of the group's most-used words.
+   *
+   * Absent rather than `false` on ordinary messages: this rides on every message
+   * of a 173k-message parse, and the field only means something when it is set.
+   */
+  edited?: boolean;
+
   /** 1-indexed line in the source file where this message's header sits. */
   lineStart: number;
   /** Number of source lines this message occupies (1 + continuation lines). */
   lineCount: number;
 }
 
-export type ExportFormat = 'ios' | 'android';
+/**
+ * Which app wrote the file, and in which of its two shapes.
+ *
+ * `ios` and `android` are WhatsApp's. `line` is LINE's, which is a different
+ * file in every respect — tab-separated columns under a date heading rather
+ * than a timestamp per line — and is parsed by its own reader rather than by
+ * teaching the WhatsApp one a third dialect.
+ */
+export type ExportFormat = 'ios' | 'android' | 'line';
 export type DateOrder = 'DMY' | 'MDY';
 
 /**
@@ -83,6 +101,13 @@ export interface ParseDiagnostics {
   orphanLines: number;
   /** Subset of headerLines that produced a `system` message. */
   systemMessages: number;
+  /**
+   * LINE only: `2024/01/15(Mon)` lines, which open a day rather than a message.
+   * They belong to no message, so the invariant above becomes
+   * `headerLines + continuationLines + orphanLines + dateHeadingLines ===
+   * totalLines` for a LINE export. Absent for WhatsApp, which has no such line.
+   */
+  dateHeadingLines?: number;
 }
 
 export interface ParseWarning {
@@ -116,6 +141,13 @@ export interface ParseOptions {
   dateOrder?: DateOrder;
   /** Fallback when detection finds no evidence at all. Defaults to 'DMY'. */
   defaultDateOrder?: DateOrder;
-  /** Invoked with 0..1 progress so the worker can drive a real progress bar. */
-  onProgress?: (fraction: number) => void;
+  /**
+   * Invoked with 0..1 progress so the worker can drive a real progress bar.
+   *
+   * `messages` is how many have been seen so far — a real running count, not an
+   * estimate scaled off the fraction. The onboarding's scan step shows it at
+   * poster size, and a number that climbs to a figure the next screen then
+   * contradicts is worse than no number at all.
+   */
+  onProgress?: (fraction: number, messages: number) => void;
 }

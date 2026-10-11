@@ -3,6 +3,7 @@ import {
   detectLanguage,
   minWordLength,
   stopwordsFor,
+  wordSegmenterFor,
   type ChatLanguage,
 } from '../lang/language';
 import {
@@ -29,6 +30,8 @@ import type {
 } from './types';
 
 const DAY_MS = 86_400_000;
+/** A second message from the same person this long after the first is a nudge. */
+const DOUBLE_TEXT_MS = 10 * 60 * 1000;
 const DEFAULT_REPLY_WINDOW_MS = 2 * 60 * 60 * 1000;
 const DEFAULT_CONVERSATION_GAP_MS = 3 * 60 * 60 * 1000;
 
@@ -102,6 +105,7 @@ interface Acc {
   earlyMessages: number;
   responses: number[];
   conversationsStarted: number;
+  doubleTexts: number;
   days: Set<DayKey>;
   firstTs: number;
   lastTs: number;
@@ -133,6 +137,7 @@ function newAcc(name: string, m: Message): Acc {
     earlyMessages: 0,
     responses: [],
     conversationsStarted: 0,
+    doubleTexts: 0,
     days: new Set(),
     firstTs: m.ts.getTime(),
     lastTs: m.ts.getTime(),
@@ -156,6 +161,10 @@ export function computeStats(parsed: ParseResult, options: StatsOptions = {}): C
   const language = options.language ?? detectLanguage(parsed.messages);
   const stopwords = stopwordsFor(language);
   const minWord = minWordLength(language);
+  /* Built once for the whole export rather than per message: a chat with no
+     spaces in it needs ICU to find its word boundaries, and constructing a
+     segmenter 173,000 times is most of the cost of doing so. */
+  const segmenter = wordSegmenterFor(language);
 
   // System messages are excluded from every per-person statistic. They belong
   // to nobody, and attributing them silently inflates whoever spoke last.
@@ -182,6 +191,10 @@ export function computeStats(parsed: ParseResult, options: StatsOptions = {}): C
   let totalLinks = 0;
   let totalEmoji = 0;
   let longestOverall: Message | null = null;
+  // A single message with a non-zero seconds field is enough to prove the
+  // export was written to the second; without one, every gap in the file is a
+  // whole number of minutes.
+  let hasSeconds = false;
 
   const silences: Silence[] = [];
 
@@ -202,6 +215,8 @@ export function computeStats(parsed: ParseResult, options: StatsOptions = {}): C
     acc.days.add(dk);
     acc.lastTs = ts;
     acc.lastDay = dk;
+
+    if (!hasSeconds && m.ts.getUTCSeconds() !== 0) hasSeconds = true;
 
     if (m.localHour < 5) acc.nightMessages++;
     else if (m.localHour < 8) acc.earlyMessages++;
@@ -231,11 +246,11 @@ export function computeStats(parsed: ParseResult, options: StatsOptions = {}): C
       acc.characters += chars;
       totalCharacters += chars;
 
-      const wordTotal = countWords(m.body);
+      const wordTotal = countWords(m.body, segmenter);
       acc.words += wordTotal;
       totalWords += wordTotal;
 
-      for (const w of extractWords(m.body, stopwords, minWord)) {
+      for (const w of extractWords(m.body, stopwords, minWord, segmenter)) {
         increment(acc.wordCounts, w);
         increment(wordsAll, w);
       }
@@ -262,6 +277,11 @@ export function computeStats(parsed: ParseResult, options: StatsOptions = {}): C
       const gap = ts - prev.ts.getTime();
       if (prev.sender !== sender && gap >= 0 && gap <= replyWindowMs) {
         acc.responses.push(gap);
+      }
+      // Their own message, still unanswered after ten minutes, and here is
+      // another. Under ten it is one thought in two bubbles, not a nudge.
+      if (prev.sender === sender && gap >= DOUBLE_TEXT_MS && gap < conversationGapMs) {
+        acc.doubleTexts++;
       }
       if (gap >= conversationGapMs) {
         acc.conversationsStarted++;
@@ -346,6 +366,7 @@ export function computeStats(parsed: ParseResult, options: StatsOptions = {}): C
         meanResponseMs: meanResponse,
         responseSamples: a.responses.length,
         conversationsStarted: a.conversationsStarted,
+        doubleTexts: a.doubleTexts,
         longestSilenceDays: a.longestSilenceMs / DAY_MS,
         longestSilenceFrom: a.longestSilenceMs > 0 ? dayKeyFromEpoch(a.silenceFrom) : null,
         longestSilenceTo: a.longestSilenceMs > 0 ? dayKeyFromEpoch(a.silenceTo) : null,
@@ -403,6 +424,7 @@ export function computeStats(parsed: ParseResult, options: StatsOptions = {}): C
       label: spanLabel(firstMsg, lastMsg),
     },
     perDay: msgs.length / spanDays,
+    timestampPrecisionMs: hasSeconds ? 1_000 : 60_000,
     people,
     hourHistogram,
     weekdayHistogram,
@@ -556,6 +578,7 @@ function emptyStats(
     totalEmoji: 0,
     span: { first: '', last: '', days: 0, activeDays: 0, label: '' },
     perDay: 0,
+    timestampPrecisionMs: 60_000,
     people: [],
     hourHistogram: new Array<number>(24).fill(0),
     weekdayHistogram: new Array<number>(7).fill(0),

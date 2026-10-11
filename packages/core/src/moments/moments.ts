@@ -1,5 +1,6 @@
 import type { Message, ParseResult } from '../types';
 import { countLaughter } from '../stats/text';
+import { isSubstantive } from '../stats/samples';
 
 /**
  * Deterministic candidate-moment detection.
@@ -36,6 +37,8 @@ export interface MomentSignals {
   questions: number;
   /** Fraction of messages sent between midnight and 05:00. */
   nightShare: number;
+  /** Fraction of messages that carry readable text rather than a reaction. */
+  readableShare: number;
 }
 
 export interface MomentWindow {
@@ -58,6 +61,23 @@ export interface MomentOptions {
   limit?: number;
   /** Cap on messages carried in one window when handed to a model. */
   maxMessagesPerWindow?: number;
+  /**
+   * Least share of a window that must be readable text for it to be a
+   * candidate at all, from 0 (any window) to 1 (every message).
+   *
+   * Defaults to 0, which is the behaviour every caller had before this option
+   * existed. It is not the right default so much as the safe one: the free
+   * preview and the detective both rank against these scores, and quietly
+   * moving the floor under them would reshape decks nobody asked to change.
+   *
+   * The reason it exists: this scorer rewards laughter and density, which is
+   * precisely the signature of a sticker landing. On a real 25,812-message
+   * export the top-scoring window was six media placeholders and one word, and
+   * 42% of everything the model was shown was `<unknown>` or a bare `חחחח`.
+   * Those windows score highest and say least. The paid report passes a floor
+   * here; nothing else does yet.
+   */
+  minReadableShare?: number;
 }
 
 function median(values: number[]): number {
@@ -88,7 +108,7 @@ export function findCandidateMoments(
   parsed: ParseResult,
   options: MomentOptions = {},
 ): MomentWindow[] {
-  const { limit = 30 } = options;
+  const { limit = 30, minReadableShare = 0 } = options;
 
   // System messages would distort density and never carry a moment.
   const msgs = parsed.messages.filter((m) => m.kind !== 'system');
@@ -116,12 +136,14 @@ export function findCandidateMoments(
     let questions = 0;
     let lengthSum = 0;
     let nightCount = 0;
+    let readable = 0;
     const people = new Set<string>();
     const gaps: number[] = [];
 
     for (let i = 0; i < window.length; i++) {
       const m = window[i]!;
       if (m.sender) people.add(m.sender);
+      if (isSubstantive(m)) readable++;
       if (m.kind === 'text') {
         laughs += countLaughter(m.body);
         if (m.body.includes('?')) questions++;
@@ -148,6 +170,7 @@ export function findCandidateMoments(
       meanLength: lengthSum / count,
       questions,
       nightShare: nightCount / count,
+      readableShare: readable / count,
     };
 
     const reasons: string[] = [];
@@ -219,6 +242,7 @@ export function findCandidateMoments(
   });
 
   return scored
+    .filter((w) => w.signals.readableShare >= minReadableShare)
     .sort((a, b) => b.score - a.score || a.startId - b.startId)
     .slice(0, limit);
 }

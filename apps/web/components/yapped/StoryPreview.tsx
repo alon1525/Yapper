@@ -13,6 +13,17 @@ import { useStorySound } from '@/lib/useStorySound';
  * `useStorySound`, because the landing page is a promise about what the deck
  * will be. Everything in it is fixed sample content; the reader's own numbers
  * only exist after they upload.
+ *
+ * The cast is invented — "Pizza Tonight?" and everyone in it, a group named for
+ * one evening in 2016 that has been running ever since. No real chat is on the
+ * landing page, and the shape of the story does not need one: the counts below
+ * are internally exact (the per-year and per-hour tables both total 173,319,
+ * the leaderboard gap is the 84 messages slide three claims), which is what
+ * makes the sample read as a report rather than as decoration.
+ *
+ * It is written in English throughout. The deck itself follows whatever language
+ * the reader's export is in, but the sample is the first thing a stranger sees,
+ * and a preview they cannot read is not a preview.
  */
 
 const HOURS = [
@@ -65,10 +76,26 @@ const poster = (size: number, extra?: CSSProperties): CSSProperties => ({
   ...extra,
 });
 
-const heb = (size: number, extra?: CSSProperties): CSSProperties => ({
-  fontFamily: 'var(--yap-heb)',
-  fontWeight: 900,
+/* A name that is the headline of its slide gets the poster face, uppercase —
+   the same treatment the big numbers get, because on those slides the name is
+   the number. */
+const hero = (size: number, extra?: CSSProperties): CSSProperties => ({
+  fontFamily: 'var(--yap-poster)',
   fontSize: size,
+  lineHeight: 0.9,
+  letterSpacing: '-.01em',
+  textTransform: 'uppercase',
+  ...extra,
+});
+
+/* A name inside a list is not a headline, so it stays in the sans and keeps its
+   own capitals — a column of poster caps next to poster numerals reads as one
+   undifferentiated block. */
+const nameStyle = (size: number, extra?: CSSProperties): CSSProperties => ({
+  fontFamily: 'var(--yap-sans)',
+  fontWeight: 700,
+  fontSize: size,
+  letterSpacing: '-.01em',
   ...extra,
 });
 
@@ -122,9 +149,7 @@ function Rank({
       >
         {n}
       </span>
-      <span dir="rtl" style={heb(nameSize)}>
-        {name}
-      </span>
+      <span style={nameStyle(nameSize)}>{name}</span>
       <span
         style={{
           fontFamily: 'var(--yap-mono)',
@@ -142,9 +167,7 @@ function Rank({
 function MediaRow({ name, note }: { name: string; note: string }) {
   return (
     <div style={{ background: '#180410', borderRadius: 14, padding: '12px 14px' }}>
-      <div dir="rtl" style={heb(21, { color: '#fff' })}>
-        {name}
-      </div>
+      <div style={nameStyle(19, { color: '#fff' })}>{name}</div>
       <div
         style={{ fontFamily: 'var(--yap-mono)', fontSize: 11, marginTop: 4, color: '#FF9DCB' }}
       >
@@ -157,9 +180,7 @@ function MediaRow({ name, note }: { name: string; note: string }) {
 function Award({ name, line }: { name: string; line: string }) {
   return (
     <div>
-      <div dir="rtl" style={heb(23)}>
-        {name}
-      </div>
+      <div style={nameStyle(21)}>{name}</div>
       <div style={{ fontSize: 14, lineHeight: 1.4 }}>{line}</div>
     </div>
   );
@@ -173,7 +194,13 @@ export function StoryPreview({
   slideSeconds?: number;
 }) {
   const [i, setI] = useState(0);
-  const sound = useStorySound();
+  // The sample opens silent. It used to open with sound on, relying on the
+  // browser to hold the AudioContext back until a gesture — but a browser that
+  // has seen this site before lets the context run at once, and the front page
+  // started humming by itself the moment it loaded, drone and all, to a reader
+  // who had asked for nothing. The ♪ on the phone is the one gesture that
+  // starts it, which is also the only honest reading of that icon.
+  const sound = useStorySound(false);
   const advanceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const go = useCallback(
@@ -336,7 +363,7 @@ export function StoryPreview({
               {/* 01 */}
               {i === 0 && (
                 <div style={slide('#C9F24D', '#10130E', 'flex-end')}>
-                  <div style={eyebrow()}>League of Virgins · since Aug 2016</div>
+                  <div style={eyebrow()}>Pizza Tonight? · since Aug 2016</div>
                   <div
                     style={poster(70, {
                       letterSpacing: '-.02em',
@@ -348,7 +375,7 @@ export function StoryPreview({
                     <br />
                     One group.
                     <br />
-                    No cure.
+                    Still no pizza.
                   </div>
                   <div style={body()}>
                     Reg read all 173,319 messages so you never have to. Tap through. Volume up.
@@ -376,7 +403,7 @@ export function StoryPreview({
                   </div>
                   <div style={body({ marginTop: 20 })}>
                     That&apos;s 52 messages a day, every day, for nine years. Including the years
-                    you claim you were &quot;busy&quot;.
+                    everyone insists they were &quot;off their phone&quot;.
                   </div>
                 </div>
               )}
@@ -393,14 +420,15 @@ export function StoryPreview({
                       marginTop: 20,
                     }}
                   >
-                    <Rank n={1} name="בבלי" count="30,554" size={40} nameSize={27} gold />
-                    <Rank n={2} name="עומר סמורו" count="26,837" size={32} nameSize={22} />
-                    <Rank n={3} name="תמיר הגבר" count="17,910" size={27} nameSize={19} />
-                    <Rank n={4} name="פקולה" count="17,826" size={22} nameSize={17} opacity={0.6} />
-                    <Rank n={5} name="שחר דק" count="17,296" size={20} nameSize={16} opacity={0.5} />
+                    <Rank n={1} name="Bagel" count="30,554" size={40} nameSize={26} gold />
+                    <Rank n={2} name="Ginger" count="26,837" size={32} nameSize={21} />
+                    <Rank n={3} name="Submarine Dave" count="17,910" size={27} nameSize={18} />
+                    <Rank n={4} name="Mitzi" count="17,826" size={22} nameSize={16} opacity={0.6} />
+                    <Rank n={5} name="Tank" count="17,296" size={20} nameSize={15} opacity={0.5} />
                   </div>
                   <div style={{ fontSize: 14, lineHeight: 1.5, marginTop: 20, color: '#DCD2FF' }}>
-                    פקולה lost 4th place by 84 messages and will never recover from it.
+                    Mitzi missed the podium by 84 messages — and has brought it up roughly once a
+                    month ever since.
                   </div>
                 </div>
               )}
@@ -409,9 +437,7 @@ export function StoryPreview({
               {i === 3 && (
                 <div style={slide('#FF6B1A', '#1A0A00', 'flex-end')}>
                   <div style={eyebrow()}>Chief yapper</div>
-                  <div dir="rtl" style={heb(72, { lineHeight: 0.9, marginTop: 12 })}>
-                    בבלי
-                  </div>
+                  <div style={hero(76, { marginTop: 12 })}>Bagel</div>
                   <div style={body({ fontSize: 16, marginTop: 16, maxWidth: '27ch' })}>
                     733,515 characters. 3,801 questions. 3,075 separate messages that were just
                     laughing. 18% of everything ever said here.
@@ -431,7 +457,7 @@ export function StoryPreview({
                       borderRadius: 999,
                     }}
                   >
-                    Has never left a chat unread
+                    Answers other people&apos;s questions
                   </div>
                 </div>
               )}
@@ -440,11 +466,12 @@ export function StoryPreview({
               {i === 4 && (
                 <div style={slide('#10130E', '#EFEFE6', 'center')}>
                   <div style={eyebrow('#8FA07C')}>Certified ghost</div>
-                  <div
-                    dir="rtl"
-                    style={heb(52, { lineHeight: 0.95, marginTop: 12, color: '#C9F24D' })}
-                  >
-                    תמיר הגבר
+                  {/* Name in the ground colour, the stat in the accent. Both in
+                      the accent and the two poster blocks fuse into one. */}
+                  <div style={hero(50, { lineHeight: 0.86, marginTop: 12 })}>
+                    Submarine
+                    <br />
+                    Dave
                   </div>
                   <div style={poster(44, { lineHeight: 0.9, marginTop: 12, color: '#C9F24D' })}>
                     70 min
@@ -453,7 +480,7 @@ export function StoryPreview({
                   </div>
                   <div style={body({ marginTop: 16, maxWidth: '27ch', color: '#C6C9BC' })}>
                     Slowest replier in the group — twice as slow as anyone else. Also sent 1,022
-                    messages between 1 and 5 AM. So he&apos;s awake. He&apos;s just ignoring you.
+                    messages between 1 and 5 AM. The phone is on. You are simply not the priority.
                   </div>
                 </div>
               )}
@@ -462,13 +489,15 @@ export function StoryPreview({
               {i === 5 && (
                 <div style={slide('#16E0C8', '#04211D', 'center')}>
                   <div style={eyebrow()}>Fastest trigger finger</div>
-                  <div dir="rtl" style={heb(56, { lineHeight: 0.95, marginTop: 10 })}>
-                    פקולה
-                  </div>
-                  <div style={poster(60, { lineHeight: 0.85, marginTop: 8 })}>16.7 min</div>
+                  {/* The name and the stat are both set in the poster face, so
+                      the size gap between them has to do all the work of telling
+                      them apart — this slide is about the number. */}
+                  <div style={hero(40, { marginTop: 10, opacity: 0.72 })}>Mitzi</div>
+                  <div style={poster(76, { lineHeight: 0.85, marginTop: 10 })}>16.7 min</div>
                   <div style={body({ marginTop: 16, maxWidth: '27ch' })}>
                     Fastest replier of anyone with real volume — and the author of a single
-                    10,500-character message. That&apos;s not a text, that&apos;s a dissertation.
+                    10,500-character message about a parking spot. That is not a text. That is a
+                    submission.
                   </div>
                 </div>
               )}
@@ -550,8 +579,8 @@ export function StoryPreview({
                     761 messages in one day
                   </div>
                   <div style={body({ marginTop: 14, maxWidth: '27ch' })}>
-                    Your busiest day ever, and 232 of them were from one person. Reg reconstructed
-                    it.
+                    Your busiest day ever, and 232 of them came from one person between midnight
+                    and dawn. Reg reconstructed the whole thing.
                   </div>
                 </div>
               )}
@@ -576,13 +605,14 @@ export function StoryPreview({
                       marginTop: 14,
                     }}
                   >
-                    &quot;It began with יניב stuck outside the commune at 1 AM asking if anyone
-                    wanted to come out for an hour.&quot;
+                    &quot;It started at 00:41, with Ollie locked in a stairwell, holding the keys
+                    to a different building.&quot;
                   </div>
                   <div style={{ fontSize: 14.5, lineHeight: 1.6, marginTop: 14, color: '#4E4536' }}>
-                    Nobody came out. Instead: 761 messages, 232 of them from פקולה, a spelling
-                    correction war led by עומר, and a debate about who got discharged first that
-                    lasted until morning.
+                    Nobody went to help. Instead: 761 messages, 232 of them from Mitzi, a
+                    forty-minute referendum on whether ketchup belongs on anything, and an
+                    accounting dispute about one taxi from 2017 that was never resolved and has
+                    never been dropped.
                   </div>
                 </div>
               )}
@@ -592,25 +622,25 @@ export function StoryPreview({
                 <div style={slide('#C9F24D', '#10130E', 'center')}>
                   <div style={eyebrow()}>Your entire vocabulary</div>
                   <div
-                    dir="rtl"
                     style={{
                       display: 'flex',
                       flexWrap: 'wrap',
                       alignItems: 'baseline',
                       gap: 12,
                       marginTop: 18,
-                      fontFamily: 'var(--yap-heb)',
-                      fontWeight: 900,
+                      fontFamily: 'var(--yap-poster)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '-.01em',
                     }}
                   >
                     {[
-                      ['זה', 52],
-                      ['לא', 44],
-                      ['אני', 38],
-                      ['מה', 30],
-                      ['אבל', 34],
-                      ['מישהו', 26],
-                      ['לול', 30],
+                      ['just', 52],
+                      ['no', 44],
+                      ['wait', 40],
+                      ['ok', 34],
+                      ['bro', 30],
+                      ['what', 30],
+                      ['pizza', 24],
                     ].map(([word, size]) => (
                       <span key={word as string} style={{ fontSize: size as number, lineHeight: 0.9 }}>
                         {word}
@@ -618,8 +648,8 @@ export function StoryPreview({
                     ))}
                   </div>
                   <div style={body({ marginTop: 20, maxWidth: '27ch' })}>
-                    &quot;חחחח&quot; appears 2,156 times as its own word. &quot;לול&quot; 1,996
-                    times. Nine years of language, three syllables.
+                    &quot;haha&quot; appears 2,156 times as a word of its own. &quot;lol&quot;
+                    1,996. &quot;pizza&quot; — the entire reason this group exists — 118.
                   </div>
                 </div>
               )}
@@ -659,9 +689,12 @@ export function StoryPreview({
                   <div
                     style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 18 }}
                   >
-                    <MediaRow name="תמיר הגבר" note="2,051 photos & videos · unpaid, unstoppable" />
-                    <MediaRow name="עידן וינברג" note="1,282 · quality unverified" />
-                    <MediaRow name="עומר סמורו" note="964 · mostly screenshots of this chat" />
+                    <MediaRow
+                      name="Submarine Dave"
+                      note="2,051 photos & videos · unpaid, unstoppable"
+                    />
+                    <MediaRow name="Kev" note="1,282 · almost entirely of one dog" />
+                    <MediaRow name="Ginger" note="964 · mostly screenshots of this chat" />
                   </div>
                   <div style={{ fontSize: 14, lineHeight: 1.5, marginTop: 16 }}>
                     9,378 media files total. WhatsApp deleted most of them. Reg mourns them.
@@ -676,10 +709,10 @@ export function StoryPreview({
                   <div
                     style={{ display: 'flex', flexDirection: 'column', gap: 13, marginTop: 16 }}
                   >
-                    <Award name="בבלי" line="Laughed 3,075 times. At his own jokes, mostly." />
-                    <Award name="תמיר הגבר" line="Awake at 3 AM, unreachable at 3 PM" />
-                    <Award name="פקולה" line="Longest message in recorded history" />
-                    <Award name="Turtle" line="Founded the group, then stopped showing up" />
+                    <Award name="Bagel" line="Laughed 3,075 times, mostly at own material" />
+                    <Award name="Submarine Dave" line="Awake at 3 AM, unreachable at 3 PM" />
+                    <Award name="Mitzi" line="Longest message in recorded history" />
+                    <Award name="Penny" line="Started the group, attended nothing since" />
                   </div>
                 </div>
               )}
@@ -743,9 +776,9 @@ export function StoryPreview({
                       color: '#C6C9BC',
                     })}
                   >
-                    You survived a three-year decline, four wars of attrition over who replies
-                    slowest, and 9,378 media files. Nine years in and you still talk every day.
-                    That&apos;s love, technically.
+                    You survived a three-year decline, one unresolved taxi fare, and 9,378 media
+                    files. Nine years on from a pizza that never happened, you still talk every
+                    day. That is love, technically.
                   </div>
                 </div>
               )}

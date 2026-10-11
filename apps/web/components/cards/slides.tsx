@@ -2,15 +2,10 @@
 
 import { motion } from 'framer-motion';
 import type { ChatStats } from '@wrapped/core';
-import {
-  formatDay,
-  formatDays,
-  formatDuration,
-  formatHour,
-  formatNumber,
-  percent,
-  shortName,
-} from '@/lib/format';
+import type { Localised } from '@/lib/copy';
+import { GROUP_SLOT_BACKDROP, Portrait } from './photos';
+import { duration, day, hour, num, percent, shortName, span, spanLabel } from '@/lib/localFormat';
+import { Badge, Mono, Note, Stamp, type Dress } from './ReportGround';
 import {
   AnimatedNumber,
   BubbleBars,
@@ -24,38 +19,89 @@ import {
   type Backdrop,
 } from './Shell';
 
-export interface SlideDef {
+/**
+ * A statistics slide. The `Dress` half says how it sits on the night ground:
+ * its tone, where the bloom comes from, and which of the four group-photo
+ * slots lies under it. Only the slides the onboarding previews carry a photo —
+ * a photo on every slide would be a slideshow, and the deck is not a slideshow.
+ */
+export interface SlideDef extends Partial<Dress> {
   id: string;
   backdrop: Backdrop;
   /** A slide that cannot be filled honestly is dropped rather than faked. */
   available: (s: ChatStats) => boolean;
-  render: (s: ChatStats) => React.ReactNode;
+  /**
+   * Renders in the language the reader asked for.
+   *
+   * Every string here used to be typed straight into the JSX, which meant a
+   * report in Japanese was a paragraph of Japanese under an English eyebrow.
+   * The copy lives in `lib/copy` now and arrives as `l.t`, along with the
+   * locale its numbers and dates are formatted in.
+   */
+  render: (s: ChatStats, l: Localised) => React.ReactNode;
+}
+
+/**
+ * A name at poster size with that person's face beside it — the reader's photo
+ * of them, or the animal that stands in when they did not supply one. Either
+ * way something occupies the slot, which is why the portrait sits in a flex row
+ * rather than being positioned against the headline.
+ *
+ * The headline box is `min-w-0` but deliberately not `flex-1`: stretching it to
+ * the full column pushes a Hebrew name — which aligns to the end of its own box
+ * — clear across the slide, leaving the portrait stranded on the far left. At
+ * content width the face and the name stay together whichever way the script
+ * runs, and a long name still wraps, because `min-w-0` lets the item shrink
+ * below its content.
+ */
+function Named({ name }: { name: string }) {
+  return (
+    <div className="flex items-center gap-4">
+      <Portrait name={name} size={72} />
+      <div className="min-w-0">
+        <Headline>{name}</Headline>
+      </div>
+    </div>
+  );
 }
 
 const person = (s: ChatStats, name: string | null) =>
   s.people.find((p) => p.name === name) ?? null;
 
 /**
- * The colours are sequenced, not assigned. Consecutive slides never share a
- * ground, and the two dark ones (ink, navy) are spaced apart so the deck does
- * not go quiet in the middle — it is a story with a rhythm, and colour is how
- * that rhythm is felt.
+ * One ground, many tones. Every slide sits on the same near-black and brings
+ * its own colour as a bloom; consecutive slides never share a tone, so the
+ * deck keeps the rhythm the old rotation of flat grounds gave it — it is a
+ * story, and colour is how that rhythm is felt.
  */
 export const SLIDES: SlideDef[] = [
   {
     id: 'welcome',
-    backdrop: 'lime',
+    backdrop: GROUP_SLOT_BACKDROP.opener,
+    photo: 'opener',
+    tone: 'lime',
+    at: 'bottom',
+    align: 'end',
     available: () => true,
-    render: (s) => (
+    render: (s, l) => (
       <>
-        <Eyebrow>{s.span.label}</Eyebrow>
-        <Headline>{s.groupName ?? 'Your chat'}</Headline>
+        {/* The design's cover: a badge, the name, one word on a stamp. */}
+        <Badge tone="lime">
+          <Mono>{spanLabel(l, s)}</Mono>
+        </Badge>
+        <div className="mt-4">
+          <Headline>{s.groupName ?? l.t('welcome.fallbackName')}</Headline>
+        </div>
         <Poster size="md">
-          <span className="mt-2 block">Yapped.</span>
+          <span className="mt-2 block">
+            <Stamp>{l.t('welcome.poster')}</Stamp>
+          </span>
         </Poster>
         <Punchline>
-          Reg read all {formatNumber(s.totalMessages, s.language)} messages so you never have
-          to. {formatDays(s.span.days)} of it. Tap through. Volume up.
+          {l.t('welcome.punchline', {
+            messages: num(l, s.totalMessages),
+            days: span(l, s.span.days),
+          })}
         </Punchline>
       </>
     ),
@@ -63,27 +109,33 @@ export const SLIDES: SlideDef[] = [
 
   {
     id: 'total',
-    backdrop: 'pink',
+    backdrop: 'night',
+    tone: 'pink',
+    at: 'top',
     available: (s) => s.totalMessages > 0,
-    render: (s) => (
+    render: (s, l) => (
       <>
-        <Eyebrow>Total damage</Eyebrow>
-        <Poster>
-          <AnimatedNumber value={s.totalMessages} language={s.language} />
-        </Poster>
+        <Eyebrow>{l.t('total.eyebrow')}</Eyebrow>
+        <div style={{ color: 'var(--slide-accent)' }}>
+          <Poster>
+            <AnimatedNumber value={s.totalMessages} locale={l.locale} />
+          </Poster>
+        </div>
         <Poster size="sm">
           <span className="mt-2 block">
-            messages · {formatNumber(s.people.length, s.language)} people
+            {l.t('total.unit', { people: num(l, s.people.length) })}
           </span>
         </Poster>
         <Punchline>
-          That is {formatNumber(Math.round(s.perDay), s.language)} a day, every day, for{' '}
-          {formatDays(s.span.days)}. Including the years you claim you were &quot;busy&quot;.
+          {l.t('total.punchline', {
+            perDay: num(l, Math.round(s.perDay)),
+            days: span(l, s.span.days),
+          })}
         </Punchline>
         <div className="mt-7 grid grid-cols-3 gap-2">
-          <Stat label="Words" value={formatNumber(s.totalWords, s.language)} />
-          <Stat label="Emoji" value={formatNumber(s.totalEmoji, s.language)} />
-          <Stat label="Media" value={formatNumber(s.totalAttachments, s.language)} />
+          <Stat label={l.t('total.words')} value={num(l, s.totalWords)} />
+          <Stat label={l.t('total.emoji')} value={num(l, s.totalEmoji)} />
+          <Stat label={l.t('total.media')} value={num(l, s.totalAttachments)} />
         </div>
       </>
     ),
@@ -91,61 +143,111 @@ export const SLIDES: SlideDef[] = [
 
   {
     id: 'talker',
-    backdrop: 'purple',
+    backdrop: 'night',
+    tone: 'orange',
+    at: 'left',
     available: (s) => s.people.length >= 2,
-    render: (s) => {
+    render: (s, l) => {
       const top = s.people[0]!;
       const rest = s.people.slice(1, 5);
       return (
         <>
-          <Eyebrow>The yap leaderboard</Eyebrow>
+          <Eyebrow>{l.t('talker.eyebrow')}</Eyebrow>
           <Ranking
-            language={s.language}
-            rows={[top, ...rest].map((p) => ({ label: p.name, value: p.messages }))}
+            locale={l.locale}
+            rows={[top, ...rest].map((p) => ({
+              label: p.name,
+              value: p.messages,
+              // The person's own share, not one derived from the counts on
+              // screen — these are the top five of a larger chat, and the
+              // punchline below quotes the same figure.
+              share: p.share,
+            }))}
           />
-          <Punchline>
-            {percent(top.share)} of every message in this chat came from one person.
-            {rest[0] &&
-              ` That is ${(top.messages / Math.max(1, rest[0].messages)).toFixed(1)}× more than ${shortName(rest[0].name)}, who is not even close.`}
-          </Punchline>
+          {/* The design's board puts its verdict on a tilted note. */}
+          <div className="mt-5">
+            <Note tone="orange" delay={0.2 + (rest.length + 1) * 0.09}>
+              {l.t('talker.punchline', { share: percent(top.share) })}
+              {rest[0] && (
+                <>
+                  {' '}
+                  {l.t('talker.punchlineRunnerUp', {
+                    times: (top.messages / Math.max(1, rest[0].messages)).toFixed(1),
+                    name: shortName(rest[0].name),
+                  })}
+                </>
+              )}
+            </Note>
+          </div>
         </>
       );
     },
   },
 
+  /**
+   * The chat's own clock, not one person's.
+   *
+   * This slide used to be headlined with whoever won the night-owl award, which
+   * put a single name above a chart nobody could tell apart from the group's —
+   * and the sample story on the landing page promises the group's. The award
+   * still appears, as a footnote where it belongs.
+   */
   {
-    id: 'nightowl',
-    backdrop: 'navy',
-    available: (s) => person(s, s.awards.nightOwl) !== null,
-    render: (s) => {
-      const owl = person(s, s.awards.nightOwl)!;
-      const peakHour = owl.hourHistogram.indexOf(Math.max(...owl.hourHistogram));
-      const max = Math.max(...owl.hourHistogram, 1);
+    id: 'hours',
+    backdrop: 'night',
+    tone: 'teal',
+    at: 'right',
+    available: (s) => s.totalMessages > 0,
+    render: (s, l) => {
+      const peakHour = s.busiestHour?.hour ?? 0;
+      const max = Math.max(...s.hourHistogram, 1);
+      const night = s.hourHistogram.slice(0, 5).reduce((sum, count) => sum + count, 0);
+      const owl = person(s, s.awards.nightOwl);
       return (
         <>
-          <Eyebrow>When they yap</Eyebrow>
-          <Headline>{owl.name}</Headline>
-          <Poster size="sm">
-            <span className="mt-3 block">
-              Peak hour:{' '}
-              <span style={{ color: 'var(--slide-accent)' }}>{formatHour(peakHour)}</span>
+          <Eyebrow>{l.t('hours.eyebrow')}</Eyebrow>
+          <Poster size="md">
+            {/* The hour is the accented word, and it does not sit in the same
+                place in every language — Japanese puts it last, English after a
+                colon. Splitting the untranslated template on its own
+                placeholder puts the accent on the hour wherever the sentence
+                happens to keep it. */}
+            <span className="mt-2 block">
+              {(() => {
+                const [before = '', after = ''] = l.t('hours.peak').split('{hour}');
+                return (
+                  <>
+                    {before}
+                    <span style={{ color: 'var(--slide-accent)' }}>{hour(l, peakHour)}</span>
+                    {after}
+                  </>
+                );
+              })()}
             </span>
           </Poster>
 
-          {/* The shape of someone's day is the actual content here, so it is
+          {/* The shape of the group's day is the actual content here, so it is
               drawn rather than described — and only the small hours are given
-              the accent, because those are the ones that make the point. */}
-          <div className="mt-6 flex h-[130px] items-end justify-center gap-[3px]" aria-hidden="true">
-            {owl.hourHistogram.map((count, hour) => (
+              the accent, because those are the ones that make the point.
+
+              Pinned left-to-right in every language: a clock face and a
+              timeline run that way in Hebrew publications too, and a day that
+              started on the right would be read as ending at midnight. */}
+          <div
+            dir="ltr"
+            className="mt-6 flex h-[130px] items-end justify-center gap-[3px]"
+            aria-hidden="true"
+          >
+            {s.hourHistogram.map((count, h) => (
               <motion.div
-                key={hour}
+                key={h}
                 initial={{ height: 2 }}
                 animate={{ height: `${Math.max(4, (count / max) * 100)}%` }}
-                transition={{ delay: 0.3 + hour * 0.02, duration: 0.5 }}
+                transition={{ delay: 0.3 + h * 0.02, duration: 0.5 }}
                 className="w-full rounded-t-[3px]"
                 style={{
                   background:
-                    hour < 5 || hour >= 22
+                    h < 5 || h >= 22
                       ? 'var(--slide-accent)'
                       : 'color-mix(in srgb, currentColor 45%, transparent)',
                 }}
@@ -153,6 +255,7 @@ export const SLIDES: SlideDef[] = [
             ))}
           </div>
           <p
+            dir="ltr"
             className="mt-2 flex justify-between text-[10px] opacity-60"
             style={{ fontFamily: 'var(--yap-mono)' }}
           >
@@ -161,10 +264,18 @@ export const SLIDES: SlideDef[] = [
             <span>23h</span>
           </p>
 
-          <Punchline>
-            {formatNumber(owl.nightMessages, s.language)} messages sent between midnight and
-            5 AM. Nobody asked for them. They arrived anyway.
-          </Punchline>
+          <Punchline>{l.t('hours.punchline', { count: num(l, night) })}</Punchline>
+          {/* The count, not just the share: the night-owl award only needs five
+              messages to win, and "50% after midnight" on its own would be six
+              messages dressed up as a habit. */}
+          {owl && (
+            <Tag>
+              {l.t('hours.tag', {
+                name: shortName(owl.name),
+                count: num(l, owl.nightMessages),
+              })}
+            </Tag>
+          )}
         </>
       );
     },
@@ -172,28 +283,36 @@ export const SLIDES: SlideDef[] = [
 
   {
     id: 'fastest',
-    backdrop: 'teal',
+    backdrop: 'night',
+    tone: 'sun',
+    at: 'top',
     available: (s) => person(s, s.awards.fastestReplier) !== null,
-    render: (s) => {
+    render: (s, l) => {
       const fast = person(s, s.awards.fastestReplier)!;
       const slow = person(s, s.awards.slowestReplier);
       return (
         <>
-          <Eyebrow>Fastest trigger finger</Eyebrow>
-          <Headline>{fast.name}</Headline>
-          <Poster size="md">
-            <span className="mt-2 block">{formatDuration(fast.medianResponseMs)}</span>
-          </Poster>
+          <Eyebrow>{l.t('fastest.eyebrow')}</Eyebrow>
+          <Named name={fast.name} />
+          <div style={{ color: 'var(--slide-accent)' }}>
+            <Poster size="md">
+              <span className="mt-2 block">
+                {duration(l, fast.medianResponseMs, s.timestampPrecisionMs)}
+              </span>
+            </Poster>
+          </div>
           <Punchline>
-            Across {formatNumber(fast.responseSamples, s.language)} replies, they somehow got
-            there before anyone else had finished reading.
+            {l.t('fastest.punchline', { count: num(l, fast.responseSamples) })}
           </Punchline>
           {slow && slow.name !== fast.name && (
             <div className="mt-6 grid grid-cols-2 gap-2">
-              <Stat label="Fastest" value={formatDuration(fast.medianResponseMs)} />
               <Stat
-                label={`Slowest · ${shortName(slow.name)}`}
-                value={formatDuration(slow.medianResponseMs)}
+                label={l.t('fastest.fastest')}
+                value={duration(l, fast.medianResponseMs, s.timestampPrecisionMs)}
+              />
+              <Stat
+                label={l.t('fastest.slowest', { name: shortName(slow.name) })}
+                value={duration(l, slow.medianResponseMs, s.timestampPrecisionMs)}
               />
             </div>
           )}
@@ -204,36 +323,36 @@ export const SLIDES: SlideDef[] = [
 
   {
     id: 'ghost',
-    backdrop: 'ink',
+    backdrop: 'night',
+    tone: 'violet',
+    at: 'top',
     available: (s) => {
       const g = person(s, s.awards.ghost);
       return g !== null && g.longestSilenceDays >= 7;
     },
-    render: (s) => {
+    render: (s, l) => {
       const ghost = person(s, s.awards.ghost)!;
       return (
         <>
-          <Eyebrow>Certified ghost</Eyebrow>
-          <div style={{ color: 'var(--slide-accent)' }}>
-            <Headline>{ghost.name}</Headline>
+          <Eyebrow>{l.t('ghost.eyebrow')}</Eyebrow>
+          {/* The face in black and white, like a missing-person notice. The
+              violet is the bloom only: as type on black it fails contrast. */}
+          <div style={{ filter: 'grayscale(1)' }}>
+            <Named name={ghost.name} />
           </div>
-          <div style={{ color: 'var(--slide-accent)' }}>
-            <Poster size="md">
-              <span className="mt-2 block">{formatDays(ghost.longestSilenceDays)}</span>
-            </Poster>
-          </div>
+          <Poster size="md">
+            <span className="mt-2 block">{span(l, ghost.longestSilenceDays)}</span>
+          </Poster>
           <Punchline>
-            Gone that long without a single message.
-            {ghost.stillGone
-              ? ' And has not come back. The group carried on without them.'
-              : ' Then returned as if nothing had happened.'}
+            {l.t('ghost.punchline')}{' '}
+            {ghost.stillGone ? l.t('ghost.stillGone') : l.t('ghost.returned')}
           </Punchline>
           {ghost.longestSilenceFrom && ghost.longestSilenceTo && (
             <div className="mt-6 grid grid-cols-2 gap-2">
-              <Stat label="Last seen" value={formatDay(ghost.longestSilenceFrom, s.language)} />
+              <Stat label={l.t('ghost.lastSeen')} value={day(l, ghost.longestSilenceFrom)} />
               <Stat
-                label={ghost.stillGone ? 'Still gone' : 'Resurfaced'}
-                value={formatDay(ghost.longestSilenceTo, s.language)}
+                label={ghost.stillGone ? l.t('ghost.stillGoneLabel') : l.t('ghost.resurfaced')}
+                value={day(l, ghost.longestSilenceTo)}
               />
             </div>
           )}
@@ -244,13 +363,15 @@ export const SLIDES: SlideDef[] = [
 
   {
     id: 'emoji',
-    backdrop: 'purple',
+    backdrop: 'night',
+    tone: 'pink',
+    at: 'right',
     available: (s) => s.topEmoji.length >= 3,
-    render: (s) => {
+    render: (s, l) => {
       const podium = s.topEmoji.slice(0, 3);
       return (
         <>
-          <Eyebrow>Emoji podium</Eyebrow>
+          <Eyebrow>{l.t('emoji.eyebrow')}</Eyebrow>
           <div className="mt-4 flex items-end gap-5">
             {podium.map((e, i) => (
               <motion.div
@@ -269,16 +390,23 @@ export const SLIDES: SlideDef[] = [
                     color: i === 0 ? 'var(--slide-accent)' : undefined,
                   }}
                 >
-                  {formatNumber(e.count, s.language)}
+                  {num(l, e.count)}
                 </div>
               </motion.div>
             ))}
           </div>
           <Punchline>
-            {podium[0]!.value} was used {formatNumber(podium[0]!.count, s.language)} times
-            {podium[1] &&
-              ` — ${(podium[0]!.count / Math.max(1, podium[1].count)).toFixed(1)}× more than ${podium[1].value}`}
-            . No serious conversation here ever survived long enough to need a second one.
+            {podium[1]
+              ? l.t('emoji.punchlineRunnerUp', {
+                  emoji: podium[0]!.value,
+                  count: num(l, podium[0]!.count),
+                  times: (podium[0]!.count / Math.max(1, podium[1].count)).toFixed(1),
+                  other: podium[1].value,
+                })
+              : l.t('emoji.punchline', {
+                  emoji: podium[0]!.value,
+                  count: num(l, podium[0]!.count),
+                })}
           </Punchline>
           <div className="mt-6 flex flex-wrap gap-2">
             {s.topEmoji.slice(3, 9).map((e) => (
@@ -288,11 +416,8 @@ export const SLIDES: SlideDef[] = [
                 style={{ background: 'var(--slide-panel)' }}
               >
                 <span className="text-lg leading-none">{e.value}</span>
-                <span
-                  className="text-xs opacity-75"
-                  style={{ fontFamily: 'var(--yap-mono)' }}
-                >
-                  {formatNumber(e.count, s.language)}
+                <span className="text-xs opacity-75" style={{ fontFamily: 'var(--yap-mono)' }}>
+                  {num(l, e.count)}
                 </span>
               </span>
             ))}
@@ -304,30 +429,34 @@ export const SLIDES: SlideDef[] = [
 
   {
     id: 'chaos',
-    backdrop: 'red',
+    backdrop: GROUP_SLOT_BACKDROP.chaos,
+    photo: 'chaos',
+    tone: 'red',
+    at: 'top',
     available: (s) => s.busiestDay !== null && s.busiestDay.count > 20,
-    render: (s) => {
-      const day = s.busiestDay!;
-      const explosion = s.explosions.find((e) => e.day === day.day);
+    render: (s, l) => {
+      const busiest = s.busiestDay!;
+      const explosion = s.explosions.find((e) => e.day === busiest.day);
       return (
         <>
-          <Eyebrow>Peak chaos</Eyebrow>
-          <Headline>{formatDay(day.day, s.language)}</Headline>
+          <Eyebrow>{l.t('chaos.eyebrow')}</Eyebrow>
+          <Headline>{day(l, busiest.day)}</Headline>
           <Poster size="sm">
             <span className="mt-2 block">
-              {formatNumber(day.count, s.language)} messages in one day
+              {l.t('chaos.unit', { count: num(l, busiest.count) })}
             </span>
           </Poster>
           <Punchline>
-            {(day.count / Math.max(1, s.perDay)).toFixed(0)}× a normal day here. Something
-            happened. Everyone remembers what.
+            {l.t('chaos.punchline', {
+              times: (busiest.count / Math.max(1, s.perDay)).toFixed(0),
+            })}
           </Punchline>
           {explosion && explosion.topSenders.length > 0 && (
             <BubbleBars
               rows={explosion.topSenders.map((t) => ({
                 label: shortName(t.value),
                 value: t.count,
-                caption: formatNumber(t.count, s.language),
+                caption: num(l, t.count),
               }))}
             />
           )}
@@ -338,25 +467,35 @@ export const SLIDES: SlideDef[] = [
 
   {
     id: 'streak',
-    backdrop: 'orange',
+    backdrop: 'night',
+    tone: 'orange',
+    at: 'bottom',
     available: (s) => (s.longestStreak?.days ?? 0) >= 5,
-    render: (s) => {
+    render: (s, l) => {
       const streak = s.longestStreak!;
       const silence = s.silences[0];
       return (
         <>
-          <Eyebrow>Longest streak</Eyebrow>
+          <Eyebrow>{l.t('streak.eyebrow')}</Eyebrow>
           <Poster>
-            <AnimatedNumber value={streak.days} language={s.language} />
-            <span className="ml-3 text-[0.28em] tracking-normal">days</span>
+            <span style={{ color: 'var(--slide-accent)' }}>
+              <AnimatedNumber value={streak.days} locale={l.locale} />
+            </span>
+            <span className="ms-3 text-[0.28em] tracking-normal">{l.t('streak.days')}</span>
           </Poster>
           <Punchline>
-            Not one silent day between {formatDay(streak.from, s.language)} and{' '}
-            {formatDay(streak.to, s.language)}.
-            {silence &&
-              ` The other extreme: ${formatDays(silence.days)} of total silence, finally broken by "${silence.brokenBy?.body.slice(0, 60) ?? '…'}".`}
+            {l.t('streak.punchline', { from: day(l, streak.from), to: day(l, streak.to) })}
+            {silence && (
+              <>
+                {' '}
+                {l.t('streak.silence', {
+                  days: span(l, silence.days),
+                  quote: silence.brokenBy?.body.slice(0, 60) ?? '…',
+                })}
+              </>
+            )}
           </Punchline>
-          <Tag>Nobody here has ever left a chat unread</Tag>
+          <Tag>{l.t('streak.tag')}</Tag>
         </>
       );
     },

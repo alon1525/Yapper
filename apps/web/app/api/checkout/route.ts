@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { chatFingerprint, mint, signingSecret } from '@/lib/entitlement';
+import { crossSite, forbiddenCrossSite } from '@/lib/guard';
+import { checkRate, tooManyRequests } from '@/lib/rateLimit';
 
 /**
  * Where Stripe will go.
@@ -25,6 +27,11 @@ const RequestSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  if (crossSite(request)) return forbiddenCrossSite();
+
+  const rate = await checkRate('checkout', request);
+  if (!rate.ok) return tooManyRequests(rate.retryAfter);
+
   const secret = signingSecret();
   if (!secret) {
     return NextResponse.json(

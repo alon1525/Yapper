@@ -54,7 +54,7 @@ export async function readExportFile(file: File): Promise<ExportFile> {
   const names = Object.keys(entries).filter((n) => !n.startsWith('__MACOSX'));
   if (names.length === 0) {
     throw new Error(
-      'No chat file found inside that .zip. Make sure you exported the chat from WhatsApp.',
+      'No chat file found inside that .zip. Make sure you exported the chat from WhatsApp or LINE.',
     );
   }
 

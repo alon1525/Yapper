@@ -3,6 +3,7 @@ import {
   Anton,
   Bricolage_Grotesque,
   DM_Mono,
+  Frank_Ruhl_Libre,
   Heebo,
   Instrument_Sans,
   Instrument_Serif,
@@ -54,20 +55,42 @@ const anton = Anton({
   display: 'swap',
 });
 
-/* Every name in the preview deck is Hebrew, so the Hebrew subset is not
-   optional here — without it the leaderboard falls back to a system face and
-   the whole slide loses its weight. */
+/* The Hebrew faces.
+
+   Every other family above is a Latin subset, and a report written in Hebrew
+   is Hebrew on every surface — the body copy, the eyebrows, the poster
+   numbers' captions, the onboarding's serif questions. Heebo covers the sans,
+   mono and poster roles: a Hebrew cut of the same humanist shape as Space
+   Grotesk, and at 900 it has the weight Anton brings to the Latin deck. The
+   lighter weights are what body copy is set in; load only the heavy ones and
+   every paragraph in Hebrew renders bold.
+
+   Frank Ruhl Libre is the serif — the one Hebrew newspapers are set in, which
+   is exactly the register Instrument Serif gives the Latin landing. */
 const heebo = Heebo({
   subsets: ['hebrew', 'latin'],
-  weight: ['700', '900'],
+  weight: ['400', '500', '700', '900'],
   variable: '--font-heebo',
+  display: 'swap',
+});
+
+const frankRuhl = Frank_Ruhl_Libre({
+  subsets: ['hebrew', 'latin'],
+  weight: ['400', '500'],
+  variable: '--font-frank-ruhl',
   display: 'swap',
 });
 
 export const metadata: Metadata = {
   title: 'Yapped — nine years of your group chat, read by Reg',
   description:
-    'Drop in your WhatsApp export and Reg turns every message into a 40-slide story: the top yapper, the certified ghost, the night it all went sideways, and awards nobody asked for. Your chat never leaves your device.',
+    'Drop in your WhatsApp or LINE export and Reg turns every message into a 40-slide story: the top yapper, the certified ghost, the night it all went sideways, and awards nobody asked for. Your chat never leaves your device.',
+  /* Reg reads the deck, so Reg is the tab. Same asset the slides use. */
+  icons: {
+    icon: '/reg.png',
+    shortcut: '/reg.png',
+    apple: '/reg.png',
+  },
 };
 
 export const viewport: Viewport = {
@@ -90,6 +113,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         spaceGrotesk.variable,
         anton.variable,
         heebo.variable,
+        frankRuhl.variable,
       ].join(' ')}
     >
       <body>{children}</body>
