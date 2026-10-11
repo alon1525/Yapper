@@ -328,8 +328,10 @@ body.yap-locked {
     gap: 40px;
   }
 
+  /* Kept on a phone: it is the only way back to a roast already made. */
   .yap-nav-links {
-    display: none !important;
+    font-size: 12px;
+    white-space: nowrap;
   }
 }
 

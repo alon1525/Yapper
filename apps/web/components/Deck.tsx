@@ -1,7 +1,7 @@
 'use client';
 
 import { AnimatePresence } from 'framer-motion';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChatStats } from '@wrapped/core';
 import { buildPreviewPayload } from '@/lib/aiPayload';
 import type { Brief } from '@/lib/brief';
@@ -112,6 +112,20 @@ export function Deck({
       setSaveStatus('error');
     }
   }, [analysis, brief, preview.state, report.state, saved, savedAs, saveStatus, stats]);
+
+  /*
+    A paid roast keeps itself. It was opt-in from the last slide, and readers
+    who paid, read it and closed the tab found the list on the front page
+    empty with no way back to what they paid for. Once per deck, and only when
+    nothing with the deck in it is saved yet; the same record is updated if
+    the statistics were kept first.
+  */
+  const autoSaved = useRef(false);
+  useEffect(() => {
+    if (!deckReady || autoSaved.current || savedAs?.withDeck) return;
+    autoSaved.current = true;
+    void save();
+  }, [deckReady, save, savedAs]);
 
   // The anonymised lines the free story would be written from, for the wall's
   // inspect panel. Only exists while the chat does.

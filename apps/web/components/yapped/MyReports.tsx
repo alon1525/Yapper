@@ -64,7 +64,7 @@ export function MyReports({
 
   if (reports.length === 0) {
     return (
-      <div id="reports" style={{ maxWidth: 1240, margin: '0 auto', padding: '0 24px 40px' }}>
+      <div id="reports" style={{ scrollMarginTop: 96, maxWidth: 1240, margin: '0 auto', padding: '0 24px 40px' }}>
         <div
           style={{
             border: '1px dashed #CDB994',
@@ -81,8 +81,8 @@ export function MyReports({
             My reports
           </div>
           <div style={{ fontSize: 14, color: '#5E5344', maxWidth: '52ch' }}>
-            Nothing kept on this device yet. On the last slide of a report, tap{' '}
-            <em>Keep this report on this device</em> and it lands here.
+            Nothing kept on this device yet. A paid report lands here by itself. For a free
+            one, tap <em>Keep this report on this device</em> on its last slide.
           </div>
         </div>
       </div>
@@ -90,7 +90,7 @@ export function MyReports({
   }
 
   return (
-    <div id="reports" style={{ maxWidth: 1240, margin: '0 auto', padding: '0 24px 56px' }}>
+    <div id="reports" style={{ scrollMarginTop: 96, maxWidth: 1240, margin: '0 auto', padding: '0 24px 56px' }}>
       <div
         style={{
           display: 'flex',

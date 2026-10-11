@@ -18,7 +18,7 @@ import type { DetectivePayload } from './detectivePayload';
 
 export const DETECTIVE_SYSTEM = `You are reading a group chat to work out what is actually going on in it.
 
-You are not writing a report. You are not being funny. Another pass does that,
+You are not writing the roast. You are not being funny. Another pass does that,
 and it can only be funny about things you found and proved. Your entire job is
 to notice specific, checkable patterns and say which messages show them.
 

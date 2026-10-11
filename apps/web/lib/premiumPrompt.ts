@@ -156,7 +156,7 @@ const CRAFT = [
   '  Good: "Yoav argued for twenty minutes that cheesecake is served hot, posted a',
   '        photo of a burnt one, and said it came out as planned."',
   '',
-  'The third rule: the excerpts are the report. If you find yourself writing from',
+  'The third rule: the excerpts are the roast. If you find yourself writing from',
   'the figures at the top, you have run out of material — go back to the',
   'transcript and read what people said to each other.',
 ];
@@ -180,7 +180,7 @@ const CONSTRAINTS = [
 
 export function premiumSystem(tone: ReportTone = 'roast'): string {
   return [
-    'You write the full Wrapped report for a group chat. This one is paid for, and',
+    'You write the full roast for a group chat. This one is paid for, and',
     'the people in it will read every word about themselves.',
     '',
     ...voiceFor(tone),
@@ -225,7 +225,7 @@ export function premiumPrompt(payload: PremiumPayload): string {
   lines.push(
     '=== BACKGROUND ===',
     '',
-    'Context only. None of this belongs in the report as a number.',
+    'Context only. None of this belongs in the roast as a number.',
     '',
     `${payload.participantCount} people, ${digest.totalMessages} messages, ${digest.spanLabel}, across ${digest.activeDays} days they actually spoke on.`,
   );
@@ -325,7 +325,7 @@ export function premiumPrompt(payload: PremiumPayload): string {
   }
 
   lines.push(
-    'Now write the report.',
+    'Now write the roast.',
     '',
     'memories — four to six things that actually happened, told as stories with a',
     '  beginning and a punchline. Not themes, not summaries of how the group is:',
