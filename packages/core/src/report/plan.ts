@@ -1183,10 +1183,11 @@ function maxSensitivity(a: Sensitivity, b: Sensitivity): Sensitivity {
  * A `member_persona` finding *is* dossier material and goes nowhere else: the
  * standalone slide is dropped, with a reason, rather than telling the same joke
  * twice. Every other kind — a contradiction, a prediction that aged badly, a
- * legendary moment — keeps its own slide, and the dossier is told it exists so
- * the writer can allude to it rather than retell it. Only the folded findings
- * lend the dossier their evidence; lending the others' would put the same
- * quote on two slides.
+ * legendary moment — keeps its own slide, and the dossier is not told about it.
+ * It used to be, with "allude to it, do not retell it", and readers got the
+ * same story twice anyway: a writer handed a story tells it. Only the folded
+ * findings lend the dossier their evidence; lending the others' would put the
+ * same quote on two slides.
  */
 function foldFindingsIntoDossiers(
   personas: Candidate[],
@@ -1210,19 +1211,14 @@ function foldFindingsIntoDossiers(
     const dossier = dossierOf.get(subject);
     if (!dossier) continue;
 
-    const owned = finding.kind === 'member_persona';
-    const note = owned
-      ? `
-The investigation found, with evidence: ${finding.claim}${finding.detail ? ` — ${finding.detail}` : ''}`
-      : `
-Also on the record, told on its own slide (${custom.brief.id}) — allude to it, do not retell it, and do not borrow its figures: ${finding.claim}`;
+    if (finding.kind !== 'member_persona') continue;
+    const note = `
+The investigation found, with evidence: ${finding.claim}${finding.detail ? ` — ${finding.detail}` : ''}`;
     if (dossier.brief.angle.length + note.length > MAX_ANGLE_CHARS) continue;
 
     dossier.brief.angle += note;
     dossier.brief.findingIds = [...dossier.brief.findingIds, finding.id];
     dossier.brief.sensitivity = maxSensitivity(dossier.brief.sensitivity, finding.sensitivity);
-
-    if (!owned) continue;
 
     // The detective's quotes lead: they were chosen for being quotable, and the
     // writer can only quote what reaches it as evidence.
@@ -1255,6 +1251,44 @@ function interleave<T>(a: readonly T[], b: readonly T[]): T[] {
     if (i < b.length) out.push(b[i]!);
   }
   return out;
+}
+
+/**
+ * One story, one slide.
+ *
+ * The detective and the statistics find the same incident from different
+ * directions: the loud day is also a legendary moment, the stalled plan is
+ * also a custom slide. Each brief arrived at the writer with its own copy of
+ * the lines, and readers got the same story told twice. Walked in deck order:
+ * a discovered slide whose lines mostly reached the writer already is dropped,
+ * with a reason; every other brief keeps only the lines no earlier slide shows.
+ * Only the lines inside an earlier slide's quote budget count, because only
+ * those reach the writer.
+ */
+const RETOLD_SHARE = 0.5;
+
+export function dedupeMaterial(briefs: SlideBrief[], suppressed: SuppressionNote[]): SlideBrief[] {
+  const shownBy = new Map<number, string>();
+  const kept: SlideBrief[] = [];
+  for (const brief of briefs) {
+    const visible = brief.evidenceMessageIds.slice(0, brief.quoteBudget);
+    const repeated = visible.filter((id) => shownBy.has(id));
+    if (
+      brief.id.startsWith('custom-') &&
+      visible.length > 0 &&
+      repeated.length / visible.length >= RETOLD_SHARE
+    ) {
+      suppressed.push({
+        slide: brief.id,
+        reason: `retells the scene already on ${shownBy.get(repeated[0]!)}`,
+      });
+      continue;
+    }
+    brief.evidenceMessageIds = brief.evidenceMessageIds.filter((id) => !shownBy.has(id));
+    for (const id of brief.evidenceMessageIds.slice(0, brief.quoteBudget)) shownBy.set(id, brief.id);
+    kept.push(brief);
+  }
+  return kept;
 }
 
 export function planDeck(input: PlanInput, options: PlanOptions = {}): DeckPlan {
@@ -1303,14 +1337,21 @@ export function planDeck(input: PlanInput, options: PlanOptions = {}): DeckPlan 
   const opener = stats.filter((s) => s.type === 'opening');
   const events = stats.filter((s) => s.type !== 'opening');
 
+  const middle = dedupeMaterial([...interleave(customs, events), ...personas], suppressed);
+  const keptIds = new Set(middle.map((b) => b.id));
+  const customsKept = customs.filter((b) => keptIds.has(b.id));
+  const eventsKept = events.filter((b) => keptIds.has(b.id));
+  const personasKept = personas.filter((b) => keptIds.has(b.id));
+
   /*
     The opener is an executive summary, and a summary needs the findings it
-    summarises. The three strongest discovered slides lend it their claims and
-    a couple of lines of evidence each, so the three numbered beats are written
-    from incidents rather than from the totals. With nothing discovered it
-    stays what it was: the totals, hung off what the group is for.
+    summarises. The three strongest discovered slides lend it their claims, so
+    the three numbered beats name incidents rather than totals. Claims only:
+    it used to borrow two lines of evidence from each as well, and the writer
+    told the story on the opener and then again on its own slide. With nothing
+    discovered it stays what it was: the totals, hung off what the group is for.
   */
-  const summarised = customs.slice(0, 3);
+  const summarised = customsKept.slice(0, 3);
   for (const brief of opener) {
     if (summarised.length === 0) break;
     brief.angle +=
@@ -1318,9 +1359,12 @@ export function planDeck(input: PlanInput, options: PlanOptions = {}): DeckPlan 
       summarised
         .map((c) => findingOf.get(c.id)?.claim ?? c.angle)
         .map((claim, i) => `(${i + 1}) ${claim}`)
-        .join(' ');
-    brief.evidenceMessageIds = summarised.flatMap((c) => c.evidenceMessageIds.slice(0, 2));
-    brief.quoteBudget = 6;
+        .join(' ') +
+      ' Each of these is told in full on its own slide later. Here, name each one in a few' +
+      ' plain words, a teaser, so the reader knows what is coming. Do not quote it, retell it' +
+      ' or make its joke here.';
+    brief.evidenceMessageIds = [];
+    brief.quoteBudget = 0;
     brief.targetLength = 300;
   }
 
@@ -1331,7 +1375,7 @@ export function planDeck(input: PlanInput, options: PlanOptions = {}): DeckPlan 
     closer. Only when there are at least two people to rank; one person on a
     podium is not a ranking.
   */
-  const ranked = personas.flatMap((p) => p.people);
+  const ranked = personasKept.flatMap((p) => p.people);
   const finale: SlideBrief[] =
     ranked.length >= 2
       ? [
@@ -1369,7 +1413,7 @@ export function planDeck(input: PlanInput, options: PlanOptions = {}): DeckPlan 
     saved report and a regenerated one wear the same clothes.
   */
   dress(
-    [...customs, ...events],
+    [...customsKept, ...eventsKept],
     (brief) =>
       brief.id.startsWith('custom-')
         ? SHAPES_FOR_KIND[findingOf.get(brief.id)?.kind ?? ''] ?? ['plain']
@@ -1387,7 +1431,12 @@ export function planDeck(input: PlanInput, options: PlanOptions = {}): DeckPlan 
     person's own card is what they screenshot, and the end of the deck is where
     they stop to do it.
   */
-  const briefs = [...opener, ...interleave(customs, events), ...personas, ...finale];
+  const briefs = [
+    ...opener,
+    ...interleave(customsKept, eventsKept),
+    ...personasKept,
+    ...finale,
+  ];
 
   return { briefs, suppressed };
 }

@@ -125,8 +125,15 @@ describe('material for the writer', () => {
     const days = silence.evidenceMessageIds.map((id) => dayKey(parsed.messages[id]!));
     expect(days).toContain('2023-02-01');
     expect(days).toContain('2023-03-20');
-    const bodies = silence.evidenceMessageIds.map((id) => parsed.messages[id]!.body);
-    expect(bodies).toContain('wait what did I miss');
+    // Cy's return is also the ghost's return, and a line is told once: it
+    // reaches the writer on one of the two slides, never both.
+    const holders = plan.briefs.filter((b) =>
+      b.evidenceMessageIds
+        .slice(0, b.quoteBudget)
+        .some((id) => parsed.messages[id]!.body === 'wait what did I miss'),
+    );
+    expect(holders.map((b) => b.id)).toHaveLength(1);
+    expect(['stat-silence', 'stat-ghost']).toContain(holders[0]!.id);
   });
 
   it('pairs each conversation the killer ended with what they ended', () => {
@@ -153,15 +160,16 @@ describe('material for the writer', () => {
   it('budgets quotes by what the slide is', () => {
     const { input } = build(chat(), [
       { finding: finding({ id: 'scene', kind: 'legendary_moment' }), strength: 0.9 },
-      { finding: finding({ id: 'claim', kind: 'custom_slide' }), strength: 0.9 },
+      { finding: finding({ id: 'claim', kind: 'custom_slide', evidenceMessageIds: [12, 15, 18] }), strength: 0.9 },
     ]);
     const plan = planDeck(input);
 
     expect(brief(plan, 'custom-scene').quoteBudget).toBe(14);
     expect(brief(plan, 'custom-claim').quoteBudget).toBe(6);
-    // The opener summarises the strongest findings, so with any to summarise
-    // it borrows a couple of their lines each.
-    expect(brief(plan, 'stat-opening').quoteBudget).toBe(6);
+    // The opener names the strongest findings but borrows none of their
+    // lines: each story is told once, on its own slide.
+    expect(brief(plan, 'stat-opening').quoteBudget).toBe(0);
+    expect(brief(plan, 'stat-opening').evidenceMessageIds).toEqual([]);
     expect(brief(plan, 'stat-opening').angle).toContain('(1)');
     for (const b of plan.briefs.filter((b) => b.format === 'profile')) {
       expect(b.quoteBudget).toBe(8);
@@ -178,6 +186,49 @@ describe('material for the writer', () => {
     const plan = planDeck(input);
     expect(brief(plan, 'stat-opening').quoteBudget).toBe(0);
     expect(brief(plan, 'stat-opening').angle).not.toContain('(1)');
+  });
+});
+
+describe('one story, one slide', () => {
+  it('drops a discovered slide that retells a scene another slide already has', () => {
+    const { input } = build(chat(), [
+      { finding: finding({ id: 'first', kind: 'legendary_moment' }), strength: 0.95 },
+      { finding: finding({ id: 'again', claim: 'The same night, told again' }), strength: 0.9 },
+    ]);
+    const plan = planDeck(input);
+
+    expect(plan.briefs.some((b) => b.id === 'custom-first')).toBe(true);
+    expect(plan.briefs.some((b) => b.id === 'custom-again')).toBe(false);
+    expect(plan.suppressed.find((n) => n.slide === 'custom-again')?.reason).toContain('retells');
+  });
+
+  it('never hands two slides the same line', () => {
+    const { input } = build(chat(), [
+      { finding: finding({ id: 'a', kind: 'legendary_moment', evidenceMessageIds: [30, 31, 32, 33] }), strength: 0.95 },
+      { finding: finding({ id: 'b', claim: 'Another thing', evidenceMessageIds: [33, 40, 41, 42] }), strength: 0.9 },
+    ]);
+    const plan = planDeck(input);
+
+    const seen = new Map<number, string>();
+    for (const b of plan.briefs) {
+      const own = new Set(b.evidenceMessageIds.slice(0, b.quoteBudget));
+      for (const id of own) {
+        expect(seen.get(id), `line ${id} on ${seen.get(id)} and ${b.id}`).toBeUndefined();
+      }
+      for (const id of own) seen.set(id, b.id);
+    }
+    // A minority overlap trims the later slide rather than dropping it.
+    expect(brief(plan, 'custom-b').evidenceMessageIds).not.toContain(33);
+  });
+
+  it('does not tell a dossier about a story that has its own slide', () => {
+    const { input } = build(chat(), [
+      { finding: finding({ id: 'own', kind: 'legendary_moment', claim: 'The keys night' }), strength: 0.95 },
+    ]);
+    const plan = planDeck(input);
+    for (const b of plan.briefs.filter((b) => b.format === 'profile')) {
+      expect(b.angle).not.toContain('The keys night');
+    }
   });
 });
 
@@ -213,7 +264,7 @@ describe('costumes', () => {
   it('alternates discovered and measured slides after the opener', () => {
     const { input } = build(chat(), [
       { finding: finding({ id: 'c1', kind: 'contradiction' }), strength: 0.9 },
-      { finding: finding({ id: 'c2', kind: 'recurring_topic', people: [] }), strength: 0.85 },
+      { finding: finding({ id: 'c2', kind: 'recurring_topic', people: [], evidenceMessageIds: [12, 15, 18] }), strength: 0.85 },
     ]);
     const plan = planDeck(input);
 

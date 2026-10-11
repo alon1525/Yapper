@@ -144,7 +144,9 @@ describe('discovered slides', () => {
 
   it('caps discovered slides and says what it cut', () => {
     const many = Array.from({ length: 14 }, (_, i) => ({
-      finding: finding({ id: `f${i}` }),
+      // Each its own story: findings that share their lines are one story,
+      // and only the first of those keeps a slide.
+      finding: finding({ id: `f${i}`, evidenceMessageIds: [1000 + i * 3, 1001 + i * 3, 1002 + i * 3] }),
       strength: 0.9 - i * 0.01,
     }));
     const plan = planDeck(build(GYM_GROUP, many), { maxCustomSlides: 4 });
@@ -164,9 +166,9 @@ describe('discovered slides', () => {
   it('picks a slide shape that suits the kind of finding', () => {
     const plan = planDeck(
       build(GYM_GROUP, [
-        { finding: finding({ id: 'joke', kind: 'inside_joke' }), strength: 0.8 },
-        { finding: finding({ id: 'liar', kind: 'contradiction' }), strength: 0.8 },
-        { finding: finding({ id: 'old', kind: 'nostalgic_moment' }), strength: 0.8 },
+        { finding: finding({ id: 'joke', kind: 'inside_joke', evidenceMessageIds: [1000] }), strength: 0.8 },
+        { finding: finding({ id: 'liar', kind: 'contradiction', evidenceMessageIds: [1001] }), strength: 0.8 },
+        { finding: finding({ id: 'old', kind: 'nostalgic_moment', evidenceMessageIds: [1002] }), strength: 0.8 },
       ]),
     );
 
@@ -215,16 +217,20 @@ describe('folding findings into dossiers', () => {
     expect(dossier.angle).toContain('The investigation found');
     expect(dossier.angle).toContain('announces an arrival time');
     expect(dossier.findingIds).toEqual(['habit']);
-    // The detective's quote leads the evidence, so the writer is handed it.
-    expect(dossier.evidenceMessageIds[0]).toBe(4);
-    expect(dossier.evidenceMessageIds).toEqual(expect.arrayContaining([0, 4, 6]));
+    // The detective's lines reach the writer, each on exactly one slide: here
+    // unless an earlier slide of the deck already shows it.
+    for (const id of [0, 4, 6]) {
+      const showing = plan.briefs.filter((b) => b.evidenceMessageIds.slice(0, b.quoteBudget).includes(id));
+      expect(showing.length, `line ${id}`).toBeLessThanOrEqual(1);
+    }
+    expect(dossier.evidenceMessageIds.length).toBeGreaterThan(0);
     expect(dossier.sensitivity).toBe('medium');
 
     expect(has(plan, 'custom-habit')).toBe(false);
     expect(reason(plan, 'custom-habit')).toMatch(/folded into the dossier/);
   });
 
-  it('keeps another kind of finding on its own slide, and tells the dossier it exists', () => {
+  it('keeps another kind of finding on its own slide, and leaves it off the dossier', () => {
     const base = build(PING_PONG_GROUP);
     const subject = cardHolder(base);
     const plan = planDeck({
@@ -234,9 +240,10 @@ describe('folding findings into dossiers', () => {
 
     expect(has(plan, 'custom-liar')).toBe(true);
     const dossier = plan.briefs.find((b) => b.type === 'persona' && b.people[0] === subject)!;
-    expect(dossier.angle).toContain('custom-liar');
-    expect(dossier.angle).toMatch(/allude to it/);
-    // Not its evidence, though: the same quote on two slides is the same joke twice.
+    // A dossier told about a story retells it, so it is not told at all.
+    expect(dossier.angle).not.toContain('announces an arrival time');
+    expect(dossier.findingIds).not.toContain('liar');
+    // Nor its evidence: the same quote on two slides is the same joke twice.
     expect(dossier.evidenceMessageIds).not.toContain(4);
   });
 
